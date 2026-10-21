@@ -1,0 +1,157 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+
+/*
+  Design 2 — Modern Platform: design tokens.
+  Light values are taken from the approved prototype (zinc neutrals, indigo accent, 8/14/16px radii).
+  Dark values are derived from the same scale; the prototype itself has no dark theme.
+  Every component reads these variables, so theming is a single [data-theme] switch.
+*/
+:root,
+:root[data-theme='light'] {
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --surface-muted: #f4f4f5;
+  --border: #e4e4e7;
+  --border-strong: #d4d4d8;
+
+  --text: #18181b;
+  --text-secondary: #3f3f46;
+  --text-muted: #71717a;
+  --text-subtle: #a1a1aa;
+
+  --primary: #18181b;
+  --primary-foreground: #fafafa;
+  --primary-hover: #3f3f46;
+
+  --accent: #4338ca;
+  --accent-strong: #3730a3;
+  --accent-soft: #eef2ff;
+  --accent-border: #c7d2fe;
+
+  --success: #047857;
+  --success-soft: #ecfdf5;
+  --warning: #b45309;
+  --warning-soft: #fffbeb;
+  --danger: #b91c1c;
+  --danger-soft: #fef2f2;
+  --danger-border: #fecaca;
+
+  --focus-ring: #4338ca;
+  --overlay: rgb(24 24 27 / 0.45);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px -12px rgb(0 0 0 / 0.12);
+  --shadow-pop: 0 24px 64px rgb(0 0 0 / 0.25);
+}
+
+:root[data-theme='dark'] {
+  --bg: #09090b;
+  --surface: #18181b;
+  --surface-muted: #27272a;
+  --border: #27272a;
+  --border-strong: #3f3f46;
+
+  --text: #fafafa;
+  --text-secondary: #d4d4d8;
+  --text-muted: #a1a1aa;
+  --text-subtle: #71717a;
+
+  --primary: #fafafa;
+  --primary-foreground: #18181b;
+  --primary-hover: #d4d4d8;
+
+  --accent: #818cf8;
+  --accent-strong: #a5b4fc;
+  --accent-soft: #1e1b4b;
+  --accent-border: #3730a3;
+
+  --success: #34d399;
+  --success-soft: #052e22;
+  --warning: #fbbf24;
+  --warning-soft: #2a1d04;
+  --danger: #f87171;
+  --danger-soft: #2a0d0d;
+  --danger-border: #7f1d1d;
+
+  --focus-ring: #a5b4fc;
+  --overlay: rgb(0 0 0 / 0.65);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px -12px rgb(0 0 0 / 0.6);
+  --shadow-pop: 0 24px 64px rgb(0 0 0 / 0.7);
+}
+
+/* Expose tokens as Tailwind utilities: bg-surface, text-muted, border-border, ... */
+@theme inline {
+  --font-sans: 'Geist Variable', system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-border: var(--accent-border);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-border: var(--danger-border);
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+  --radius-xl: 16px;
+
+  --shadow-card: var(--shadow-card);
+  --shadow-pop: var(--shadow-pop);
+}
+
+html {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Visible keyboard focus on every interactive element, in both themes. */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

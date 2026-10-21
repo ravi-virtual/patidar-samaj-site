@@ -1,0 +1,199 @@
+import mongoose from 'mongoose';
+import request from 'supertest';
+import app from '../src/app';
+import User from '../src/models/User';
+import MemberProfile from '../src/models/MemberProfile';
+import {
+  AccountStatus,
+  MembershipStatus,
+  MemberVisibility,
+  Roles,
+  config,
+  type AccountStatusValue,
+  type MemberVisibilityValue,
+  type MembershipStatusValue,
+  type Role,
+} from '../src/config/constants';
+import { hashPassword } from '../src/utils/password';
+
+export const ORIGIN = 'http://localhost:5173';
+export const PASSWORD = 'Correct-Horse-9';
+
+export const connectTestDb = async () => {
+  if (!/_test$/.test(new URL(config.mongo.uri).pathname)) {
+    throw new Error('Refusing to run integration tests against a non-test database');
+  }
+  await mongoose.connect(config.mongo.uri, { serverSelectionTimeoutMS: 5000 });
+  // Build every index (unique constraints included) before the first test runs.
+  await Promise.all(Object.values(mongoose.models).map((m) => m.init()));
+};
+
+export const disconnectTestDb = () => mongoose.disconnect();
+
+/** Empties every collection. Indexes stay, so unique constraints keep being enforced. */
+export const resetDb = async () => {
+  await Promise.all(Object.values(mongoose.models).map((m) => m.deleteMany({})));
+};
+
+let counter = 0;
+export const makeUser = async (
+  over: Partial<{
+    name: string;
+    email: string;
+    role: Role;
+    status: AccountStatusValue;
+    password: string | null;
+    extraPermissions: string[];
+    phone: string;
+  }> = {},
+) => {
+  counter += 1;
+  const role = over.role ?? Roles.MEMBER;
+  return User.create({
+    name: over.name ?? `Test ${role} ${counter}`,
+    email: over.email ?? `${role}${counter}@example.test`,
+    phone: over.phone,
+    role,
+    status: over.status ?? AccountStatus.ACTIVE,
+    extraPermissions: over.extraPermissions ?? [],
+    passwordHash: over.password === null ? null : await hashPassword(over.password ?? PASSWORD),
+  });
+};
+
+export interface Client {
+  agent: ReturnType<typeof request.agent>;
+  csrf: string;
+  userId: string;
+  cookie: string;
+  get: (url: string) => request.Test;
+  post: (url: string) => request.Test;
+  patch: (url: string) => request.Test;
+  put: (url: string) => request.Test;
+  del: (url: string) => request.Test;
+}
+
+/** Signs a user in and returns a client that sends the Origin and CSRF headers like the real app. */
+export const signIn = async (email: string, password = PASSWORD): Promise<Client> => {
+  const agent = request.agent(app);
+  const res = await agent.post('/api/auth/login').set('Origin', ORIGIN).send({ email, password });
+  if (res.status !== 200) throw new Error(`Sign-in failed for ${email}: ${res.status} ${JSON.stringify(res.body)}`);
+  const csrf = res.body.data.csrfToken as string;
+  const cookie = (res.headers['set-cookie'] as unknown as string[])
+    .find((c) => c.startsWith(`${config.session.cookieName}=`))!
+    .split(';')[0]!;
+  const headers = (r: request.Test) => r.set('Origin', ORIGIN).set('X-CSRF-Token', csrf);
+  return {
+    agent,
+    csrf,
+    cookie,
+    userId: res.body.data.user.id as string,
+    get: (url) => agent.get(url),
+    post: (url) => headers(agent.post(url)),
+    patch: (url) => headers(agent.patch(url)),
+    put: (url) => headers(agent.put(url)),
+    del: (url) => headers(agent.delete(url)),
+  };
+};
+
+export const signInAs = async (role: Role, extra: Parameters<typeof makeUser>[0] = {}) => {
+  const user = await makeUser({ role, ...extra });
+  const client = await signIn(user.email);
+  return { user, client };
+};
+
+export const anon = () => request(app);
+
+let profileCounter = 0;
+/** A directory entry. Pass userId to link it to an account; omit it for an office-created entry. */
+export const makeProfile = async (
+  over: Partial<{
+    userId: string | null;
+    displayName: string;
+    village: string;
+    city: string;
+    country: string;
+    occupation: string;
+    bio: string;
+    familySize: number;
+    kul: string;
+    phone: string;
+    visibility: MemberVisibilityValue;
+    membershipStatus: MembershipStatusValue;
+    highlighted: boolean;
+    joinedYear: number;
+  }> = {},
+) => {
+  profileCounter += 1;
+  return MemberProfile.create({
+    displayName: `Member ${profileCounter}`,
+    village: 'Unjha',
+    city: 'Mehsana',
+    country: 'India',
+    visibility: MemberVisibility.PUBLIC,
+    membershipStatus: MembershipStatus.ACTIVE,
+    ...over,
+  });
+};
+
+import Event from '../src/models/Event';
+import { EventStatus, type EventStatusValue } from '../src/config/constants';
+
+export const DAY = 86_400_000;
+let eventCounter = 0;
+/** An event directly in the database. Published and one week away unless overridden. */
+export const makeEvent = async (
+  over: Partial<{
+    title: string;
+    category: string;
+    startsAt: Date;
+    endsAt: Date;
+    venue: string;
+    capacity: number;
+    registeredCount: number;
+    status: EventStatusValue;
+    registrationOpensAt: Date;
+    registrationClosesAt: Date;
+    featured: boolean;
+    description: string;
+  }> = {},
+) => {
+  eventCounter += 1;
+  return Event.create({
+    title: `Test Event ${eventCounter}`,
+    category: 'Festival',
+    venue: 'Samaj Bhavan',
+    startsAt: new Date(Date.now() + 7 * DAY),
+    capacity: 0,
+    status: EventStatus.PUBLISHED,
+    ...over,
+  });
+};
+
+import Announcement from '../src/models/Announcement';
+import { PublishStatus, type PublishStatusValue } from '../src/config/constants';
+
+let announcementCounter = 0;
+/** An announcement directly in the database. Published and visible now unless overridden. */
+export const makeAnnouncement = async (
+  over: Partial<{
+    title: string;
+    summary: string;
+    body: string;
+    category: string;
+    status: PublishStatusValue;
+    pinned: boolean;
+    order: number;
+    featured: boolean;
+    publishAt: Date;
+  }> = {},
+) => {
+  announcementCounter += 1;
+  return Announcement.create({
+    title: `Announcement ${announcementCounter}`,
+    body: 'Body text for the announcement.',
+    category: 'Notice',
+    status: PublishStatus.PUBLISHED,
+    publishAt: new Date(Date.now() - 1000),
+    ...over,
+  });
+};

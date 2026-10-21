@@ -1,0 +1,31 @@
+{
+  "name": "patidar-samaj-site",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Uttar Gujarat Kadva Patidar Samaj — community website, member workspace and admin panel (MERN)",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": "24.22.0",
+    "npm": ">=11.19.1"
+  },
+  "scripts": {
+    "check:node": "node scripts/checkNodeVersion.mjs",
+    "install:all": "npm run check:node && npm install && npm --prefix backend install && npm --prefix frontend install",
+    "dev": "npm run check:node && concurrently -n api,web -c blue,magenta \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
+    "build": "npm run check:node && npm --prefix backend run build && npm --prefix frontend run build",
+    "lint": "npm --prefix backend run lint && npm --prefix frontend run lint",
+    "typecheck": "npm --prefix backend run typecheck && npm --prefix frontend run typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,css,md}\" --ignore-path .gitignore",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,css,md}\" --ignore-path .gitignore",
+    "test": "npm --prefix backend run test && npm --prefix frontend run test",
+    "test:integration": "npm --prefix backend run test:integration",
+    "seed": "npm --prefix backend run seed",
+    "db:check": "npm --prefix backend run db:check",
+    "mongo:start": "node scripts/startMongo.mjs",
+    "audit": "npm --prefix backend audit --omit=dev && npm --prefix frontend audit --omit=dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "prettier": "^3.6.2"
+  }
+}
