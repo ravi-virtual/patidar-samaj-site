@@ -2,7 +2,7 @@ import { resolve } from 'node:path';
 
 // ─── Environment validation (fail fast on startup) ───────────────────────────
 // Rule: process.env is only read in this file. Everything else imports from here.
-const requiredEnvVars = ['PORT', 'MONGO_URI', 'SESSION_SECRET', 'CLIENT_ORIGIN'] as const;
+const requiredEnvVars = ['MONGO_URI', 'SESSION_SECRET', 'CLIENT_ORIGIN'] as const;
 
 const missing = requiredEnvVars.filter((key) => !process.env[key]);
 if (missing.length > 0) {
