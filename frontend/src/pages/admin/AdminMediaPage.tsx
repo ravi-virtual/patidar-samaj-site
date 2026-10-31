@@ -166,8 +166,8 @@ export default function AdminMediaPage() {
                   </div>
                 )}
                 <div className="flex flex-1 flex-col gap-1.5 p-3">
-                  <p className="truncate text-sm font-medium" title={m.name}>
-                    {m.name}
+                  <p className="truncate text-sm font-medium" title={m.altText || m.name}>
+                    {m.altText || m.name}
                   </p>
                   <p className="flex flex-wrap items-center gap-1.5 text-xs text-text-muted">
                     {readableSize(m.size)}
