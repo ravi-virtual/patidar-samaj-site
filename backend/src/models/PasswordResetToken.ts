@@ -1,5 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID as uuidv4 } from 'node:crypto';
 
 export interface IPasswordResetToken {
   _id: string;

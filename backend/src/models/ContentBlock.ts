@@ -1,5 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID as uuidv4 } from 'node:crypto';
 import { publishableDefinition, type PublishableFields } from '../utils/schemaFields';
 
 /** The editable text blocks the site knows about. Anything else is rejected by validation. */
