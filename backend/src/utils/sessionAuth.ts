@@ -79,7 +79,7 @@ export const authenticate = async (
     await Session.updateOne({ _id: session._id }, { $set: { lastSeenAt: new Date(now) } });
   }
 
-  const extraPermissions = [...(user.extraPermissions ?? [])];
+  const permissions = [...(user.permissions ?? [])];
   return {
     ok: true,
     user: {
@@ -88,9 +88,8 @@ export const authenticate = async (
       email: user.email,
       role: user.role,
       status: user.status,
-      extraPermissions,
-      // Computed fresh on every request, so a role change takes effect immediately.
-      permissions: permissionsFor({ role: user.role, extraPermissions }),
+      // Computed fresh on every request, so a permission change takes effect immediately.
+      permissions: permissionsFor({ role: user.role, permissions }),
       themePreference: user.themePreference ?? 'system',
       isAuthenticated: true,
     },

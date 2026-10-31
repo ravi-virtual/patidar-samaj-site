@@ -1,43 +1,45 @@
 import { Router } from 'express';
 import hasToken from '../middlewares/hasToken';
 import isAuthenticated from '../middlewares/isAuthenticated';
+import isSuperAdmin from '../middlewares/isSuperAdmin';
 import hasPermission, { hasAnyPermission } from '../middlewares/hasPermission';
 import { Permissions } from '../config/permissions';
 import {
-  changeRoleRules,
-  createStaffRules,
+  createAdminRules,
   listUsersRules,
   reasonRules,
+  resetPasswordRules,
+  updateAdminRules,
   userIdRules,
 } from '../validators/userValidator';
 import {
-  approveUser,
-  changeRole,
-  createStaff,
-  issuePasswordReset,
+  createAdmin,
+  deleteAdmin,
+  getAdmin,
   listUsers,
   reactivateUser,
-  rejectUser,
+  resetAdminPassword,
   revokeUserSessionsAction,
   suspendUser,
+  updateAdmin,
 } from '../controllers/UserController';
 
 const router = Router();
 const P = Permissions;
 
-// Every route is authenticated; each adds the permission it needs. Object-level checks
-// (staff vs member targets, last Super Admin, self-service limits) are in the controller.
+// The Super Admin manages admin accounts. An admin holding `users.reset_password` may also list
+// admins and set another admin's password directly. Every other route is Super-Admin-only
+// (isSuperAdmin is an explicit role check; each route also names the permission it needs).
 router.use(hasToken, isAuthenticated);
 
-router.get('/', hasPermission(P.USERS_READ), listUsersRules, listUsers);
-router.post('/', hasPermission(P.USERS_MANAGE), createStaffRules, createStaff);
-
-router.post('/:id/approve', hasPermission(P.MEMBERS_APPROVE), userIdRules, approveUser);
-router.post('/:id/reject', hasPermission(P.MEMBERS_APPROVE), reasonRules, rejectUser);
-router.post('/:id/suspend', hasAnyPermission(P.MEMBERS_SUSPEND, P.USERS_MANAGE), reasonRules, suspendUser);
-router.post('/:id/reactivate', hasAnyPermission(P.MEMBERS_SUSPEND, P.USERS_MANAGE), userIdRules, reactivateUser);
-router.patch('/:id/role', hasPermission(P.ROLES_MANAGE), changeRoleRules, changeRole);
-router.post('/:id/revoke-sessions', hasPermission(P.SESSIONS_REVOKE), userIdRules, revokeUserSessionsAction);
-router.post('/:id/password-reset', hasPermission(P.USERS_RESET_PASSWORD), userIdRules, issuePasswordReset);
+router.get('/', hasAnyPermission(P.USERS_READ, P.USERS_RESET_PASSWORD), listUsersRules, listUsers);
+router.get('/:id', isSuperAdmin, hasPermission(P.USERS_MANAGE), userIdRules, getAdmin);
+router.post('/', isSuperAdmin, hasPermission(P.USERS_MANAGE), createAdminRules, createAdmin);
+router.patch('/:id', isSuperAdmin, hasPermission(P.USERS_MANAGE), updateAdminRules, updateAdmin);
+router.delete('/:id', isSuperAdmin, hasPermission(P.USERS_MANAGE), userIdRules, deleteAdmin);
+router.post('/:id/suspend', isSuperAdmin, hasPermission(P.USERS_MANAGE), reasonRules, suspendUser);
+router.post('/:id/reactivate', isSuperAdmin, hasPermission(P.USERS_MANAGE), userIdRules, reactivateUser);
+router.post('/:id/revoke-sessions', isSuperAdmin, hasPermission(P.SESSIONS_REVOKE), userIdRules, revokeUserSessionsAction);
+router.post('/:id/password-reset', hasPermission(P.USERS_RESET_PASSWORD), resetPasswordRules, resetAdminPassword);
 
 export default router;

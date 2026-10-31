@@ -1,6 +1,10 @@
 // Shapes returned by the public API (see docs/api-reference.md). The server builds each of them
 // from an allowlist, so anything not listed here is never sent to the browser.
 
+/** The public website tabs an administrator can switch off. */
+export type PublicTabKey = 'about' | 'history' | 'committee' | 'faq' | 'links' | 'directory' | 'events' | 'news' | 'contact';
+export type PublicTabs = Record<PublicTabKey, boolean>;
+
 export interface PublicSettings {
   name: string;
   shortName: string;
@@ -10,8 +14,7 @@ export interface PublicSettings {
   contact: { email: string; phone: string; address: string; officeHours: string };
   socialLinks: { label: string; url: string }[];
   footerNote: string;
-  registrationOpen: boolean;
-  directoryPublic: boolean;
+  publicTabs: PublicTabs;
   themeDefault: 'system' | 'light' | 'dark';
 }
 
@@ -31,15 +34,6 @@ export interface ContentBlock {
   items: ContentItem[];
 }
 
-export type RegistrationState =
-  | 'open'
-  | 'not_yet_open'
-  | 'closed'
-  | 'full'
-  | 'past'
-  | 'cancelled'
-  | 'unavailable';
-
 export interface EventItem {
   id: string;
   title: string;
@@ -52,14 +46,6 @@ export interface EventItem {
   cancellationReason: string | null;
   featured: boolean;
   imageMediaId: string | null;
-  capacity: number;
-  /** null means unlimited. */
-  spotsLeft: number | null;
-  registrationOpensAt: string | null;
-  registrationClosesAt: string;
-  registrationState: RegistrationState;
-  /** Present only for signed-in callers. */
-  myRegistration?: { attendees: number } | null;
 }
 
 export interface AnnouncementItem {

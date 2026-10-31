@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import type { RouteObject } from 'react-router-dom';
 import { PageLoading } from '../components/layout/PageLoading';
 import { PublicLayout } from '../components/layout/PublicLayout';
+import { TabGate } from '../components/layout/TabGate';
 import HomePage from '../pages/HomePage';
 import AboutPage from '../pages/AboutPage';
 import HistoryPage from '../pages/HistoryPage';
@@ -15,21 +16,19 @@ import EventDetailPage from '../pages/EventDetailPage';
 import NewsPage from '../pages/NewsPage';
 import NewsDetailPage from '../pages/NewsDetailPage';
 import ContactPage from '../pages/ContactPage';
-import LoginPage from '../pages/LoginPage';
-import RegisterPage from '../pages/RegisterPage';
 import ForgotPasswordPage from '../pages/ForgotPasswordPage';
 import ResetPasswordPage from '../pages/ResetPasswordPage';
 import NotFoundPage from '../pages/NotFoundPage';
-import DashboardPage from '../pages/workspace/DashboardPage';
-import MyRsvpsPage from '../pages/workspace/MyRsvpsPage';
-import SettingsPage from '../pages/workspace/SettingsPage';
-import { PublicOnly, RequireAuth, RequireStaff } from './guards';
+import AdminLoginPage from '../pages/admin/AdminLoginPage';
+import { RequireAuth } from './guards';
 import {
   AdminLayout,
   AdminDashboardPage,
   AdminEventsPage,
   AdminAnnouncementsPage,
   AdminMembersPage,
+  AdminUserCreatePage,
+  AdminUserEditPage,
   AdminUsersPage,
   AdminContactsPage,
   AdminContentPage,
@@ -44,45 +43,50 @@ export const routes: RouteObject[] = [
     element: <PublicLayout />,
     children: [
       { index: true, element: <HomePage /> },
-      { path: 'about', element: <AboutPage /> },
-      { path: 'history', element: <HistoryPage /> },
-      { path: 'committee', element: <CommitteePage /> },
-      { path: 'faq', element: <FaqPage /> },
-      { path: 'links', element: <LinksPage /> },
-      { path: 'members', element: <DirectoryPage /> },
-      { path: 'members/:id', element: <MemberDetailPage /> },
-      { path: 'events', element: <EventsPage /> },
-      { path: 'events/:id', element: <EventDetailPage /> },
-      { path: 'news', element: <NewsPage /> },
-      { path: 'news/:id', element: <NewsDetailPage /> },
-      { path: 'contact', element: <ContactPage /> },
+      // Each public tab sits behind a TabGate: Not found while an administrator has it switched off.
+      { path: 'about', element: <TabGate tab="about" />, children: [{ index: true, element: <AboutPage /> }] },
+      { path: 'history', element: <TabGate tab="history" />, children: [{ index: true, element: <HistoryPage /> }] },
+      { path: 'committee', element: <TabGate tab="committee" />, children: [{ index: true, element: <CommitteePage /> }] },
+      { path: 'faq', element: <TabGate tab="faq" />, children: [{ index: true, element: <FaqPage /> }] },
+      { path: 'links', element: <TabGate tab="links" />, children: [{ index: true, element: <LinksPage /> }] },
       {
-        element: <PublicOnly />,
+        path: 'members',
+        element: <TabGate tab="directory" />,
         children: [
-          { path: 'login', element: <LoginPage /> },
-          { path: 'register', element: <RegisterPage /> },
-          { path: 'forgot-password', element: <ForgotPasswordPage /> },
+          { index: true, element: <DirectoryPage /> },
+          { path: ':id', element: <MemberDetailPage /> },
         ],
       },
       {
-        path: 'app',
-        element: <RequireAuth />,
+        path: 'events',
+        element: <TabGate tab="events" />,
         children: [
-          { index: true, element: <DashboardPage /> },
-          { path: 'rsvps', element: <MyRsvpsPage /> },
-          { path: 'settings', element: <SettingsPage /> },
+          { index: true, element: <EventsPage /> },
+          { path: ':id', element: <EventDetailPage /> },
         ],
       },
-      // The reset link works whether or not the visitor is signed in.
+      {
+        path: 'news',
+        element: <TabGate tab="news" />,
+        children: [
+          { index: true, element: <NewsPage /> },
+          { path: ':id', element: <NewsDetailPage /> },
+        ],
+      },
+      { path: 'contact', element: <TabGate tab="contact" />, children: [{ index: true, element: <ContactPage /> }] },
+      // Reached only from the admin sign-in page; there is no public or member sign-in.
+      { path: 'forgot-password', element: <ForgotPasswordPage /> },
+      // Setup and reset links work whether or not the visitor is signed in.
       { path: 'reset-password', element: <ResetPasswordPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },
+  { path: 'admin/login', element: <AdminLoginPage /> },
   {
     path: 'admin',
     element: (
       <Suspense fallback={<PageLoading />}>
-        <RequireStaff />
+        <RequireAuth />
       </Suspense>
     ),
     children: [
@@ -92,6 +96,8 @@ export const routes: RouteObject[] = [
           { index: true, element: <AdminDashboardPage /> },
           { path: 'members', element: <AdminMembersPage /> },
           { path: 'users', element: <AdminUsersPage /> },
+          { path: 'users/new', element: <AdminUserCreatePage /> },
+          { path: 'users/:id/edit', element: <AdminUserEditPage /> },
           { path: 'events', element: <AdminEventsPage /> },
           { path: 'announcements', element: <AdminAnnouncementsPage /> },
           { path: 'content', element: <AdminContentPage /> },

@@ -32,7 +32,7 @@ export const setSessionLostHandler = (handler: UnauthorizedHandler | null): void
 };
 
 const SESSION_CODES = new Set(['SESSION_EXPIRED', 'INVALID_SESSION', 'ACCOUNT_NOT_ACTIVE']);
-const PUBLIC_AUTH_PATHS = ['/auth/login', '/auth/register', '/auth/me', '/auth/forgot-password', '/auth/reset-password'];
+const PUBLIC_AUTH_PATHS = ['/auth/admin-login', '/auth/me', '/auth/forgot-password', '/auth/reset-password'];
 
 api.interceptors.response.use(
   (response) => response,

@@ -11,6 +11,8 @@ import { SelectField, TextAreaField } from '../../components/ui/FormFields';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { TextField } from '../../components/ui/TextField';
+import { Toggle } from '../../components/ui/Toggle';
+import { PUBLIC_TABS } from '../../lib/publicTabs';
 import { useFetch } from '../../lib/useFetch';
 import { useAppDispatch } from '../../store/hooks';
 import { settingsReplaced } from '../../store/slices/siteSlice';
@@ -27,8 +29,7 @@ interface Values {
   address: string;
   officeHours: string;
   socialLinks: { label: string; url: string }[];
-  registrationOpen: boolean;
-  directoryPublic: boolean;
+  publicTabs: AdminSettings['publicTabs'];
   themeDefault: AdminSettings['themeDefault'];
 }
 
@@ -43,8 +44,7 @@ const toValues = (s: AdminSettings): Values => ({
   address: s.contact.address,
   officeHours: s.contact.officeHours,
   socialLinks: s.socialLinks,
-  registrationOpen: s.registrationOpen,
-  directoryPublic: s.directoryPublic,
+  publicTabs: { ...s.publicTabs },
   themeDefault: s.themeDefault,
 });
 
@@ -73,8 +73,7 @@ function SettingsForm({ settings, onSaved }: { settings: AdminSettings; onSaved:
         footerNote: v.footerNote.trim(),
         contact: { email: v.email.trim(), phone: v.phone.trim(), address: v.address.trim(), officeHours: v.officeHours.trim() },
         socialLinks: v.socialLinks.map((l) => ({ label: l.label.trim(), url: l.url.trim() })),
-        registrationOpen: v.registrationOpen,
-        directoryPublic: v.directoryPublic,
+        publicTabs: v.publicTabs,
         themeDefault: v.themeDefault,
       });
       onSaved(result);
@@ -129,7 +128,7 @@ function SettingsForm({ settings, onSaved }: { settings: AdminSettings; onSaved:
             <div className="min-w-56 flex-[2]">
               <TextField label="Web address" type="url" placeholder="https://" maxLength={500} {...register(`socialLinks.${i}.url` as const)} />
             </div>
-            <Button variant="ghost" onClick={() => links.remove(i)} aria-label={`Remove link ${i + 1}`}>
+            <Button variant="ghost" onClick={() => links.remove(i)} aria-label={`Delete link ${i + 1}`} title="Delete">
               <Trash2 aria-hidden="true" className="h-4 w-4" />
             </Button>
           </div>
@@ -144,29 +143,25 @@ function SettingsForm({ settings, onSaved }: { settings: AdminSettings; onSaved:
 
       <Card className="space-y-3.5">
         <h2 className="font-semibold">Site behaviour</h2>
-        <label className="flex items-start gap-2.5 text-sm">
-          <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[var(--accent)]" {...register('registrationOpen')} />
-          <span>
-            <strong className="font-medium">Registration is open</strong>
-            <span className="block text-text-muted">When off, new families cannot create an account.</span>
-          </span>
-        </label>
-        <label className="flex items-start gap-2.5 text-sm">
-          <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[var(--accent)]" {...register('directoryPublic')} />
-          <span>
-            <strong className="font-medium">The directory is visible to visitors</strong>
-            <span className="block text-text-muted">
-              When off, only signed-in members see the directory. Members who chose “Everyone” are still hidden from visitors.
-            </span>
-          </span>
-        </label>
         <div className="max-w-xs">
-          <SelectField label="Default colour theme" hint="Used for visitors and for new accounts. People can choose their own." {...register('themeDefault')}>
+          <SelectField label="Default colour theme" hint="Used for visitors. People can choose their own." {...register('themeDefault')}>
             <option value="system">Follow the device</option>
             <option value="light">Light</option>
             <option value="dark">Dark</option>
           </SelectField>
         </div>
+      </Card>
+
+      <Card className="space-y-1">
+        <h2 className="font-semibold">Public site tabs</h2>
+        <p className="pb-2 text-sm text-text-muted">Turn a tab off to hide it from the public website.</p>
+        <ul className="m-0 list-none divide-y divide-border p-0">
+          {PUBLIC_TABS.map((tab) => (
+            <li key={tab.key} className="py-3 first:pt-1 last:pb-0">
+              <Toggle label={tab.label} description={tab.description} {...register(`publicTabs.${tab.key}` as const)} />
+            </li>
+          ))}
+        </ul>
       </Card>
 
       <div className="flex justify-end gap-2">

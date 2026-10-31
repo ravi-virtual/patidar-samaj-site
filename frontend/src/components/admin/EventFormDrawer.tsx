@@ -11,6 +11,7 @@ import { showToast } from '../../store/slices/toastSlice';
 import { Alert } from '../ui/Alert';
 import { SelectField, TextAreaField } from '../ui/FormFields';
 import { TextField } from '../ui/TextField';
+import { Toggle } from '../ui/Toggle';
 import { FormDrawer, FullWidth } from './FormDrawer';
 import { MediaPicker } from './MediaPicker';
 
@@ -24,9 +25,6 @@ const schema = z
     description: z.string().trim().max(4000).refine(noAngle, 'Contains invalid characters'),
     startsAt: z.string().min(1, 'Choose the start date and time'),
     endsAt: z.string(),
-    registrationOpensAt: z.string(),
-    registrationClosesAt: z.string(),
-    capacity: z.string().trim().refine((v) => /^\d+$/.test(v) && Number(v) <= 100000, 'Enter 0 (unlimited) or a number'),
     featured: z.boolean(),
     imageMediaId: z.string(),
   })
@@ -34,11 +32,7 @@ const schema = z
     const at = (s: string) => (s ? new Date(`${s}:00+05:30`).getTime() : null);
     const start = at(v.startsAt);
     const end = at(v.endsAt);
-    const opens = at(v.registrationOpensAt);
-    const closes = at(v.registrationClosesAt);
     if (start && end && end < start) ctx.addIssue({ code: 'custom', path: ['endsAt'], message: 'The end must be after the start' });
-    if (opens && closes && closes <= opens) ctx.addIssue({ code: 'custom', path: ['registrationClosesAt'], message: 'Registration must close after it opens' });
-    if (start && closes && closes > start) ctx.addIssue({ code: 'custom', path: ['registrationClosesAt'], message: 'Registration must close before the event starts' });
   });
 type Form = z.infer<typeof schema>;
 
@@ -49,9 +43,6 @@ const blank: Form = {
   description: '',
   startsAt: '',
   endsAt: '',
-  registrationOpensAt: '',
-  registrationClosesAt: '',
-  capacity: '0',
   featured: false,
   imageMediaId: '',
 };
@@ -63,24 +54,17 @@ const fromEvent = (e: AdminEvent): Form => ({
   description: e.description ?? '',
   startsAt: toDateTimeInput(e.startsAt),
   endsAt: toDateTimeInput(e.endsAt),
-  registrationOpensAt: toDateTimeInput(e.registrationOpensAt),
-  registrationClosesAt: toDateTimeInput(e.registrationClosesAt),
-  capacity: String(e.capacity),
   featured: e.featured,
   imageMediaId: e.imageMediaId ?? '',
 });
 
-const toInput = (v: Form, creating: boolean): EventInput => ({
+const toInput = (v: Form): EventInput => ({
   title: v.title,
   category: v.category,
   venue: v.venue,
   description: v.description,
   startsAt: fromDateTimeInput(v.startsAt) ?? undefined,
   endsAt: fromDateTimeInput(v.endsAt),
-  registrationOpensAt: fromDateTimeInput(v.registrationOpensAt),
-  // When left empty on a new event the server closes registration when the event starts.
-  registrationClosesAt: fromDateTimeInput(v.registrationClosesAt) ?? (creating ? undefined : null),
-  capacity: Number(v.capacity),
   featured: v.featured,
   imageMediaId: v.imageMediaId || null,
 });
@@ -115,8 +99,8 @@ export function EventFormDrawer({
 
   const onSubmit = async (v: Form) => {
     try {
-      if (event) await updateEventApi(event.id, toInput(v, false));
-      else await createEventApi(toInput(v, true));
+      if (event) await updateEventApi(event.id, toInput(v));
+      else await createEventApi(toInput(v));
       dispatch(showToast(event ? 'Event updated.' : 'Event created as a draft.'));
       onSaved();
       onClose();
@@ -158,36 +142,12 @@ export function EventFormDrawer({
       <TextField label="Venue" required error={errors.venue?.message} {...register('venue')} />
       <TextField label="Starts (IST)" type="datetime-local" required error={errors.startsAt?.message} {...register('startsAt')} />
       <TextField label="Ends (IST)" type="datetime-local" error={errors.endsAt?.message} {...register('endsAt')} />
-      <TextField
-        label="Registration opens (IST)"
-        type="datetime-local"
-        hint="Optional. Empty means open now."
-        error={errors.registrationOpensAt?.message}
-        {...register('registrationOpensAt')}
-      />
-      <TextField
-        label="Registration closes (IST)"
-        type="datetime-local"
-        hint="Optional. Empty means when the event starts."
-        error={errors.registrationClosesAt?.message}
-        {...register('registrationClosesAt')}
-      />
-      <TextField
-        label="Capacity"
-        inputMode="numeric"
-        hint="0 means unlimited. Cannot go below the people already registered."
-        error={errors.capacity?.message}
-        {...register('capacity')}
-      />
       <MediaPicker label="Cover image" kind="image" error={errors.imageMediaId?.message} {...register('imageMediaId')} />
       <FullWidth>
         <TextAreaField label="Description" rows={5} error={errors.description?.message} {...register('description')} />
       </FullWidth>
       <FullWidth>
-        <label className="flex items-center gap-2.5 text-sm">
-          <input type="checkbox" className="h-4 w-4 accent-[var(--accent)]" {...register('featured')} />
-          Feature on the home page
-        </label>
+        <Toggle label="Feature on the home page" {...register('featured')} />
       </FullWidth>
     </FormDrawer>
   );

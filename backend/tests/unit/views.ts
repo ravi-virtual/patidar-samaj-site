@@ -2,13 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { ApiResponse } from '../../src/utils/apiResponse';
 import { toPublicAnnouncement, toAdminAnnouncement, visibleNowFilter } from '../../src/utils/announcementView';
 import {
-  registrationState,
-  remainingCapacity,
   timingError,
   toAdminEvent,
   toPublicEvent,
 } from '../../src/utils/eventView';
-import { toDirectoryEntry, toOwnerProfile, toStaffMember } from '../../src/utils/memberView';
+import { toDirectoryEntry, toStaffMember } from '../../src/utils/memberView';
 import { toAdminUser, toSessionUser } from '../../src/utils/userView';
 import { ResponseCodes } from '../../src/config/constants';
 
@@ -102,92 +100,40 @@ describe('eventView', () => {
       venue: 'Hall',
       status: 'published',
       startsAt: at(7),
-      capacity: 0,
-      registeredCount: 0,
       featured: false,
       createdAt: NOW,
       updatedAt: NOW,
       ...over,
     }) as never;
 
-  describe('registrationState', () => {
-    it('is open for a future published event with no limits', () => {
-      expect(registrationState(event(), NOW)).toBe('open');
-    });
-
-    it('reports cancelled and unavailable (draft/archived) before anything else', () => {
-      expect(registrationState(event({ status: 'cancelled', startsAt: at(-1) }), NOW)).toBe('cancelled');
-      expect(registrationState(event({ status: 'draft' }), NOW)).toBe('unavailable');
-    });
-
-    it('reports past once the event has started (inclusive)', () => {
-      expect(registrationState(event({ startsAt: at(-1) }), NOW)).toBe('past');
-      expect(registrationState(event({ startsAt: NOW }), NOW)).toBe('past');
-    });
-
-    it('honours the opening and closing times', () => {
-      expect(registrationState(event({ registrationOpensAt: at(1) }), NOW)).toBe('not_yet_open');
-      expect(registrationState(event({ registrationOpensAt: NOW }), NOW)).toBe('open');
-      expect(registrationState(event({ registrationClosesAt: at(-1) }), NOW)).toBe('closed');
-      expect(registrationState(event({ registrationClosesAt: NOW }), NOW)).toBe('closed');
-      expect(registrationState(event({ registrationClosesAt: at(1) }), NOW)).toBe('open');
-    });
-
-    it('reports full only when a capacity is set and reached', () => {
-      expect(registrationState(event({ capacity: 5, registeredCount: 4 }), NOW)).toBe('open');
-      expect(registrationState(event({ capacity: 5, registeredCount: 5 }), NOW)).toBe('full');
-      expect(registrationState(event({ capacity: 0, registeredCount: 500 }), NOW)).toBe('open');
-    });
-  });
-
-  it('computes remaining capacity, null for unlimited, never negative', () => {
-    expect(remainingCapacity({ capacity: 0, registeredCount: 9 })).toBeNull();
-    expect(remainingCapacity({ capacity: 10, registeredCount: 3 })).toBe(7);
-    expect(remainingCapacity({ capacity: 10, registeredCount: 12 })).toBe(0);
-  });
-
-  it('builds the public view without internal counters, and closes registration at the start by default', () => {
-    const pub = toPublicEvent(event({ capacity: 10, registeredCount: 4, createdBy: 'u1' }), undefined, NOW);
-    expect(pub).toMatchObject({ id: 'e1', spotsLeft: 6, registrationState: 'open', status: 'published', description: null });
-    expect(pub.registrationClosesAt).toEqual(at(7));
-    expect(pub).not.toHaveProperty('registeredCount');
+  it('builds the public view with timing and details only', () => {
+    const pub = toPublicEvent(event({ createdBy: 'u1' }));
+    expect(pub).toMatchObject({ id: 'e1', title: 'Garba Night', venue: 'Hall', status: 'published', description: null });
     expect(pub).not.toHaveProperty('createdBy');
-    expect(pub).not.toHaveProperty('myRegistration');
+    for (const key of ['capacity', 'registeredCount', 'spotsLeft', 'registrationState', 'registrationClosesAt', 'myRegistration']) {
+      expect(pub).not.toHaveProperty(key);
+    }
   });
 
   it('shows the cancellation reason only on cancelled events', () => {
-    expect(toPublicEvent(event({ cancellationReason: 'Rain' }), undefined, NOW).cancellationReason).toBeNull();
-    const cancelled = toPublicEvent(event({ status: 'cancelled', cancellationReason: 'Rain' }), undefined, NOW);
+    expect(toPublicEvent(event({ cancellationReason: 'Rain' })).cancellationReason).toBeNull();
+    const cancelled = toPublicEvent(event({ status: 'cancelled', cancellationReason: 'Rain' }));
     expect(cancelled).toMatchObject({ status: 'cancelled', cancellationReason: 'Rain' });
   });
 
-  it('reports the visitor’s own confirmed registration only', () => {
-    expect(toPublicEvent(event(), { status: 'confirmed', attendees: 3 }, NOW).myRegistration).toEqual({ attendees: 3 });
-    expect(toPublicEvent(event(), { status: 'cancelled', attendees: 3 }, NOW).myRegistration).toBeNull();
-    expect(toPublicEvent(event(), null, NOW).myRegistration).toBeNull();
-  });
-
-  it('shows staff the real status and counters', () => {
-    const admin = toAdminEvent(event({ status: 'draft', registeredCount: 4, createdBy: 'u1' }), NOW);
-    expect(admin).toMatchObject({ status: 'draft', registeredCount: 4, createdBy: 'u1', cancelledAt: null });
+  it('shows staff the real status and audit fields', () => {
+    const admin = toAdminEvent(event({ status: 'draft', createdBy: 'u1' }));
+    expect(admin).toMatchObject({ status: 'draft', createdBy: 'u1', cancelledAt: null });
   });
 
   describe('timingError', () => {
     it('accepts a coherent schedule and partial input', () => {
       expect(timingError({})).toBeNull();
-      expect(timingError({ startsAt: at(5), endsAt: at(5), registrationOpensAt: at(1), registrationClosesAt: at(4) })).toBeNull();
+      expect(timingError({ startsAt: at(5), endsAt: at(5) })).toBeNull();
     });
 
     it('rejects an end before the start', () => {
       expect(timingError({ startsAt: at(5), endsAt: at(4) })).toMatch(/end time/);
-    });
-
-    it('rejects registration closing at or before it opens', () => {
-      expect(timingError({ registrationOpensAt: at(2), registrationClosesAt: at(2) })).toMatch(/close after it opens/);
-    });
-
-    it('rejects registration closing after the event starts', () => {
-      expect(timingError({ startsAt: at(5), registrationClosesAt: at(6) })).toMatch(/before the event starts/);
     });
   });
 });
@@ -214,24 +160,19 @@ describe('memberView', () => {
     for (const key of ['phone', 'familySize', 'kul', 'userId', 'internalNote', 'visibility']) expect(entry).not.toHaveProperty(key);
   });
 
-  it('gives owners their private details, preferring the account phone', () => {
-    expect(toOwnerProfile(profile)).toMatchObject({ phone: '+911234567890', familySize: 4, kul: 'Kadva', visibility: 'public' });
-    expect(toOwnerProfile(profile, '+910000000000').phone).toBe('+910000000000');
-    expect(toOwnerProfile(profile)).not.toHaveProperty('internalNote');
-  });
-
   it('gives staff private fields only with the private permission', () => {
-    const without = toStaffMember(profile, { includePrivate: false, accountPhone: '+9100', accountStatus: 'active' });
-    for (const key of ['phone', 'familySize', 'kul']) expect(without).not.toHaveProperty(key);
-    expect(without).toMatchObject({ hasAccount: true, accountStatus: 'active', anonymizedAt: null });
-    const withPrivate = toStaffMember(profile, { includePrivate: true, accountPhone: '+9100' });
-    expect(withPrivate).toMatchObject({ phone: '+9100', familySize: 4, kul: 'Kadva', accountStatus: null });
+    const without = toStaffMember(profile, { includePrivate: false });
+    for (const key of ['phone', 'familySize', 'kul', 'userId', 'hasAccount', 'accountStatus', 'internalNote']) expect(without).not.toHaveProperty(key);
+    expect(without).toMatchObject({ visibility: 'public', anonymizedAt: null });
+    const withPrivate = toStaffMember(profile, { includePrivate: true });
+    expect(withPrivate).toMatchObject({ phone: '+911234567890', familySize: 4, kul: 'Kadva' });
     expect(withPrivate).not.toHaveProperty('internalNote');
   });
 
-  it('reports hasAccount false for an office-created entry', () => {
-    const entry = toStaffMember({ ...(profile as object), userId: undefined } as never, { includePrivate: false });
-    expect(entry).toMatchObject({ hasAccount: false, userId: null });
+  it('treats any visibility other than public (including legacy "members") as hidden', () => {
+    for (const visibility of ['hidden', 'members', undefined]) {
+      expect(toStaffMember({ ...(profile as object), visibility } as never, { includePrivate: false }).visibility).toBe('hidden');
+    }
   });
 });
 
@@ -240,38 +181,37 @@ describe('userView', () => {
     _id: 'u1',
     name: 'Ravi',
     email: 'ravi@example.com',
-    phone: '+910000000000',
-    role: 'editor',
+    role: 'admin',
     status: 'active',
-    extraPermissions: ['events.publish', 'bogus'],
+    permissions: ['events.publish', 'bogus', 'users.manage'],
     passwordHash: 'SECRET',
     failedLoginCount: 3,
     createdAt: NOW,
   } as never;
 
-  it('builds the session user with effective permissions, a default theme and no secrets', () => {
+  it('builds the session user with the selected permissions, a default theme and no secrets', () => {
     const view = toSessionUser(user);
     expect(view.themePreference).toBe('system');
-    expect(view.permissions).toContain('events.publish');
-    expect(view.permissions).toContain('events.create');
-    expect(view.permissions).not.toContain('bogus');
+    expect(view.permissions).toEqual(['events.publish']);
     expect(view.lastLoginAt).toBeNull();
+    expect(view).not.toHaveProperty('phone');
     expect(JSON.stringify(view)).not.toMatch(/SECRET|passwordHash|failedLoginCount/);
   });
 
-  it('keeps an explicit theme and null phone', () => {
-    const view = toSessionUser({ ...(user as object), themePreference: 'dark', phone: undefined } as never);
-    expect(view).toMatchObject({ themePreference: 'dark', phone: null });
+  it('gives the Super Admin every permission and keeps an explicit theme', () => {
+    const view = toSessionUser({ ...(user as object), role: 'superadmin', permissions: [], themePreference: 'dark' } as never);
+    expect(view.themePreference).toBe('dark');
+    expect(view.permissions).toContain('users.manage');
+    expect(view.permissions).toContain('events.publish');
   });
 
-  it('includes the phone in the admin view only when allowed, and copies the extra permissions', () => {
-    const hidden = toAdminUser(user, false);
-    expect(hidden).not.toHaveProperty('phone');
-    expect(toAdminUser(user, true).phone).toBe('+910000000000');
-    expect(hidden.approvedAt).toBeNull();
-    expect(hidden.suspendedAt).toBeNull();
-    expect(JSON.stringify(hidden)).not.toMatch(/SECRET|passwordHash|failedLoginCount/);
-    const u = user as unknown as { extraPermissions: string[] };
-    expect(hidden.extraPermissions).not.toBe(u.extraPermissions);
+  it('builds the admin list view from an allowlist, copying the selected permissions', () => {
+    const view = toAdminUser(user);
+    expect(view).toMatchObject({ id: 'u1', role: 'admin', permissions: ['events.publish'], suspendedAt: null });
+    expect(view).not.toHaveProperty('phone');
+    expect(view).not.toHaveProperty('approvedAt');
+    expect(JSON.stringify(view)).not.toMatch(/SECRET|passwordHash|failedLoginCount/);
+    const u = user as unknown as { permissions: string[] };
+    expect(view.permissions).not.toBe(u.permissions);
   });
 });

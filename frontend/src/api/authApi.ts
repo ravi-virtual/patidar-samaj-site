@@ -1,14 +1,13 @@
 import { api } from './axiosInstance';
 import type { ThemePreference } from '../utils/theme';
 
-export type Role = 'superadmin' | 'admin' | 'editor' | 'viewer' | 'member';
-export type AccountStatus = 'pending' | 'active' | 'rejected' | 'suspended';
+export type Role = 'superadmin' | 'admin';
+export type AccountStatus = 'active' | 'suspended';
 
 export interface SessionUser {
   id: string;
   name: string;
   email: string;
-  phone: string | null;
   role: Role;
   status: AccountStatus;
   themePreference: ThemePreference;
@@ -27,23 +26,9 @@ export const meApi = async (): Promise<SessionPayload> => {
   return data.data;
 };
 
-export const loginApi = async (body: { email: string; password: string }): Promise<SessionPayload> => {
-  const { data } = await api.post<{ data: SessionPayload }>('/auth/login', body);
+export const adminLoginApi = async (body: { email: string; password: string }): Promise<SessionPayload> => {
+  const { data } = await api.post<{ data: SessionPayload }>('/auth/admin-login', body);
   return data.data;
-};
-
-export interface RegisterInput {
-  name: string;
-  email: string;
-  phone?: string;
-  password: string;
-  confirmPassword: string;
-  acknowledge: boolean;
-}
-
-export const registerApi = async (body: RegisterInput): Promise<string> => {
-  const { data } = await api.post<{ message: string }>('/auth/register', body);
-  return data.message;
 };
 
 export const logoutApi = async (): Promise<void> => {

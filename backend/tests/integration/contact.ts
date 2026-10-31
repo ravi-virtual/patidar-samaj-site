@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import AuditLog from '../../src/models/AuditLog';
 import ContactMessage from '../../src/models/ContactMessage';
+import User from '../../src/models/User';
 import { AccountStatus, Roles } from '../../src/config/constants';
-import { ORIGIN, anon, connectTestDb, disconnectTestDb, makeUser, resetDb, signInAs } from '../helpers';
+import { ORIGIN, anon, connectTestDb, disconnectTestDb, makeUser, resetDb, signInAs, OPS_ADMIN_PERMISSIONS, READ_ONLY_ADMIN_PERMISSIONS, DRAFT_ADMIN_PERMISSIONS } from '../helpers';
 
 beforeAll(connectTestDb);
 afterAll(disconnectTestDb);
@@ -105,27 +106,27 @@ describe('public contact form', () => {
 });
 
 describe('who can read the inbox', () => {
-  it('is closed to visitors, members, viewers and editors', async () => {
+  it('is closed to visitors and to admins without the contacts permissions', async () => {
     const message = await ContactMessage.create(valid());
     expect((await anon().get('/api/admin/contacts')).status).toBe(401);
     expect((await anon().get(`/api/admin/contacts/${message._id}`)).status).toBe(401);
-    for (const role of [Roles.MEMBER, Roles.VIEWER, Roles.EDITOR]) {
-      const { client } = await signInAs(role);
+    for (const [label, permissions] of [['no permissions', []], ['read-only', READ_ONLY_ADMIN_PERMISSIONS], ['drafting', DRAFT_ADMIN_PERMISSIONS]] as const) {
+      const { client } = await signInAs(Roles.ADMIN, { permissions: [...permissions] });
       const results = await Promise.all([
         client.get('/api/admin/contacts'),
         client.get(`/api/admin/contacts/${message._id}`),
         client.patch(`/api/admin/contacts/${message._id}`).send({ status: 'resolved' }),
         client.post(`/api/admin/contacts/${message._id}/notes`).send({ text: 'nope' }),
       ]);
-      for (const res of results) expect(res.status, role).toBe(403);
+      for (const res of results) expect(res.status, label).toBe(403);
     }
     expect((await ContactMessage.findById(message._id).lean())?.status).toBe('new');
   });
 
-  it('lets Admin and Super Admin read it', async () => {
+  it('lets an admin with contacts.read, and the Super Admin, read it', async () => {
     await ContactMessage.create(valid());
-    for (const role of [Roles.ADMIN, Roles.SUPER_ADMIN]) {
-      const { client } = await signInAs(role);
+    for (const [role, permissions] of [[Roles.ADMIN, ['contacts.read']], [Roles.SUPER_ADMIN, []]] as const) {
+      const { client } = await signInAs(role, { permissions: [...permissions] });
       expect((await client.get('/api/admin/contacts')).body.data.totalCount).toBe(1);
     }
   });
@@ -140,7 +141,7 @@ describe('inbox management', () => {
 
   it('lists with status counts, filters, search and paging', async () => {
     await seed();
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const all = await client.get('/api/admin/contacts');
     expect(all.body.data.totalCount).toBe(3);
     expect(all.body.data.counts).toEqual({ new: 1, in_progress: 1, resolved: 1 });
@@ -156,7 +157,7 @@ describe('inbox management', () => {
 
   it('shows the full message on the detail view and records that it was opened', async () => {
     const message = await ContactMessage.create(valid());
-    const { user, client } = await signInAs(Roles.ADMIN);
+    const { user, client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     expect((await client.get('/api/admin/contacts')).status).toBe(200);
     expect(await AuditLog.countDocuments({ action: 'contact.viewed' })).toBe(0); // listing is not a "view"
 
@@ -170,7 +171,7 @@ describe('inbox management', () => {
 
   it('moves a message through New → In Progress → Resolved and back, auditing each change', async () => {
     const message = await ContactMessage.create(valid());
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const set = (status: string) => client.patch(`/api/admin/contacts/${message._id}`).send({ status });
 
     expect((await set('in_progress')).body.data.message.status).toBe('in_progress');
@@ -185,13 +186,14 @@ describe('inbox management', () => {
 
   it('assigns to active staff only, and moves a new message into progress', async () => {
     const message = await ContactMessage.create(valid());
-    const staff = await makeUser({ role: Roles.EDITOR });
-    const member = await makeUser({ role: Roles.MEMBER });
+    const staff = await makeUser({ role: Roles.ADMIN, permissions: DRAFT_ADMIN_PERMISSIONS });
+    const deleted = await makeUser({ role: Roles.ADMIN });
+    await User.updateOne({ _id: deleted._id }, { $set: { isDeleted: true } });
     const suspended = await makeUser({ role: Roles.ADMIN, status: AccountStatus.SUSPENDED });
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const assign = (id: string | null) => client.patch(`/api/admin/contacts/${message._id}`).send({ assignedTo: id });
 
-    expect((await assign(member._id)).status).toBe(400);
+    expect((await assign(deleted._id)).status).toBe(400);
     expect((await assign(suspended._id)).status).toBe(400);
     expect((await assign('11111111-1111-4111-8111-111111111111')).status).toBe(400);
     expect((await assign('not-an-id')).status).toBe(400);
@@ -207,7 +209,7 @@ describe('inbox management', () => {
   });
 
   it('filters to the signed-in staff member’s own messages', async () => {
-    const { user, client } = await signInAs(Roles.ADMIN);
+    const { user, client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     await ContactMessage.create(valid({ assignedTo: user._id }));
     await ContactMessage.create(valid({ email: 'other@example.test' }));
     expect((await client.get('/api/admin/contacts?mine=true')).body.data.totalCount).toBe(1);
@@ -215,7 +217,7 @@ describe('inbox management', () => {
 
   it('keeps internal notes on the detail view only', async () => {
     const message = await ContactMessage.create(valid());
-    const { user, client } = await signInAs(Roles.ADMIN);
+    const { user, client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const res = await client.post(`/api/admin/contacts/${message._id}/notes`).send({ text: 'Called back; will send the form.' });
     expect(res.status).toBe(201);
     expect(res.body.data.message.notes[0]).toMatchObject({ authorId: user._id, text: 'Called back; will send the form.' });
@@ -227,7 +229,7 @@ describe('inbox management', () => {
 
   it('ignores fields staff may not change (sender details, hash, deletion flag)', async () => {
     const message = await ContactMessage.create(valid());
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     await client.patch(`/api/admin/contacts/${message._id}`).send({ status: 'in_progress', email: 'changed@example.test', name: 'Changed', message: 'Changed', isDeleted: true, ipHash: 'x' });
     const stored = await ContactMessage.findById(message._id).lean();
     expect(stored).toMatchObject({ email: 'meera@example.test', name: 'Meera Patel', isDeleted: false, status: 'in_progress' });

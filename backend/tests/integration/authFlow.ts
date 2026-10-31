@@ -4,7 +4,6 @@ import app from '../../src/app';
 import User from '../../src/models/User';
 import Session from '../../src/models/Session';
 import AuditLog from '../../src/models/AuditLog';
-import OrganizationSettings from '../../src/models/OrganizationSettings';
 import { AccountStatus, Roles, config } from '../../src/config/constants';
 import { hashToken } from '../../src/utils/tokens';
 import {
@@ -22,103 +21,67 @@ beforeAll(connectTestDb);
 afterAll(disconnectTestDb);
 beforeEach(resetDb);
 
-const register = (body: Record<string, unknown>) =>
-  anon().post('/api/auth/register').set('Origin', ORIGIN).send(body);
+const post = (path: string, email: string, password = PASSWORD) =>
+  anon().post(path).set('Origin', ORIGIN).send({ email, password });
 
-const validRegistration = {
-  name: 'Asha Patel',
-  email: 'asha@example.test',
-  phone: '+91 98250 00000',
-  password: PASSWORD,
-  confirmPassword: PASSWORD,
-  acknowledge: true,
-};
-
-describe('registration', () => {
-  it('creates a pending member and stores only a password hash', async () => {
-    const res = await register(validRegistration);
-    expect(res.status).toBe(201);
-    expect(res.body.success).toBe(true);
-    expect(res.body.data.user.status).toBe('pending');
-
-    const stored = await User.findOne({ email: 'asha@example.test' }).select('+passwordHash').lean();
-    expect(stored?.role).toBe(Roles.MEMBER);
-    expect(stored?.passwordHash).toMatch(/^\$argon2id\$/);
-    expect(JSON.stringify(res.body)).not.toContain(PASSWORD);
-  });
-
-  it('ignores role, status and permission fields sent by the client (mass assignment)', async () => {
-    const res = await register({
-      ...validRegistration,
-      role: 'superadmin',
-      status: 'active',
-      extraPermissions: ['events.publish'],
-      isDeleted: false,
+describe('there is no member registration or sign-in', () => {
+  it('has no register endpoint and no member login endpoint', async () => {
+    const reg = await anon().post('/api/auth/register').set('Origin', ORIGIN).send({
+      name: 'Asha Patel',
+      email: 'asha@example.test',
+      password: PASSWORD,
+      confirmPassword: PASSWORD,
+      acknowledge: true,
     });
-    expect(res.status).toBe(201);
-    const stored = await User.findOne({ email: 'asha@example.test' }).lean();
-    expect(stored?.role).toBe('member');
-    expect(stored?.status).toBe('pending');
-    expect(stored?.extraPermissions).toEqual([]);
-  });
-
-  it('rejects a duplicate email with 409', async () => {
-    await register(validRegistration);
-    const again = await register({ ...validRegistration, name: 'Someone Else' });
-    expect(again.status).toBe(409);
-    expect(again.body.error.code).toBe('DUPLICATE_ERROR');
-    expect(await User.countDocuments({ email: 'asha@example.test' })).toBe(1);
-  });
-
-  it('treats emails case-insensitively when preventing duplicates', async () => {
-    await register(validRegistration);
-    const again = await register({ ...validRegistration, email: 'ASHA@Example.Test' });
-    expect(again.status).toBe(409);
-  });
-
-  it.each([
-    ['weak password', { password: 'short1', confirmPassword: 'short1' }, 'password'],
-    ['no digit', { password: 'onlyletters-here', confirmPassword: 'onlyletters-here' }, 'password'],
-    ['common password', { password: 'password123', confirmPassword: 'password123' }, 'password'],
-    ['mismatched confirmation', { confirmPassword: 'Different-Pass-1' }, 'confirmPassword'],
-    ['missing acknowledgement', { acknowledge: false }, 'acknowledge'],
-    ['invalid email', { email: 'not-an-email' }, 'email'],
-    ['markup in name', { name: '<script>alert(1)</script>' }, 'name'],
-    ['invalid phone', { phone: 'call me' }, 'phone'],
-  ])('rejects %s with a field-level 400', async (_label, patch, field) => {
-    const res = await register({ ...validRegistration, ...patch });
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe('VALIDATION_ERROR');
-    expect(res.body.error.details.map((d: { field: string }) => d.field)).toContain(field);
+    expect(reg.status).toBe(404);
     expect(await User.countDocuments()).toBe(0);
+    const user = await makeUser();
+    const login = await post('/api/auth/login', user.email);
+    expect(login.status).toBe(404);
+    expect(login.headers['set-cookie']).toBeUndefined();
+  });
+});
+
+describe('the single sign-in (/api/auth/admin-login)', () => {
+  it.each([Roles.ADMIN, Roles.SUPER_ADMIN])('lets a %s in', async (role) => {
+    const user = await makeUser({ role });
+    expect((await post('/api/auth/admin-login', user.email)).status).toBe(200);
+  });
+
+  it('refuses a leftover account whose role no longer exists, with the generic error', async () => {
+    const legacy = await makeUser();
+    await User.collection.updateOne({ _id: legacy._id as never }, { $set: { role: 'member' } });
+    const res = await post('/api/auth/admin-login', legacy.email);
+    expect(res.status).toBe(401);
+    expect(res.body.message).toBe('Invalid email or password');
+    expect(res.headers['set-cookie']).toBeUndefined();
+  });
+
+  it('gives wrong passwords and unknown emails the same answer', async () => {
+    const staff = await makeUser({ role: Roles.ADMIN });
+    const wrong = await post('/api/auth/admin-login', staff.email, 'Wrong-Pass-123');
+    const unknown = await post('/api/auth/admin-login', 'nobody@example.test', 'Wrong-Pass-123');
+    expect(wrong.status).toBe(401);
+    expect(unknown.status).toBe(401);
+    expect(wrong.body).toEqual(unknown.body);
   });
 
   it('rejects operator objects in fields (NoSQL injection)', async () => {
-    const res = await register({ ...validRegistration, email: { $gt: '' } });
-    expect(res.status).toBe(400);
     const login = await anon()
-      .post('/api/auth/login')
+      .post('/api/auth/admin-login')
       .set('Origin', ORIGIN)
       .send({ email: { $ne: null }, password: { $ne: null } });
     expect(login.status).toBe(400);
-  });
-
-  it('refuses registration while it is closed in organisation settings', async () => {
-    await OrganizationSettings.create({ key: 'main', registrationOpen: false });
-    const res = await register(validRegistration);
-    expect(res.status).toBe(403);
-    expect(await User.countDocuments()).toBe(0);
   });
 });
 
 describe('login', () => {
   it('signs in an active user, sets an HTTP-only SameSite cookie and returns permissions', async () => {
-    const user = await makeUser({ role: Roles.EDITOR });
-    const res = await anon().post('/api/auth/login').set('Origin', ORIGIN).send({ email: user.email, password: PASSWORD });
+    const user = await makeUser({ role: Roles.ADMIN, permissions: ['events.create', 'events.read'] });
+    const res = await anon().post('/api/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: PASSWORD });
     expect(res.status).toBe(200);
-    expect(res.body.data.user.role).toBe('editor');
-    expect(res.body.data.user.permissions).toContain('events.create');
-    expect(res.body.data.user.permissions).not.toContain('users.manage');
+    expect(res.body.data.user.role).toBe('admin');
+    expect([...res.body.data.user.permissions].sort()).toEqual(['events.create', 'events.read']);
     expect(res.body.data.csrfToken).toEqual(expect.any(String));
 
     const cookie = (res.headers['set-cookie'] as unknown as string[]).find((c) =>
@@ -140,25 +103,22 @@ describe('login', () => {
 
   it('gives the same generic error for a wrong password and an unknown email', async () => {
     const user = await makeUser();
-    const wrong = await anon().post('/api/auth/login').set('Origin', ORIGIN).send({ email: user.email, password: 'Wrong-Pass-123' });
-    const unknown = await anon().post('/api/auth/login').set('Origin', ORIGIN).send({ email: 'nobody@example.test', password: 'Wrong-Pass-123' });
+    const wrong = await anon().post('/api/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: 'Wrong-Pass-123' });
+    const unknown = await anon().post('/api/auth/admin-login').set('Origin', ORIGIN).send({ email: 'nobody@example.test', password: 'Wrong-Pass-123' });
     expect(wrong.status).toBe(401);
     expect(unknown.status).toBe(401);
     expect(wrong.body).toEqual(unknown.body);
     expect(wrong.body.message).toBe('Invalid email or password');
   });
 
-  it.each([
-    [AccountStatus.PENDING, /awaiting approval/i],
-    [AccountStatus.REJECTED, /not approved/i],
-    [AccountStatus.SUSPENDED, /suspended/i],
-  ])('blocks %s accounts with a clear message — only after the password is right', async (status, message) => {
-    const user = await makeUser({ status });
-    const bad = await anon().post('/api/auth/login').set('Origin', ORIGIN).send({ email: user.email, password: 'Wrong-Pass-123' });
+  it('blocks inactive accounts with a clear message — only after the password is right', async () => {
+    const message = /inactive/i;
+    const user = await makeUser({ status: AccountStatus.SUSPENDED });
+    const bad = await anon().post('/api/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: 'Wrong-Pass-123' });
     expect(bad.status).toBe(401); // status is not revealed to someone who does not know the password
     expect(bad.body.message).toBe('Invalid email or password');
 
-    const good = await anon().post('/api/auth/login').set('Origin', ORIGIN).send({ email: user.email, password: PASSWORD });
+    const good = await anon().post('/api/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: PASSWORD });
     expect(good.status).toBe(403);
     expect(good.body.error.code).toBe('ACCOUNT_NOT_ACTIVE');
     expect(good.body.message).toMatch(message);
@@ -168,15 +128,15 @@ describe('login', () => {
   it('locks the account after repeated failures, even for the right password', async () => {
     const user = await makeUser();
     for (let i = 0; i < config.auth.maxFailedLogins; i += 1) {
-      await anon().post('/api/auth/login').set('Origin', ORIGIN).send({ email: user.email, password: 'Wrong-Pass-123' });
+      await anon().post('/api/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: 'Wrong-Pass-123' });
     }
-    const locked = await anon().post('/api/auth/login').set('Origin', ORIGIN).send({ email: user.email, password: PASSWORD });
+    const locked = await anon().post('/api/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: PASSWORD });
     expect(locked.status).toBe(429);
     expect(locked.body.error.code).toBe('RATE_LIMITED');
 
     // Once the lock expires the user can sign in again and the counter is cleared.
     await User.updateOne({ _id: user._id }, { $set: { lockUntil: new Date(Date.now() - 1000) } });
-    const ok = await anon().post('/api/auth/login').set('Origin', ORIGIN).send({ email: user.email, password: PASSWORD });
+    const ok = await anon().post('/api/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: PASSWORD });
     expect(ok.status).toBe(200);
   });
 
@@ -186,7 +146,7 @@ describe('login', () => {
     const oldToken = first.cookie.split('=')[1]!;
 
     const again = await request(app)
-      .post('/api/auth/login')
+      .post('/api/auth/admin-login')
       .set('Origin', ORIGIN)
       .set('Cookie', first.cookie)
       .send({ email: user.email, password: PASSWORD });
@@ -198,7 +158,7 @@ describe('login', () => {
 
   it('records failures in the audit log without storing the password or the email', async () => {
     const user = await makeUser();
-    await anon().post('/api/auth/login').set('Origin', ORIGIN).send({ email: user.email, password: 'Wrong-Pass-123' });
+    await anon().post('/api/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: 'Wrong-Pass-123' });
     const entry = await AuditLog.findOne({ action: 'auth.login_failed' }).lean();
     expect(entry?.outcome).toBe('failure');
     const dump = JSON.stringify(entry);
@@ -308,7 +268,7 @@ describe('CSRF protection', () => {
   });
 
   it('blocks requests from another origin, including anonymous ones', async () => {
-    const res = await anon().post('/api/auth/login').set('Origin', 'https://evil.example').send({ email: 'a@b.co', password: 'x' });
+    const res = await anon().post('/api/auth/admin-login').set('Origin', 'https://evil.example').send({ email: 'a@b.co', password: 'x' });
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('CSRF_INVALID');
   });
@@ -362,7 +322,7 @@ describe('password change and reset', () => {
     expect(res.status).toBe(200);
     expect((await phone.get('/api/auth/me')).status).toBe(401);
     expect((await laptop.get('/api/auth/me')).status).toBe(200);
-    expect((await anon().post('/api/auth/login').set('Origin', ORIGIN).send({ email: user.email, password: PASSWORD })).status).toBe(401);
+    expect((await anon().post('/api/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: PASSWORD })).status).toBe(401);
     expect((await signIn(user.email, 'Brand-New-Pass-42')).userId).toBe(user._id);
   });
 

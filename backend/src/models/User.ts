@@ -8,24 +8,21 @@ import {
   type Role,
   type ThemePreference,
 } from '../config/constants';
-import { GRANTABLE_PERMISSIONS } from '../config/permissions';
+import { SELECTABLE_PERMISSIONS } from '../config/permissions';
 
+// A sign-in account: the Super Admin or an admin created by the Super Admin. The public site has no
+// accounts, so there is no registration, approval or member data here.
 export interface IUser {
   _id: string;
   name: string;
   email: string;
-  phone?: string;
   passwordHash?: string | null;
   passwordChangedAt?: Date;
   role: Role;
-  extraPermissions: string[];
+  /** Admin only: exactly the permissions the Super Admin selected. The Super Admin always has all. */
+  permissions: string[];
   status: AccountStatusValue;
   themePreference: ThemePreference;
-  membershipAcknowledgedAt?: Date;
-  approvedAt?: Date;
-  approvedBy?: string;
-  rejectedAt?: Date;
-  rejectionReason?: string;
   suspendedAt?: Date;
   suspendedBy?: string;
   suspensionReason?: string;
@@ -47,6 +44,7 @@ const userSchema = new Schema<IUser>(
       minlength: [2, 'Name must be at least 2 characters'],
       maxlength: [100, 'Name must be at most 100 characters'],
     },
+    // Unique across ALL accounts, deleted ones included: a deleted admin keeps its email reserved.
     email: {
       type: String,
       required: [true, 'Email is required'],
@@ -55,34 +53,27 @@ const userSchema = new Schema<IUser>(
       trim: true,
       maxlength: 254,
     },
-    phone: { type: String, trim: true, maxlength: 20 },
 
     // Argon2id hash. Never returned: select:false here and stripped in toJSON.
-    // Null for staff accounts that have not yet set a password from their setup link.
+    // Null for admin accounts that have not yet set a password from their setup link.
     passwordHash: { type: String, select: false, default: null },
     passwordChangedAt: { type: Date },
 
-    role: { type: String, enum: Object.values(Roles), default: Roles.MEMBER, required: true },
-    // Permissions granted individually on top of the role (see GRANTABLE_PERMISSIONS).
-    extraPermissions: {
-      type: [{ type: String, enum: [...GRANTABLE_PERMISSIONS] }],
+    role: { type: String, enum: Object.values(Roles), default: Roles.ADMIN, required: true },
+    permissions: {
+      type: [{ type: String, enum: [...SELECTABLE_PERMISSIONS] }],
       default: [],
     },
     status: {
       type: String,
       enum: Object.values(AccountStatus),
-      default: AccountStatus.PENDING,
+      default: AccountStatus.ACTIVE,
       required: true,
     },
 
     // Per-user theme. "system" follows the device; restored on every login and device.
     themePreference: { type: String, enum: [...ThemePreferences], default: 'system' },
 
-    membershipAcknowledgedAt: { type: Date },
-    approvedAt: { type: Date },
-    approvedBy: { type: String },
-    rejectedAt: { type: Date },
-    rejectionReason: { type: String, maxlength: 500 },
     suspendedAt: { type: Date },
     suspendedBy: { type: String },
     suspensionReason: { type: String, maxlength: 500 },
@@ -109,6 +100,5 @@ const userSchema = new Schema<IUser>(
 );
 
 userSchema.index({ role: 1, status: 1, createdAt: -1 });
-userSchema.index({ status: 1, createdAt: -1 });
 
 export default mongoose.model<IUser>('User', userSchema);

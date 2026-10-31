@@ -16,6 +16,7 @@ import { showToast } from '../../store/slices/toastSlice';
 import { Alert } from '../ui/Alert';
 import { SelectField, TextAreaField } from '../ui/FormFields';
 import { TextField } from '../ui/TextField';
+import { Toggle } from '../ui/Toggle';
 import { FormDrawer, FullWidth } from './FormDrawer';
 
 const noAngle = (v: string) => !/[<>]/.test(v);
@@ -131,10 +132,7 @@ export function AnnouncementFormDrawer({
         <TextAreaField label="Announcement" rows={8} required error={errors.body?.message} {...register('body')} />
       </FullWidth>
       <FullWidth>
-        <label className="flex items-center gap-2.5 text-sm">
-          <input type="checkbox" className="h-4 w-4 accent-[var(--accent)]" {...register('featured')} />
-          Feature on the home page
-        </label>
+        <Toggle label="Feature on the home page" {...register('featured')} />
       </FullWidth>
     </FormDrawer>
   );

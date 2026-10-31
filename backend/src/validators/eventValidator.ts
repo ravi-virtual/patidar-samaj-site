@@ -49,9 +49,6 @@ const eventFields = (creating: boolean) => [
   body('category').optional().isIn([...EventCategories]).withMessage('Unknown category'),
   dateField('startsAt', creating),
   dateField('endsAt', false),
-  dateField('registrationOpensAt', false),
-  dateField('registrationClosesAt', false),
-  body('capacity').optional().isInt({ min: 0, max: 100000 }).withMessage('Capacity must be 0 (unlimited) or more').toInt(),
   body('featured').optional().isBoolean().toBoolean(),
   body('imageMediaId').optional({ values: 'null' }).isUUID(),
   // Cross-field rules, evaluated once all single-field rules have passed.
@@ -59,11 +56,7 @@ const eventFields = (creating: boolean) => [
     const asDate = (v: unknown) => (v instanceof Date ? v : undefined);
     const starts = asDate(value.startsAt);
     const ends = asDate(value.endsAt);
-    const opens = asDate(value.registrationOpensAt);
-    const closes = asDate(value.registrationClosesAt);
     if (starts && ends && ends < starts) throw new Error('The end time must be after the start time');
-    if (opens && closes && closes <= opens) throw new Error('Registration must close after it opens');
-    if (starts && closes && closes > starts) throw new Error('Registration must close before the event starts');
     return true;
   }),
 ];
@@ -74,25 +67,5 @@ export const updateEventRules = [idParam, ...eventFields(false), validateRequest
 export const cancelEventRules = [
   idParam,
   body('reason').optional().isString().trim().isLength({ max: 500 }),
-  validateRequest,
-];
-
-export const rsvpRules = [
-  idParam,
-  body('attendees').optional().isInt({ min: 1, max: 10 }).withMessage('Attendees must be between 1 and 10').toInt(),
-  validateRequest,
-];
-
-export const registrationListRules = [
-  idParam,
-  ...paginationRules(100),
-  query('status').optional().isIn(['confirmed', 'cancelled']),
-  query('search').optional().isString().trim().isLength({ max: 100 }),
-  validateRequest,
-];
-
-export const registrationIdRules = [
-  idParam,
-  param('registrationId').isUUID().withMessage('Invalid registration id'),
   validateRequest,
 ];

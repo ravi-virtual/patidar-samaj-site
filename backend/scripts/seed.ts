@@ -15,7 +15,6 @@ import CommitteeMember from '../src/models/CommitteeMember';
 import CommitteeTerm from '../src/models/CommitteeTerm';
 import ContentBlock, { type ContentKey } from '../src/models/ContentBlock';
 import Event from '../src/models/Event';
-import EventRegistration from '../src/models/EventRegistration';
 import Faq from '../src/models/Faq';
 import HistoryMilestone from '../src/models/HistoryMilestone';
 import ImportantLink from '../src/models/ImportantLink';
@@ -23,6 +22,7 @@ import MemberProfile from '../src/models/MemberProfile';
 import OrganizationSettings from '../src/models/OrganizationSettings';
 import User from '../src/models/User';
 import { AccountStatus, Roles, config, type Role } from '../src/config/constants';
+import { Permissions } from '../src/config/permissions';
 import { hashPassword } from '../src/utils/password';
 
 const DAY = 86_400_000;
@@ -52,13 +52,33 @@ async function ensure<T extends { _id: string }>(
 
 const devPassword = () => `Dev-${randomBytes(6).toString('base64url')}-${Math.floor(1000 + Math.random() * 9000)}`;
 
+// A sensible sample selection for the sample admin. The Super Admin always has every permission;
+// an admin has exactly the permissions ticked here (members/events/announcements/content day to day).
+const SAMPLE_ADMIN_PERMISSIONS = [
+  Permissions.DASHBOARD_VIEW,
+  Permissions.MEMBERS_READ,
+  Permissions.MEMBERS_CREATE,
+  Permissions.MEMBERS_UPDATE,
+  Permissions.EVENTS_READ,
+  Permissions.EVENTS_CREATE,
+  Permissions.EVENTS_UPDATE,
+  Permissions.EVENTS_PUBLISH,
+  Permissions.ANNOUNCEMENTS_READ,
+  Permissions.ANNOUNCEMENTS_CREATE,
+  Permissions.ANNOUNCEMENTS_UPDATE,
+  Permissions.ANNOUNCEMENTS_PUBLISH,
+  Permissions.CONTENT_READ,
+  Permissions.CONTENT_MANAGE,
+  Permissions.MEDIA_UPLOAD,
+  Permissions.CONTACTS_READ,
+  Permissions.CONTACTS_ASSIGN,
+  Permissions.CONTACTS_RESOLVE,
+];
+
 async function seedAccounts(resetPasswords: boolean) {
-  const people: { role: Role; name: string; email: string }[] = [
-    { role: Roles.SUPER_ADMIN, name: 'Sample Super Admin', email: 'dev-superadmin@example.test' },
-    { role: Roles.ADMIN, name: 'Sample Admin', email: 'dev-admin@example.test' },
-    { role: Roles.EDITOR, name: 'Sample Editor', email: 'dev-editor@example.test' },
-    { role: Roles.VIEWER, name: 'Sample Viewer', email: 'dev-viewer@example.test' },
-    { role: Roles.MEMBER, name: 'Sample Member', email: 'dev-member@example.test' },
+  const people: { role: Role; name: string; email: string; permissions: string[] }[] = [
+    { role: Roles.SUPER_ADMIN, name: 'Sample Super Admin', email: 'dev-superadmin@example.test', permissions: [] },
+    { role: Roles.ADMIN, name: 'Sample Admin', email: 'dev-admin@example.test', permissions: SAMPLE_ADMIN_PERMISSIONS },
   ];
   const issued: { email: string; role: string; password: string }[] = [];
   const users: Record<string, { _id: string }> = {};
@@ -84,9 +104,9 @@ async function seedAccounts(resetPasswords: boolean) {
       name: p.name,
       email: p.email,
       role: p.role,
+      permissions: p.permissions,
       status: AccountStatus.ACTIVE,
       passwordHash: await hashPassword(password),
-      approvedAt: new Date(),
     });
     note(true);
     users[p.email] = user;
@@ -95,48 +115,26 @@ async function seedAccounts(resetPasswords: boolean) {
   return { users, issued };
 }
 
-async function seedMembers(sampleMemberId: string) {
+async function seedMembers() {
   const people: [string, string, string, string, string, string, number, string, number][] = [
     ['Rohan Sample', 'Unjha', 'Mehsana', 'India', 'Software engineer', 'public', 2014, 'Runs the youth cricket league.', 4],
     ['Hemaben Sample', 'Visnagar', 'Vadodara', 'India', 'School principal', 'public', 1996, 'Coordinates the Navratri food stalls.', 5],
-    ['Nileshbhai Sample', 'Kadi', 'Ahmedabad', 'India', 'Chartered accountant', 'members', 1999, 'Keeps the scholarship fund accounts.', 4],
+    ['Nileshbhai Sample', 'Kadi', 'Ahmedabad', 'India', 'Chartered accountant', 'hidden', 1999, 'Keeps the scholarship fund accounts.', 4],
     ['Priya Sample', 'Kalol', 'Leicester', 'United Kingdom', 'Pharmacist', 'public', 2017, 'Organises the UK chapter’s Diwali dinner.', 3],
-    ['Kiranbhai Sample', 'Sidhpur', 'Mehsana', 'India', 'Retired engineer', 'members', 1988, 'Mentors students on engineering careers.', 2],
+    ['Kiranbhai Sample', 'Sidhpur', 'Mehsana', 'India', 'Retired engineer', 'hidden', 1988, 'Mentors students on engineering careers.', 2],
     ['Meera Sample', 'Vadnagar', 'Edison, NJ', 'United States', 'Teacher', 'public', 2019, 'Leads the Sunday language class.', 4],
     ['Dineshbhai Sample', 'Kansa', 'Surat', 'India', 'Farmer', 'hidden', 1990, undefined as unknown as string, 6],
-    ['Jaya Sample', 'Gozaria', 'Gandhinagar', 'India', 'Doctor', 'members', 2005, 'Runs the health-camp volunteers.', 3],
+    ['Jaya Sample', 'Gozaria', 'Gandhinagar', 'India', 'Doctor', 'hidden', 2005, 'Runs the health-camp volunteers.', 3],
     ['Ashokbhai Sample', 'Ladol', 'Mehsana', 'India', 'Businessman', 'public', 1985, 'Long-time volunteer and committee member.', 5],
-    ['Sonal Sample', 'Mehsana', 'Ahmedabad', 'India', 'Architect', 'members', 2012, 'Drew the Bhavan extension plans.', 3],
+    ['Sonal Sample', 'Mehsana', 'Ahmedabad', 'India', 'Architect', 'hidden', 2012, 'Drew the Bhavan extension plans.', 3],
   ];
   for (const [i, [displayName, village, city, country, occupation, visibility, joinedYear, bio, familySize]] of people.entries()) {
     await ensure(MemberProfile, { displayName }, {
-      userId: null,
       village, city, country, occupation, visibility, joinedYear, bio, familySize,
       membershipStatus: 'active',
       highlighted: i < 6, // the first six appear as home-page highlights
     });
   }
-  // The sample member account has its own directory entry.
-  const own = await MemberProfile.findOne({ userId: sampleMemberId }).lean();
-  if (!own) {
-    await MemberProfile.create({
-      userId: sampleMemberId, displayName: 'Sample Member', village: 'Unjha', city: 'Mehsana', country: 'India',
-      membershipStatus: 'active', visibility: 'members', joinedYear: new Date().getFullYear(),
-    });
-    note(true);
-  } else note(false);
-
-  // One registration waiting for approval, so the approval queue has something in it.
-  const pendingEmail = 'dev-pending@example.test';
-  let pending = await User.findOne({ email: pendingEmail });
-  if (!pending) {
-    pending = await User.create({
-      name: 'Pending Applicant', email: pendingEmail, role: Roles.MEMBER, status: AccountStatus.PENDING,
-      passwordHash: await hashPassword(devPassword()), membershipAcknowledgedAt: new Date(),
-    });
-    await MemberProfile.create({ userId: pending._id, displayName: 'Pending Applicant', membershipStatus: 'pending' });
-    note(true);
-  } else note(false);
 }
 
 async function seedContent(adminId: string) {
@@ -172,9 +170,9 @@ async function seedContent(adminId: string) {
   }
 
   const faqs: [string, string][] = [
-    ['Who can become a member?', 'Any Kadva Patidar family with roots in North Gujarat can apply. An admin reviews every application. (Sample answer.)'],
-    ['Who can see my phone number and email?', 'Only the Super Admin. Other members see your name, village and city, and only if you allow it. (Sample answer.)'],
-    ['How do I RSVP to an event?', 'Sign in, open the event and choose RSVP. Your events appear on your dashboard. (Sample answer.)'],
+    ['Who can become a member?', 'Any Kadva Patidar family with roots in North Gujarat. Contact the Samaj office to be listed in the directory. (Sample answer.)'],
+    ['Who can see my phone number and email?', 'Only the office. The public directory shows a name, village and city, and only for entries marked public. (Sample answer.)'],
+    ['Where can I find upcoming events?', 'Open the Events page for dates, venues and details. (Sample answer.)'],
   ];
   for (const [i, [question, answer]] of faqs.entries()) await ensure(Faq, { question }, { ...published, answer, order: i });
 
@@ -199,46 +197,29 @@ async function seedContent(adminId: string) {
   );
 }
 
-async function seedEvents(adminId: string, memberId: string) {
+async function seedEvents(adminId: string) {
   const base = { status: 'published', createdBy: adminId, updatedBy: adminId, publishedAt: new Date() };
-  const events: [string, string, number, number, string, number, boolean][] = [
-    ['Sample Sharad Purnima Raas', 'Festival', 4, 19, 'Samaj Bhavan lawns', 400, true],
-    ['Sample Diwali Dinner', 'Festival', 12, 19, 'Samaj Bhavan main hall', 600, false],
-    ['Sample New Year Sneh Milan', 'Family', 14, 10, 'Samaj Bhavan main hall', 0, false],
-    ['Sample Blood Donation Camp', 'Seva', 26, 9, 'Samaj Bhavan ground floor', 150, false],
-    ['Sample Scholarship Ceremony', 'Education', 40, 11, 'Town Hall, Mehsana', 300, false],
+  const events: [string, string, number, number, string, boolean][] = [
+    ['Sample Sharad Purnima Raas', 'Festival', 4, 19, 'Samaj Bhavan lawns', true],
+    ['Sample Diwali Dinner', 'Festival', 12, 19, 'Samaj Bhavan main hall', false],
+    ['Sample New Year Sneh Milan', 'Family', 14, 10, 'Samaj Bhavan main hall', false],
+    ['Sample Blood Donation Camp', 'Seva', 26, 9, 'Samaj Bhavan ground floor', false],
+    ['Sample Scholarship Ceremony', 'Education', 40, 11, 'Town Hall, Mehsana', false],
   ];
-  for (const [title, category, days, hour, venue, capacity, featured] of events) {
+  for (const [title, category, days, hour, venue, featured] of events) {
     await ensure(Event, { title }, {
-      ...base, category, startsAt: inDays(days, hour), venue, capacity, featured,
+      ...base, category, startsAt: inDays(days, hour), venue, featured,
       description: 'Sample event for development. Replace with real details before going live.',
     });
   }
   await ensure(Event, { title: 'Sample Draft Event (not public)' }, {
-    status: 'draft', createdBy: adminId, category: 'Meeting', startsAt: inDays(60), venue: 'To be decided', capacity: 50,
+    status: 'draft', createdBy: adminId, category: 'Meeting', startsAt: inDays(60), venue: 'To be decided',
   });
 
-  // A registration for the sample member, then recount so registeredCount always matches reality.
-  const first = await Event.findOne({ title: 'Sample Sharad Purnima Raas' }).lean();
-  if (first) {
-    const reg = await EventRegistration.findOne({ eventId: first._id, userId: memberId }).lean();
-    if (!reg) {
-      await EventRegistration.create({ eventId: first._id, userId: memberId, attendees: 3 });
-      note(true);
-    } else note(false);
-  }
-  for (const e of await Event.find({ isDeleted: false }).lean()) {
-    const agg = await EventRegistration.aggregate<{ n: number }>([
-      { $match: { eventId: e._id, status: 'confirmed' } },
-      { $group: { _id: null, n: { $sum: '$attendees' } } },
-    ]);
-    await Event.updateOne({ _id: e._id }, { $set: { registeredCount: agg[0]?.n ?? 0 } });
-  }
-
   const news: [string, string, string, boolean][] = [
-    ['Sample: Diwali Dinner registrations are open', 'Event', 'Register every family member attending. (Sample announcement.)', true],
+    ['Sample: Diwali Dinner details announced', 'Event', 'Join us at the Samaj Bhavan main hall. (Sample announcement.)', true],
     ['Sample: Scholarship results announced', 'Education', 'Recipients have been informed. (Sample announcement.)', false],
-    ['Sample: Membership renewals open', 'Notice', 'Renew from your profile or at the office. (Sample announcement.)', false],
+    ['Sample: Membership renewals open', 'Notice', 'Renew at the Samaj office. (Sample announcement.)', false],
   ];
   for (const [i, [title, category, body, pinned]] of news.entries()) {
     await ensure(Announcement, { title }, {
@@ -262,13 +243,13 @@ async function run() {
 
   const reset = process.argv.includes('--reset-passwords');
   const { users, issued } = await seedAccounts(reset);
-  await seedMembers(users['dev-member@example.test']!._id);
+  await seedMembers();
   await seedContent(users['dev-admin@example.test']!._id);
-  await seedEvents(users['dev-admin@example.test']!._id, users['dev-member@example.test']!._id);
+  await seedEvents(users['dev-admin@example.test']!._id);
 
   console.log(`\nDone: ${counts.created} created, ${counts.existing} already present (left unchanged).`);
   if (issued.length) {
-    console.log('\nSample accounts — DEVELOPMENT ONLY. These passwords are shown once and are not stored anywhere:');
+    console.log('\nSample accounts (Super Admin and Admin) — DEVELOPMENT ONLY. These passwords are shown once and are not stored anywhere:');
     for (const a of issued) console.log(`  ${a.role.padEnd(10)} ${a.email.padEnd(32)} ${a.password}`);
   } else {
     console.log('\nSample accounts already exist, so their passwords were not changed.');

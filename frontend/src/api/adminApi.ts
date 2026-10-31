@@ -1,6 +1,6 @@
 import { api } from './axiosInstance';
+import type { PublicTabs } from './types';
 import type { Role, AccountStatus } from './authApi';
-import type { RegistrationState } from './types';
 
 type Envelope<T> = { data: T };
 type Params = Record<string, string | number | boolean | undefined>;
@@ -13,9 +13,7 @@ const clean = (params?: Params): Params | undefined =>
 
 export interface DashboardStats {
   totalMembers?: number;
-  pendingRegistrations?: number;
   upcomingEvents?: number;
-  eventRsvps?: number;
   publishedAnnouncements?: number;
   unreadContactMessages?: number;
   recentActivity?: { action: string; actor: string; at: string }[];
@@ -54,8 +52,7 @@ export interface AdminSettings {
   contact: { email: string; phone: string; address: string; officeHours: string };
   socialLinks: { label: string; url: string }[];
   footerNote: string;
-  registrationOpen: boolean;
-  directoryPublic: boolean;
+  publicTabs: PublicTabs;
   themeDefault: 'system' | 'light' | 'dark';
 }
 
@@ -64,7 +61,8 @@ export const getAdminSettingsApi = async (): Promise<AdminSettings> => {
   return data.data.settings;
 };
 
-export const updateAdminSettingsApi = async (body: Partial<AdminSettings>): Promise<AdminSettings> => {
+/** A partial update: only the listed fields (and only the listed public tabs) change. */
+export const updateAdminSettingsApi = async (body: Partial<Omit<AdminSettings, 'publicTabs'>> & { publicTabs?: Partial<PublicTabs> }): Promise<AdminSettings> => {
   const { data } = await api.patch<Envelope<{ settings: AdminSettings }>>('/admin/settings', body);
   return data.data.settings;
 };
@@ -82,12 +80,6 @@ export interface AdminEvent {
   endsAt: string | null;
   venue: string;
   status: EventStatus;
-  capacity: number;
-  registeredCount: number;
-  spotsLeft: number | null;
-  registrationOpensAt: string | null;
-  registrationClosesAt: string;
-  registrationState: RegistrationState;
   featured: boolean;
   imageMediaId: string | null;
   cancellationReason: string | null;
@@ -102,9 +94,6 @@ export interface EventInput {
   venue?: string;
   startsAt?: string;
   endsAt?: string | null;
-  registrationOpensAt?: string | null;
-  registrationClosesAt?: string | null;
-  capacity?: number;
   featured?: boolean;
   imageMediaId?: string | null;
 }
@@ -137,29 +126,6 @@ export const eventActionApi = async (
 
 export const deleteEventApi = async (id: string): Promise<void> => {
   await api.delete(`/admin/events/${id}`);
-};
-
-export interface AdminRegistration {
-  id: string;
-  userId: string;
-  name: string;
-  email: string | null;
-  attendees: number;
-  status: 'confirmed' | 'cancelled';
-  registeredAt: string;
-  cancelledAt: string | null;
-}
-
-export const listRegistrationsApi = async (eventId: string, params: Params) => {
-  const { data } = await api.get<Envelope<{ registrations: AdminRegistration[]; totalCount: number }>>(
-    `/admin/events/${eventId}/registrations`,
-    { params: clean(params) },
-  );
-  return data.data;
-};
-
-export const removeRegistrationApi = async (eventId: string, registrationId: string): Promise<void> => {
-  await api.delete(`/admin/events/${eventId}/registrations/${registrationId}`);
 };
 
 /** Downloads a CSV through the authenticated API and hands it to the browser as a file. */
@@ -234,19 +200,18 @@ export const deleteAnnouncementApi = async (id: string): Promise<void> => {
   await api.delete(`/admin/announcements/${id}`);
 };
 
-// ─── Users and roles ─────────────────────────────────────────────────────────
+// ─── Admin accounts (Super Admin; password reset also for admins holding users.reset_password) ───────────────────────────────────────
 
 export interface AdminUser {
   id: string;
   name: string;
   email: string;
-  phone?: string | null;
   role: Role;
   status: AccountStatus;
-  extraPermissions: string[];
+  /** The permissions the Super Admin selected for this admin. */
+  permissions: string[];
   createdAt?: string;
   lastLoginAt: string | null;
-  approvedAt: string | null;
   suspendedAt: string | null;
 }
 
@@ -255,31 +220,41 @@ export const listUsersApi = async (params: Params) => {
   return data.data;
 };
 
-export const createStaffApi = async (body: {
+export interface MailStatus {
+  /** True only if the email was actually handed to the mail server. */
+  delivered: boolean;
+}
+
+export const createAdminApi = async (body: {
   name: string;
   email: string;
-  role: 'admin' | 'editor' | 'viewer';
-}): Promise<{ user: AdminUser; setup: { url: string; expiresAt: string } }> => {
-  const { data } = await api.post<Envelope<{ user: AdminUser; setup: { url: string; expiresAt: string } }>>('/users', body);
+  password: string;
+  permissions: string[];
+}): Promise<{ user: AdminUser; email: MailStatus }> => {
+  const { data } = await api.post<Envelope<{ user: AdminUser; email: MailStatus }>>('/users', body);
   return data.data;
+};
+
+export const updateAdminApi = async (id: string, body: { name?: string; permissions?: string[] }): Promise<AdminUser> => {
+  const { data } = await api.patch<Envelope<{ user: AdminUser }>>(`/users/${id}`, body);
+  return data.data.user;
+};
+
+export const deleteAdminApi = async (id: string): Promise<void> => {
+  await api.delete(`/users/${id}`);
 };
 
 export const userActionApi = async (
   id: string,
-  action: 'approve' | 'reject' | 'suspend' | 'reactivate' | 'revoke-sessions',
+  action: 'suspend' | 'reactivate' | 'revoke-sessions',
   body?: { reason?: string },
 ): Promise<void> => {
   await api.post(`/users/${id}/${action}`, body ?? {});
 };
 
-export const changeRoleApi = async (id: string, body: { role: Role; extraPermissions: string[] }): Promise<AdminUser> => {
-  const { data } = await api.patch<Envelope<{ user: AdminUser }>>(`/users/${id}/role`, body);
-  return data.data.user;
-};
-
-export const issueResetLinkApi = async (id: string): Promise<{ url: string; expiresAt: string }> => {
-  const { data } = await api.post<Envelope<{ reset: { url: string; expiresAt: string } }>>(`/users/${id}/password-reset`, {});
-  return data.data.reset;
+export const resetAdminPasswordApi = async (id: string, password: string): Promise<MailStatus> => {
+  const { data } = await api.post<Envelope<{ email: MailStatus }>>(`/users/${id}/password-reset`, { password });
+  return data.data.email;
 };
 
 // ─── Directory (admin view) ──────────────────────────────────────────────────
@@ -294,11 +269,8 @@ export interface StaffMember {
   bio: string | null;
   joinedYear: number | null;
   highlighted: boolean;
-  userId: string | null;
-  hasAccount: boolean;
-  accountStatus: string | null;
-  membershipStatus: 'pending' | 'active' | 'inactive';
-  visibility: 'hidden' | 'members' | 'public';
+  membershipStatus: 'active' | 'inactive';
+  visibility: 'hidden' | 'public';
   anonymizedAt: string | null;
   phone?: string | null;
   familySize?: number | null;
@@ -317,7 +289,7 @@ export interface MemberInput {
   phone?: string;
   joinedYear?: number | null;
   membershipStatus?: 'active' | 'inactive';
-  visibility?: 'hidden' | 'members' | 'public';
+  visibility?: 'hidden' | 'public';
   highlighted?: boolean;
 }
 
@@ -525,19 +497,11 @@ export const deleteMediaApi = async (id: string): Promise<void> => {
   await api.delete(`/admin/media/${id}`);
 };
 
-// ─── Roles ───────────────────────────────────────────────────────────────────
-
-export interface RoleMatrix {
-  roles: { role: Role; permissions: string[] }[];
-  permissions: string[];
-  grantable: string[];
-}
-
-export const getRolesApi = async (): Promise<RoleMatrix> => {
-  const { data } = await api.get<Envelope<RoleMatrix>>('/admin/roles');
-  return data.data;
-};
-
 export const reorderContentApi = async (resource: ContentResource, ids: string[]): Promise<void> => {
   await api.patch(`/admin/content/${resource}/reorder`, { ids });
+};
+
+export const getAdminApi = async (id: string): Promise<AdminUser> => {
+  const { data } = await api.get<Envelope<{ user: AdminUser }>>(`/users/${id}`);
+  return data.data.user;
 };

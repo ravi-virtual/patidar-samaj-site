@@ -1,9 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { matchedData } from 'express-validator';
 import MemberProfile from '../models/MemberProfile';
-import User from '../models/User';
 import {
-  AccountStatus,
   ErrorCodes,
   MemberVisibility,
   MembershipStatus,
@@ -15,9 +13,8 @@ import { Permissions } from '../config/permissions';
 import { ApiResponse, sendError } from '../utils/apiResponse';
 import { escapeRegex } from '../utils/escapeRegex';
 import { pageParams } from '../utils/pagination';
-import { toStaffMember } from '../utils/memberView';
+import { effectiveVisibility, toStaffMember } from '../utils/memberView';
 import { writeAudit } from '../utils/audit';
-import { revokeUserSessions } from '../utils/sessions';
 import { sendCsv, toCsv } from '../utils/csv';
 
 const canSeePrivate = (req: Request) =>
@@ -32,17 +29,16 @@ interface ListQuery {
   search?: string;
   membershipStatus?: string;
   visibility?: string;
-  hasAccount?: boolean;
   village?: string;
 }
 
 const buildFilter = (q: ListQuery) => {
   const filter: Record<string, unknown> = { isDeleted: false };
   if (q.membershipStatus) filter.membershipStatus = q.membershipStatus;
-  if (q.visibility) filter.visibility = q.visibility;
+  // Anything that is not "public" counts as office-only, including a legacy "members" value.
+  if (q.visibility === MemberVisibility.PUBLIC) filter.visibility = MemberVisibility.PUBLIC;
+  if (q.visibility === MemberVisibility.HIDDEN) filter.visibility = { $ne: MemberVisibility.PUBLIC };
   if (q.village) filter.village = new RegExp(`^${escapeRegex(q.village)}$`, 'i');
-  if (q.hasAccount === true) filter.userId = { $type: 'string' };
-  if (q.hasAccount === false) filter.userId = null;
   if (q.search) {
     const rx = new RegExp(escapeRegex(q.search), 'i');
     filter.$or = [{ displayName: rx }, { village: rx }, { city: rx }];
@@ -50,20 +46,13 @@ const buildFilter = (q: ListQuery) => {
   return filter;
 };
 
-/** Loads the sign-in accounts for a page of profiles in one query. */
-const accountsFor = async (userIds: (string | null | undefined)[]) => {
-  const ids = userIds.filter((id): id is string => Boolean(id));
-  const users = ids.length ? await User.find({ _id: { $in: ids } }).select('status phone').lean() : [];
-  return new Map(users.map((u) => [u._id, u]));
-};
-
 /**
  * @name listMembers
  * @file MemberAdminController.ts
  * @param {Request} req
  * @param {Response} res
- * @description Staff member list with search and filters. Phone, family size and kul are included
- * only for holders of members.read.private.
+ * @description Staff list of directory entries with search and filters. Phone, family size and kul
+ * are included only for holders of members.read.private.
  * @author Ravi Patel
  */
 export const listMembers = async (req: Request, res: Response, next: NextFunction) => {
@@ -76,18 +65,10 @@ export const listMembers = async (req: Request, res: Response, next: NextFunctio
       MemberProfile.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       MemberProfile.countDocuments(filter),
     ]);
-    const accounts = await accountsFor(profiles.map((p) => p.userId));
     const includePrivate = canSeePrivate(req);
 
     return new ApiResponse(ResponseCodes.OK, 'Members fetched successfully', {
-      members: profiles.map((p) => {
-        const account = p.userId ? accounts.get(p.userId) : undefined;
-        return toStaffMember(p, {
-          includePrivate,
-          accountPhone: account?.phone,
-          accountStatus: account?.status,
-        });
-      }),
+      members: profiles.map((p) => toStaffMember(p, { includePrivate })),
       totalCount,
     }).send(res);
   } catch (err) {
@@ -100,8 +81,8 @@ export const listMembers = async (req: Request, res: Response, next: NextFunctio
  * @file MemberAdminController.ts
  * @param {Request} req
  * @param {Response} res
- * @description The office adds a directory entry for someone who has no sign-in account. Their
- * private details can be recorded only by staff allowed to handle private data.
+ * @description The office adds a directory entry. Entries are plain records without accounts.
+ * Private details can be recorded only by staff allowed to handle private data.
  * @author Ravi Patel
  */
 export const createMember = async (req: Request, res: Response, next: NextFunction) => {
@@ -131,9 +112,8 @@ export const createMember = async (req: Request, res: Response, next: NextFuncti
 
     const profile = await MemberProfile.create({
       ...data,
-      userId: null, // account links are made by registration, never by this endpoint
       membershipStatus: data.membershipStatus ?? MembershipStatus.ACTIVE,
-      visibility: data.visibility ?? MemberVisibility.MEMBERS,
+      visibility: data.visibility ?? MemberVisibility.HIDDEN,
     });
 
     await writeAudit(req, { action: 'member.created', targetType: 'member', targetId: profile._id });
@@ -150,9 +130,7 @@ export const createMember = async (req: Request, res: Response, next: NextFuncti
  * @file MemberAdminController.ts
  * @param {Request} req
  * @param {Response} res
- * @description Staff edit a directory entry. Private fields need the private permission. For
- * entries that belong to an account the status is changed through account actions (approve,
- * suspend), not here, and a name change is applied to the account too.
+ * @description Staff edit a directory entry. Private fields need the private permission.
  * @author Ravi Patel
  */
 export const updateMember = async (req: Request, res: Response, next: NextFunction) => {
@@ -162,7 +140,6 @@ export const updateMember = async (req: Request, res: Response, next: NextFuncti
       phone?: string;
       familySize?: number;
       kul?: string;
-      membershipStatus?: string;
       [key: string]: unknown;
     }>(req, { locations: ['body'], includeOptionals: false });
 
@@ -177,25 +154,11 @@ export const updateMember = async (req: Request, res: Response, next: NextFuncti
         code: ErrorCodes.FORBIDDEN,
       });
     }
-    if (profile.userId && data.membershipStatus !== undefined) {
-      return sendError(res, {
-        statusCode: ResponseCodes.CONFLICT,
-        message: 'This member has an account. Use approve, reject, suspend or reactivate instead.',
-        code: ErrorCodes.DUPLICATE,
-      });
-    }
 
     const { phone, ...profileData } = data;
     profile.set(profileData);
-    if (phone !== undefined && !profile.userId) profile.phone = phone || undefined;
+    if (phone !== undefined) profile.phone = phone || undefined;
     await profile.save();
-
-    if (profile.userId) {
-      const accountUpdate: Record<string, unknown> = {};
-      if (data.displayName) accountUpdate.name = data.displayName;
-      if (phone !== undefined) accountUpdate.phone = phone || undefined;
-      if (Object.keys(accountUpdate).length) await User.updateOne({ _id: profile.userId }, { $set: accountUpdate });
-    }
 
     await writeAudit(req, {
       action: 'member.updated',
@@ -204,13 +167,8 @@ export const updateMember = async (req: Request, res: Response, next: NextFuncti
       metadata: { fields: Object.keys(data) },
     });
 
-    const account = profile.userId ? await User.findById(profile.userId).select('status phone').lean() : null;
     return new ApiResponse(ResponseCodes.OK, 'Member updated', {
-      member: toStaffMember(profile.toObject(), {
-        includePrivate: canSeePrivate(req),
-        accountPhone: account?.phone,
-        accountStatus: account?.status,
-      }),
+      member: toStaffMember(profile.toObject(), { includePrivate: canSeePrivate(req) }),
     }).send(res);
   } catch (err) {
     return next(err);
@@ -222,36 +180,14 @@ export const updateMember = async (req: Request, res: Response, next: NextFuncti
  * @file MemberAdminController.ts
  * @param {Request} req
  * @param {Response} res
- * @description Irreversibly removes personal details from a member and signs them out. Member
- * records are never hard-deleted by default; this keeps history (RSVP counts, audit entries)
- * without keeping the person.
+ * @description Irreversibly removes personal details from a directory entry. Entries are never
+ * hard-deleted by default; this keeps history (audit entries) without keeping the person.
  * @author Ravi Patel
  */
 export const anonymizeMember = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const profile = await MemberProfile.findOne({ _id: req.params.id, isDeleted: false });
     if (!profile) return notFound(res);
-
-    if (profile.userId) {
-      const user = await User.findOne({ _id: profile.userId });
-      if (user) {
-        if (user.role !== 'member') {
-          return sendError(res, {
-            statusCode: ResponseCodes.CONFLICT,
-            message: 'Staff accounts cannot be anonymised here. Demote the account first.',
-            code: ErrorCodes.DUPLICATE,
-          });
-        }
-        user.name = 'Former member';
-        user.email = `removed+${user._id}@invalid.local`;
-        user.phone = undefined;
-        user.passwordHash = null;
-        user.status = AccountStatus.SUSPENDED;
-        user.isDeleted = true;
-        await user.save();
-        await revokeUserSessions(user._id);
-      }
-    }
 
     profile.set({
       displayName: 'Former member',
@@ -281,8 +217,8 @@ export const anonymizeMember = async (req: Request, res: Response, next: NextFun
  * @file MemberAdminController.ts
  * @param {Request} req
  * @param {Response} res
- * @description CSV export of members matching the current filters. Requires members.export; private
- * columns are added only for holders of the private permission. Every export is audited.
+ * @description CSV export of directory entries matching the current filters. Requires members.export;
+ * private columns are added only for holders of the private permission. Every export is audited.
  * @author Ravi Patel
  */
 export const exportMembers = async (req: Request, res: Response, next: NextFunction) => {
@@ -290,7 +226,6 @@ export const exportMembers = async (req: Request, res: Response, next: NextFunct
     const q = matchedData<ListQuery>(req, { locations: ['query'] });
     const filter = buildFilter(q);
     const profiles = await MemberProfile.find(filter).sort({ displayName: 1 }).limit(10_000).lean();
-    const accounts = await accountsFor(profiles.map((p) => p.userId));
     const includePrivate = canSeePrivate(req);
 
     const headers = ['Name', 'Village', 'City', 'Country', 'Occupation', 'Joined', 'Membership', 'Visibility'];
@@ -304,11 +239,9 @@ export const exportMembers = async (req: Request, res: Response, next: NextFunct
         p.occupation,
         p.joinedYear,
         p.membershipStatus,
-        p.visibility,
+        effectiveVisibility(p),
       ];
-      return includePrivate
-        ? [...base, (p.userId ? accounts.get(p.userId)?.phone : undefined) ?? p.phone, p.familySize, p.kul]
-        : base;
+      return includePrivate ? [...base, p.phone, p.familySize, p.kul] : base;
     });
 
     await writeAudit(req, {

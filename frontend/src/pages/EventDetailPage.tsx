@@ -1,21 +1,18 @@
 import { Link, useParams } from 'react-router-dom';
 import { getEventApi, listEventsApi } from '../api/siteApi';
-import { RsvpPanel } from '../components/site/RsvpPanel';
 import { Alert } from '../components/ui/Alert';
 import { Async } from '../components/ui/Async';
 import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
-import { Cover, Meter } from '../components/ui/Media';
+import { Cover } from '../components/ui/Media';
 import { Skeleton } from '../components/ui/Skeleton';
 import { formatLongDate, formatShortDate, formatTimeRange } from '../lib/format';
 import { useFetch } from '../lib/useFetch';
 import { usePageTitle } from '../lib/usePageTitle';
-import { useAppSelector } from '../store/hooks';
 
 export default function EventDetailPage() {
   const { id = '' } = useParams();
-  const signedIn = useAppSelector((s) => Boolean(s.auth.user));
-  const { data, initialLoading, error, retry } = useFetch(`event:${id}:${signedIn}`, () => getEventApi(id));
+  const { data, initialLoading, error, retry } = useFetch(`event:${id}`, () => getEventApi(id));
   usePageTitle(data?.title);
   const more = useFetch('events-more', () => listEventsApi({ when: 'upcoming', limit: 4 }));
 
@@ -32,7 +29,6 @@ export default function EventDetailPage() {
   return (
     <Async data={data} loading={initialLoading} error={error} onRetry={retry} skeleton={<Skeleton className="h-96" />}>
       {(e) => {
-        const taken = e.spotsLeft === null ? 0 : e.capacity - e.spotsLeft;
         const others = more.data?.events.filter((x) => x.id !== e.id).slice(0, 3) ?? [];
         return (
           <div className="space-y-8">
@@ -55,7 +51,7 @@ export default function EventDetailPage() {
                 )}
               </div>
 
-              <Card className="space-y-4 lg:sticky lg:top-20">
+              <Card className="lg:sticky lg:top-20">
                 <dl className="m-0 space-y-3">
                   <div>
                     <dt className="text-xs text-text-muted">Date</dt>
@@ -69,21 +65,7 @@ export default function EventDetailPage() {
                     <dt className="text-xs text-text-muted">Venue</dt>
                     <dd className="m-0 font-medium">{e.venue}</dd>
                   </div>
-                  <div>
-                    <dt className="text-xs text-text-muted">Places</dt>
-                    <dd className="m-0 font-medium">
-                      {e.spotsLeft === null ? 'Open to all' : `${taken} going · ${e.spotsLeft} left`}
-                    </dd>
-                    {e.spotsLeft !== null && <Meter value={taken} max={e.capacity} className="mt-1.5" />}
-                  </div>
-                  {e.registrationState === 'open' && (
-                    <div>
-                      <dt className="text-xs text-text-muted">Register by</dt>
-                      <dd className="m-0 font-medium">{formatShortDate(e.registrationClosesAt)}</dd>
-                    </div>
-                  )}
                 </dl>
-                <RsvpPanel event={e} onChanged={retry} />
               </Card>
             </div>
 

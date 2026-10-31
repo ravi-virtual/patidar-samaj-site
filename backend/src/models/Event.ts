@@ -10,12 +10,6 @@ export interface IEvent {
   startsAt: Date;
   endsAt?: Date;
   venue: string;
-  /** 0 means unlimited. */
-  capacity: number;
-  /** Total attendees across confirmed RSVPs. Changed only with atomic $inc, never read-modify-write. */
-  registeredCount: number;
-  registrationOpensAt?: Date;
-  registrationClosesAt?: Date;
   status: EventStatusValue;
   featured: boolean;
   imageMediaId?: string;
@@ -38,10 +32,6 @@ const eventSchema = new Schema<IEvent>(
     startsAt: { type: Date, required: true },
     endsAt: { type: Date },
     venue: { type: String, required: true, trim: true, maxlength: 200 },
-    capacity: { type: Number, default: 0, min: 0, max: 100000 },
-    registeredCount: { type: Number, default: 0, min: 0 },
-    registrationOpensAt: { type: Date },
-    registrationClosesAt: { type: Date },
     status: { type: String, enum: Object.values(EventStatus), default: EventStatus.DRAFT },
     featured: { type: Boolean, default: false },
     imageMediaId: { type: String },

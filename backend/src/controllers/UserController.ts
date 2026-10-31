@@ -2,18 +2,18 @@ import type { NextFunction, Request, Response } from 'express';
 import { matchedData } from 'express-validator';
 import User from '../models/User';
 import PasswordResetToken from '../models/PasswordResetToken';
-import { AccountStatus, MembershipStatus, ErrorCodes, ResponseCodes, Roles, config, type Role } from '../config/constants';
-import { Permissions } from '../config/permissions';
+import { AccountStatus, ErrorCodes, ResponseCodes, Roles, config } from '../config/constants';
+import { permissionsFor } from '../config/permissions';
 import { ApiResponse, sendError } from '../utils/apiResponse';
 import { writeAudit } from '../utils/audit';
 import { escapeRegex } from '../utils/escapeRegex';
-import { generateToken, hashToken } from '../utils/tokens';
+import { hashPassword } from '../utils/password';
 import { revokeUserSessions } from '../utils/sessions';
 import { sendMail } from '../utils/mailer';
 import { toAdminUser } from '../utils/userView';
-import { syncProfileForAccount } from '../utils/memberSync';
 
-const SETUP_TOKEN_HOURS = 24;
+// Mostly Super-Admin-only; see routes/userRoutes.ts for the one admin-reachable action. The targets are always admin
+// accounts: the Super Admin is never listed, edited, suspended, reset or deleted through this API.
 
 const notFound = (res: Response) =>
   sendError(res, {
@@ -28,17 +28,18 @@ const forbidden = (res: Response, message: string) =>
 const conflict = (res: Response, message: string) =>
   sendError(res, { statusCode: ResponseCodes.CONFLICT, message, code: ErrorCodes.DUPLICATE });
 
-const isStaffRole = (role: Role) => role !== Roles.MEMBER;
-
-/** True if `userId` is the only remaining active Super Admin. */
-const isLastActiveSuperAdmin = async (userId: string): Promise<boolean> => {
-  const others = await User.countDocuments({
-    _id: { $ne: userId },
-    role: Roles.SUPER_ADMIN,
-    status: AccountStatus.ACTIVE,
-    isDeleted: false,
-  });
-  return others === 0;
+/** Loads the admin account named in the URL. Sends the error response and returns null if it cannot be managed. */
+const loadAdmin = async (req: Request, res: Response) => {
+  const user = await User.findOne({ _id: req.params.id, isDeleted: false });
+  if (!user) {
+    notFound(res);
+    return null;
+  }
+  if (user.role !== Roles.ADMIN || user._id === req.user?.id) {
+    forbidden(res, 'Only admin accounts can be managed here');
+    return null;
+  }
+  return user;
 };
 
 /**
@@ -46,22 +47,19 @@ const isLastActiveSuperAdmin = async (userId: string): Promise<boolean> => {
  * @file UserController.ts
  * @param {Request} req
  * @param {Response} res
- * @description Paginated, filterable list of accounts (members awaiting approval, staff, etc.).
- * Phone numbers are included only for holders of members.read.private.
+ * @description Paginated, filterable list of admin accounts. The Super Admin is never listed.
  * @author Ravi Patel
  */
 export const listUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { page = 1, limit = 20, role, status, search } = matchedData<{
+    const { page = 1, limit = 20, status, search } = matchedData<{
       page?: number;
       limit?: number;
-      role?: Role;
       status?: string;
       search?: string;
     }>(req, { locations: ['query'] });
 
-    const filter: Record<string, unknown> = { isDeleted: false };
-    if (role) filter.role = role;
+    const filter: Record<string, unknown> = { isDeleted: false, role: Roles.ADMIN };
     if (status) filter.status = status;
     if (search) {
       const rx = new RegExp(escapeRegex(search), 'i');
@@ -77,9 +75,8 @@ export const listUsers = async (req: Request, res: Response, next: NextFunction)
       User.countDocuments(filter),
     ]);
 
-    const includePhone = req.user?.permissions.includes(Permissions.MEMBERS_READ_PRIVATE) ?? false;
     return new ApiResponse(ResponseCodes.OK, 'Users fetched successfully', {
-      users: users.map((u) => toAdminUser(u, includePhone)),
+      users: users.map(toAdminUser),
       totalCount,
     }).send(res);
   } catch (err) {
@@ -88,61 +85,83 @@ export const listUsers = async (req: Request, res: Response, next: NextFunction)
 };
 
 /**
- * @name createStaff
+ * @name getAdmin
  * @file UserController.ts
  * @param {Request} req
  * @param {Response} res
- * @description Super Admin creates a staff account. No password is chosen here: a one-time setup
- * link is returned once so the new staff member sets their own. There is no public endpoint for
- * this.
+ * @description Fetches one admin account, for the edit page.
  * @author Ravi Patel
  */
-export const createStaff = async (req: Request, res: Response, next: NextFunction) => {
+export const getAdmin = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, email, role } = matchedData<{ name: string; email: string; role: Role }>(req, {
-      locations: ['body'],
-    });
+    const user = await loadAdmin(req, res);
+    if (!user) return;
+    return new ApiResponse(ResponseCodes.OK, 'User fetched successfully', { user: toAdminUser(user.toObject()) }).send(res);
+  } catch (err) {
+    return next(err);
+  }
+};
 
+/**
+ * @name createAdmin
+ * @file UserController.ts
+ * @param {Request} req
+ * @param {Response} res
+ * @description The Super Admin creates an admin with a password they choose and exactly the
+ * permissions they selected, then the new admin is emailed their sign-in details and asked to
+ * change the password after the first sign-in. The role is always "admin"; there is no endpoint
+ * that creates a Super Admin.
+ * @author Ravi Patel
+ */
+export const createAdmin = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { name, email, password, permissions = [] } = matchedData<{
+      name: string;
+      email: string;
+      password: string;
+      permissions?: string[];
+    }>(req, { locations: ['body'] });
+
+    // Deleted accounts keep their email reserved (the unique index covers them too).
     if (await User.exists({ email })) return conflict(res, 'An account with this email already exists.');
 
     const user = await User.create({
       name,
       email,
-      role,
+      role: Roles.ADMIN,
+      permissions,
       status: AccountStatus.ACTIVE,
-      passwordHash: null,
-      approvedAt: new Date(),
-      approvedBy: req.user?.id,
+      passwordHash: await hashPassword(password),
+      passwordChangedAt: new Date(),
     });
 
-    const token = generateToken();
-    const expiresAt = new Date(Date.now() + SETUP_TOKEN_HOURS * 3_600_000);
-    await PasswordResetToken.create({
-      userId: user._id,
-      tokenHash: hashToken(token),
-      purpose: 'setup',
-      issuedBy: req.user?.id,
-      expiresAt,
-    });
-
-    const setupUrl = `${config.clientOrigin}/reset-password?token=${token}`;
     const mail = await sendMail({
       to: email,
-      subject: 'Your Samaj portal staff account',
-      text: `An account was created for you. Set your password within ${SETUP_TOKEN_HOURS} hours:\n${setupUrl}`,
+      subject: 'Your Samaj portal admin account',
+      text:
+        `Hello ${name},
+
+An admin account has been created for you on the Samaj portal.
+
+` +
+        `Sign in: ${config.clientOrigin}/admin/login
+Email: ${email}
+Password: ${password}
+
+` +
+        'For your security, please change your password after you sign in.',
     });
 
     await writeAudit(req, {
-      action: 'user.staff_created',
+      action: 'user.admin_created',
       targetType: 'user',
       targetId: user._id,
-      metadata: { role },
+      metadata: { permissions, emailDelivered: mail.delivered },
     });
 
-    return new ApiResponse(ResponseCodes.CREATED, 'Staff account created', {
-      user: toAdminUser(user.toObject(), false),
-      // Shown once. If email delivery is not configured the administrator hands this link over.
-      setup: { url: setupUrl, expiresAt, emailDelivered: mail.delivered },
+    return new ApiResponse(ResponseCodes.CREATED, 'Admin account created', {
+      user: toAdminUser(user.toObject()),
+      email: { delivered: mail.delivered },
     }).send(res);
   } catch (err) {
     return next(err);
@@ -150,63 +169,34 @@ export const createStaff = async (req: Request, res: Response, next: NextFunctio
 };
 
 /**
- * @name approveUser
+ * @name updateAdmin
  * @file UserController.ts
  * @param {Request} req
  * @param {Response} res
- * @description Approves a pending member registration so the member can sign in.
+ * @description Edits an admin's name and/or permission list. Permissions are computed on every
+ * request, so a change applies at once without signing the admin out.
  * @author Ravi Patel
  */
-export const approveUser = async (req: Request, res: Response, next: NextFunction) => {
+export const updateAdmin = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const user = await User.findOne({ _id: req.params.id, isDeleted: false });
-    if (!user) return notFound(res);
-    if (user.role !== Roles.MEMBER) return forbidden(res, 'Only member registrations can be approved here');
-    if (user.status !== AccountStatus.PENDING) return conflict(res, 'This registration is not pending');
+    const { name, permissions } = matchedData<{ name?: string; permissions?: string[] }>(req, {
+      locations: ['body'],
+    });
+    const user = await loadAdmin(req, res);
+    if (!user) return;
 
-    user.status = AccountStatus.ACTIVE;
-    user.approvedAt = new Date();
-    user.approvedBy = req.user?.id;
-    user.rejectedAt = undefined;
-    user.rejectionReason = undefined;
+    const before = { name: user.name, permissions: permissionsFor(user) };
+    if (name !== undefined) user.name = name;
+    if (permissions !== undefined) user.permissions = permissions;
     await user.save();
-    await syncProfileForAccount(user, MembershipStatus.ACTIVE);
 
-    await writeAudit(req, { action: 'member.approved', targetType: 'user', targetId: user._id });
-    return new ApiResponse(ResponseCodes.OK, 'Member approved', {
-      user: toAdminUser(user.toObject(), false),
-    }).send(res);
-  } catch (err) {
-    return next(err);
-  }
-};
-
-/**
- * @name rejectUser
- * @file UserController.ts
- * @param {Request} req
- * @param {Response} res
- * @description Rejects a pending member registration, with an optional reason kept for the office.
- * @author Ravi Patel
- */
-export const rejectUser = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { reason } = matchedData<{ reason?: string }>(req, { locations: ['body'] });
-    const user = await User.findOne({ _id: req.params.id, isDeleted: false });
-    if (!user) return notFound(res);
-    if (user.role !== Roles.MEMBER) return forbidden(res, 'Only member registrations can be rejected here');
-    if (user.status !== AccountStatus.PENDING) return conflict(res, 'This registration is not pending');
-
-    user.status = AccountStatus.REJECTED;
-    user.rejectedAt = new Date();
-    user.rejectionReason = reason;
-    await user.save();
-    await syncProfileForAccount(user, MembershipStatus.INACTIVE);
-
-    await writeAudit(req, { action: 'member.rejected', targetType: 'user', targetId: user._id });
-    return new ApiResponse(ResponseCodes.OK, 'Registration rejected', {
-      user: toAdminUser(user.toObject(), false),
-    }).send(res);
+    await writeAudit(req, {
+      action: 'user.admin_updated',
+      targetType: 'user',
+      targetId: user._id,
+      metadata: { before, after: { name: user.name, permissions: permissionsFor(user) } },
+    });
+    return new ApiResponse(ResponseCodes.OK, 'Admin updated', { user: toAdminUser(user.toObject()) }).send(res);
   } catch (err) {
     return next(err);
   }
@@ -217,32 +207,22 @@ export const rejectUser = async (req: Request, res: Response, next: NextFunction
  * @file UserController.ts
  * @param {Request} req
  * @param {Response} res
- * @description Suspends an account and signs it out everywhere. Members need members.suspend;
- * staff accounts need users.manage. Nobody can suspend themselves, and the last active Super
- * Admin is protected.
+ * @description Marks an admin inactive and signs them out everywhere.
  * @author Ravi Patel
  */
 export const suspendUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { reason } = matchedData<{ reason?: string }>(req, { locations: ['body'] });
-    const user = await User.findOne({ _id: req.params.id, isDeleted: false });
-    if (!user) return notFound(res);
-
-    const needed = isStaffRole(user.role) ? Permissions.USERS_MANAGE : Permissions.MEMBERS_SUSPEND;
-    if (!req.user?.permissions.includes(needed)) return forbidden(res, 'You cannot suspend this account');
-    if (user._id === req.user.id) return forbidden(res, 'You cannot suspend your own account');
-    if (user.role === Roles.SUPER_ADMIN && (await isLastActiveSuperAdmin(user._id))) {
-      return conflict(res, 'The last active Super Admin cannot be suspended');
-    }
-    if (user.status === AccountStatus.SUSPENDED) return conflict(res, 'Account is already suspended');
+    const user = await loadAdmin(req, res);
+    if (!user) return;
+    if (user.status === AccountStatus.SUSPENDED) return conflict(res, 'Account is already inactive');
 
     user.status = AccountStatus.SUSPENDED;
     user.suspendedAt = new Date();
-    user.suspendedBy = req.user.id;
+    user.suspendedBy = req.user?.id;
     user.suspensionReason = reason;
     await user.save();
     const revoked = await revokeUserSessions(user._id);
-    await syncProfileForAccount(user, MembershipStatus.INACTIVE, user.role === Roles.MEMBER);
 
     await writeAudit(req, {
       action: 'user.suspended',
@@ -250,9 +230,7 @@ export const suspendUser = async (req: Request, res: Response, next: NextFunctio
       targetId: user._id,
       metadata: { sessionsRevoked: revoked },
     });
-    return new ApiResponse(ResponseCodes.OK, 'Account suspended', {
-      user: toAdminUser(user.toObject(), false),
-    }).send(res);
+    return new ApiResponse(ResponseCodes.OK, 'Account marked inactive', { user: toAdminUser(user.toObject()) }).send(res);
   } catch (err) {
     return next(err);
   }
@@ -263,76 +241,23 @@ export const suspendUser = async (req: Request, res: Response, next: NextFunctio
  * @file UserController.ts
  * @param {Request} req
  * @param {Response} res
- * @description Restores a suspended account to active.
+ * @description Restores an inactive admin to active.
  * @author Ravi Patel
  */
 export const reactivateUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const user = await User.findOne({ _id: req.params.id, isDeleted: false });
-    if (!user) return notFound(res);
-
-    const needed = isStaffRole(user.role) ? Permissions.USERS_MANAGE : Permissions.MEMBERS_SUSPEND;
-    if (!req.user?.permissions.includes(needed)) return forbidden(res, 'You cannot reactivate this account');
-    if (user.status !== AccountStatus.SUSPENDED) return conflict(res, 'Account is not suspended');
+    const user = await loadAdmin(req, res);
+    if (!user) return;
+    if (user.status !== AccountStatus.SUSPENDED) return conflict(res, 'Account is not inactive');
 
     user.status = AccountStatus.ACTIVE;
     user.suspendedAt = undefined;
     user.suspendedBy = undefined;
     user.suspensionReason = undefined;
     await user.save();
-    await syncProfileForAccount(user, MembershipStatus.ACTIVE, user.role === Roles.MEMBER);
 
     await writeAudit(req, { action: 'user.reactivated', targetType: 'user', targetId: user._id });
-    return new ApiResponse(ResponseCodes.OK, 'Account reactivated', {
-      user: toAdminUser(user.toObject(), false),
-    }).send(res);
-  } catch (err) {
-    return next(err);
-  }
-};
-
-/**
- * @name changeRole
- * @file UserController.ts
- * @param {Request} req
- * @param {Response} res
- * @description Super Admin changes a user's role and individually granted permissions. The target's
- * sessions are revoked so the change applies immediately. Self changes and demotion of the last
- * active Super Admin are refused.
- * @author Ravi Patel
- */
-export const changeRole = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { role, extraPermissions = [] } = matchedData<{
-      role: Role;
-      extraPermissions?: string[];
-    }>(req, { locations: ['body'] });
-
-    const user = await User.findOne({ _id: req.params.id, isDeleted: false });
-    if (!user) return notFound(res);
-    if (user._id === req.user?.id) {
-      return forbidden(res, 'You cannot change your own role. Ask another Super Admin.');
-    }
-    if (user.status !== AccountStatus.ACTIVE) return conflict(res, 'Only active accounts can change role');
-    if (user.role === Roles.SUPER_ADMIN && role !== Roles.SUPER_ADMIN && (await isLastActiveSuperAdmin(user._id))) {
-      return conflict(res, 'The last active Super Admin cannot be demoted');
-    }
-
-    const before = { role: user.role, extraPermissions: [...(user.extraPermissions ?? [])] };
-    user.role = role;
-    user.extraPermissions = role === Roles.SUPER_ADMIN ? [] : (extraPermissions as never);
-    await user.save();
-    const revoked = await revokeUserSessions(user._id);
-
-    await writeAudit(req, {
-      action: 'user.role_changed',
-      targetType: 'user',
-      targetId: user._id,
-      metadata: { before, after: { role, extraPermissions: user.extraPermissions }, sessionsRevoked: revoked },
-    });
-    return new ApiResponse(ResponseCodes.OK, 'Role updated', {
-      user: toAdminUser(user.toObject(), false),
-    }).send(res);
+    return new ApiResponse(ResponseCodes.OK, 'Account marked active', { user: toAdminUser(user.toObject()) }).send(res);
   } catch (err) {
     return next(err);
   }
@@ -343,13 +268,13 @@ export const changeRole = async (req: Request, res: Response, next: NextFunction
  * @file UserController.ts
  * @param {Request} req
  * @param {Response} res
- * @description Super Admin signs a user out of every device.
+ * @description Signs an admin out of every device.
  * @author Ravi Patel
  */
 export const revokeUserSessionsAction = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const user = await User.findOne({ _id: req.params.id, isDeleted: false }).select('_id').lean();
-    if (!user) return notFound(res);
+    const user = await loadAdmin(req, res);
+    if (!user) return;
     const revoked = await revokeUserSessions(user._id);
     await writeAudit(req, {
       action: 'user.sessions_revoked',
@@ -364,43 +289,95 @@ export const revokeUserSessionsAction = async (req: Request, res: Response, next
 };
 
 /**
- * @name issuePasswordReset
+ * @name resetAdminPassword
  * @file UserController.ts
  * @param {Request} req
  * @param {Response} res
- * @description Issues a one-time password reset link for a user who cannot use email recovery.
- * The link is returned once to the administrator, who hands it over securely. Resetting a staff
- * account requires users.manage; resetting a Super Admin requires being a Super Admin.
+ * @description Sets a new password for an admin directly and emails it to them, so nobody has to
+ * pass a link around. Allowed for the Super Admin and for admins holding `users.reset_password`.
+ * To stop privilege escalation, a non-Super-Admin may only reset an admin whose permissions are all
+ * ones they hold themselves. The target is signed out everywhere and any lockout is cleared.
  * @author Ravi Patel
  */
-export const issuePasswordReset = async (req: Request, res: Response, next: NextFunction) => {
+export const resetAdminPassword = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const user = await User.findOne({ _id: req.params.id, isDeleted: false });
-    if (!user) return notFound(res);
+    const { password } = matchedData<{ password: string }>(req, { locations: ['body'] });
+    const user = await loadAdmin(req, res);
+    if (!user) return;
 
-    if (isStaffRole(user.role) && !req.user?.permissions.includes(Permissions.USERS_MANAGE)) {
-      return forbidden(res, 'You cannot reset a staff account');
+    if (req.user?.role !== Roles.SUPER_ADMIN) {
+      const own = req.user?.permissions ?? [];
+      if (!permissionsFor(user).every((p) => own.includes(p))) {
+        return forbidden(res, 'You cannot reset the password of an admin who has permissions you do not have');
+      }
     }
-    if (user.role === Roles.SUPER_ADMIN && req.user?.role !== Roles.SUPER_ADMIN) {
-      return forbidden(res, 'Only a Super Admin can reset a Super Admin');
-    }
-    if (user.status === AccountStatus.SUSPENDED) return conflict(res, 'Reactivate the account first');
+    if (user.status === AccountStatus.SUSPENDED) return conflict(res, 'Make the account active first');
 
+    user.passwordHash = await hashPassword(password);
+    user.passwordChangedAt = new Date();
+    user.failedLoginCount = 0;
+    user.lockUntil = undefined;
+    await user.save();
     await PasswordResetToken.deleteMany({ userId: user._id, usedAt: null });
-    const token = generateToken();
-    const expiresAt = new Date(Date.now() + config.auth.resetTokenMinutes * 60_000);
-    await PasswordResetToken.create({
-      userId: user._id,
-      tokenHash: hashToken(token),
-      purpose: 'reset',
-      issuedBy: req.user?.id,
-      expiresAt,
+    const revoked = await revokeUserSessions(user._id);
+
+    const mail = await sendMail({
+      to: user.email,
+      subject: 'Your Samaj portal password was reset',
+      text:
+        `Hello ${user.name},
+
+Your password was reset by an administrator.
+
+` +
+        `Sign in: ${config.clientOrigin}/admin/login
+Email: ${user.email}
+New password: ${password}
+
+` +
+        'For your security, please change your password after you sign in.',
     });
 
-    await writeAudit(req, { action: 'user.password_reset_issued', targetType: 'user', targetId: user._id });
-    return new ApiResponse(ResponseCodes.OK, 'Reset link created', {
-      reset: { url: `${config.clientOrigin}/reset-password?token=${token}`, expiresAt },
-    }).send(res);
+    await writeAudit(req, {
+      action: 'user.password_reset',
+      targetType: 'user',
+      targetId: user._id,
+      metadata: { sessionsRevoked: revoked, emailDelivered: mail.delivered },
+    });
+    return new ApiResponse(ResponseCodes.OK, 'Password reset', { email: { delivered: mail.delivered } }).send(res);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+/**
+ * @name deleteAdmin
+ * @file UserController.ts
+ * @param {Request} req
+ * @param {Response} res
+ * @description Soft-deletes an admin: the account is marked deleted, signed out everywhere and any
+ * unused setup or reset links are removed. The email stays reserved, because the unique index on
+ * the email covers deleted accounts; it cannot be used for a new account. Nobody can delete
+ * themselves or the Super Admin.
+ * @author Ravi Patel
+ */
+export const deleteAdmin = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = await loadAdmin(req, res);
+    if (!user) return;
+
+    user.isDeleted = true;
+    await user.save();
+    const revoked = await revokeUserSessions(user._id);
+    await PasswordResetToken.deleteMany({ userId: user._id, usedAt: null });
+
+    await writeAudit(req, {
+      action: 'user.deleted',
+      targetType: 'user',
+      targetId: user._id,
+      metadata: { sessionsRevoked: revoked },
+    });
+    return new ApiResponse(ResponseCodes.OK, 'Admin deleted').send(res);
   } catch (err) {
     return next(err);
   }

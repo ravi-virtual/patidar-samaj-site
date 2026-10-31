@@ -72,7 +72,7 @@ const run = async (): Promise<void> => {
   await mongoose.connect(config.mongo.uri, { serverSelectionTimeoutMS: config.mongo.serverSelectionTimeoutMs });
   const created = await createFirstSuperAdmin({ name, email, password });
   console.log(`\nSuper Admin created: ${created.email}`);
-  console.log('Sign in at the admin panel, then create other staff from Users & roles.');
+  console.log('Sign in at the admin panel (/admin/login), then create admins from the Users page.');
 };
 
 run()

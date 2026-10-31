@@ -7,7 +7,7 @@ import {
   type AdminAnnouncement,
 } from '../../api/adminApi';
 import { ANNOUNCEMENT_CATEGORIES } from '../../api/types';
-import { ActionMenu } from '../../components/admin/ActionMenu';
+import { RowMenu } from '../../components/admin/RowActions';
 import { AnnouncementFormDrawer } from '../../components/admin/AnnouncementFormDrawer';
 import { DataTable, type Column } from '../../components/admin/DataTable';
 import { StatusBadge } from '../../components/admin/StatusBadge';
@@ -48,7 +48,7 @@ export default function AdminAnnouncementsPage() {
   const act = (a: AdminAnnouncement, action: Parameters<typeof announcementActionApi>[1], message: string) =>
     void run(() => announcementActionApi(a.id, action), message);
 
-  // Editors without publish rights may only edit drafts; the server enforces the same rule.
+  // Admins without publish rights may only edit drafts; the server enforces the same rule.
   const canEdit = (a: AdminAnnouncement) => can('announcements.update') && (a.status === 'draft' || can('announcements.publish'));
   const publisher = can('announcements.publish');
 
@@ -85,15 +85,15 @@ export default function AdminAnnouncementsPage() {
       srOnlyHeader: true,
       className: 'text-right',
       cell: (a) => (
-        <ActionMenu
-          label={`Actions for ${a.title}`}
+        <RowMenu
+          name={a.title}
           actions={[
-            { label: 'Edit', show: canEdit(a), onSelect: () => setEditing(a) },
+            { label: 'Edit', kind: 'edit', show: canEdit(a), onSelect: () => setEditing(a) },
             { label: 'Publish', show: publisher && a.status !== 'published', onSelect: () => act(a, 'publish', 'Announcement published.') },
             { label: 'Unpublish', show: publisher && a.status === 'published', onSelect: () => act(a, 'unpublish', 'Announcement moved back to draft.') },
             { label: a.pinned ? 'Unpin' : 'Pin to top', show: publisher && a.status === 'published', onSelect: () => act(a, a.pinned ? 'unpin' : 'pin', a.pinned ? 'Unpinned.' : 'Pinned to the top.') },
             { label: 'Archive', show: publisher && a.status !== 'archived', onSelect: () => act(a, 'archive', 'Announcement archived.') },
-            { label: 'Delete', danger: true, show: can('announcements.delete'), onSelect: () => setDeleting(a) },
+            { label: 'Delete', kind: 'delete', danger: true, show: can('announcements.delete'), onSelect: () => setDeleting(a) },
           ]}
         />
       ),

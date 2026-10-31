@@ -6,15 +6,14 @@ import {
   changePasswordRules,
   forgotPasswordRules,
   loginRules,
-  registerRules,
   resetPasswordRules,
   themeRules,
 } from '../../src/validators/authValidator';
 import {
-  changeRoleRules,
-  createStaffRules,
+  createAdminRules,
   listUsersRules,
   reasonRules,
+  updateAdminRules,
   userIdRules,
 } from '../../src/validators/userValidator';
 import { contactIdRules, contactListRules, contactNoteRules, submitContactRules, updateContactRules } from '../../src/validators/contactValidator';
@@ -23,9 +22,6 @@ import {
   createEventRules,
   eventIdRules,
   publicEventListRules,
-  registrationIdRules,
-  registrationListRules,
-  rsvpRules,
   updateEventRules,
 } from '../../src/validators/eventValidator';
 import {
@@ -44,11 +40,11 @@ import {
   updateItemRules,
 } from '../../src/validators/contentValidator';
 import { mediaIdRules, mediaListRules, mediaUpdateRules } from '../../src/validators/mediaValidator';
-import { createMemberRules, directoryQueryRules, memberIdRules, updateMemberRules, updateOwnProfileRules } from '../../src/validators/memberValidator';
+import { createMemberRules, directoryQueryRules, memberIdRules, updateMemberRules } from '../../src/validators/memberValidator';
 import { auditListRules, searchRules, updateSettingsRules } from '../../src/validators/settingsValidator';
 import { paginationRules } from '../../src/utils/pagination';
 import { validateRequest } from '../../src/validators/validateRequest';
-import { GRANTABLE_PERMISSIONS } from '../../src/config/permissions';
+import { SELECTABLE_PERMISSIONS } from '../../src/config/permissions';
 
 type Rules = (ValidationChain | RequestHandler)[];
 
@@ -100,50 +96,6 @@ describe('paginationRules', () => {
 });
 
 describe('auth validators', () => {
-  const register = {
-    name: 'Asha Patel',
-    email: 'asha@example.com',
-    phone: '+91 98765 43210',
-    password: 'Correct-Horse-9',
-    confirmPassword: 'Correct-Horse-9',
-    acknowledge: true,
-  };
-
-  describe('registerRules', () => {
-    const app = () => probe(registerRules);
-
-    it('accepts a complete registration, with or without a phone, and normalises the email', async () => {
-      const ok = await app().post('/t').send({ ...register, email: ' Asha@Example.COM ' });
-      expect(ok.status).toBe(200);
-      expect(ok.body.body.email).toBe('asha@example.com');
-      const { phone: _phone, ...noPhone } = register;
-      expect((await app().post('/t').send(noPhone)).status).toBe(200);
-    });
-
-    it.each([
-      ['a name with markup', { name: '<b>Asha</b>' }, 'name'],
-      ['a one-letter name', { name: 'A' }, 'name'],
-      ['a non-string name', { name: 123 }, 'name'],
-      ['a bad email', { email: 'not-an-email' }, 'email'],
-      ['an oversized email', { email: `${'a'.repeat(250)}@example.com` }, 'email'],
-      ['a bad phone', { phone: 'call me' }, 'phone'],
-      ['a weak password', { password: 'short1', confirmPassword: 'short1' }, 'password'],
-      ['a common password', { password: 'Password123', confirmPassword: 'Password123' }, 'password'],
-      ['a password containing the email name', { password: 'Asha-Secret-99', confirmPassword: 'Asha-Secret-99' }, 'password'],
-      ['mismatched confirmation', { confirmPassword: 'Something-Else-1' }, 'confirmPassword'],
-      ['no acknowledgement', { acknowledge: false }, 'acknowledge'],
-      ['a string acknowledgement', { acknowledge: 'true' }, 'acknowledge'],
-    ])('rejects %s', async (_label, over, field) => {
-      const res = await app().post('/t').send({ ...register, ...over });
-      expect(res.status).toBe(400);
-      expect(fields(res)).toContain(field);
-    });
-
-    it('rejects an empty body', async () => {
-      expect((await app().post('/t').send({})).status).toBe(400);
-    });
-  });
-
   describe('loginRules', () => {
     it('needs a non-empty email and password, and does not apply password strength rules', async () => {
       expect((await probe(loginRules).post('/t').send({ email: 'a@b.co', password: 'x' })).status).toBe(200);
@@ -211,46 +163,66 @@ describe('user validators', () => {
 
   it('limits the user list filters', async () => {
     const app = probe(listUsersRules);
-    expect((await app.get('/t?role=member&status=pending&search=asha&page=1&limit=100')).status).toBe(200);
-    for (const q of ['role=hacker', 'status=gone', 'limit=101', 'page=0', `search=${'x'.repeat(101)}`]) {
+    expect((await app.get('/t?status=suspended&search=asha&page=1&limit=100')).status).toBe(200);
+    for (const q of [ 'status=gone', 'limit=101', 'page=0', `search=${'x'.repeat(101)}`]) {
       expect((await app.get(`/t?${q}`)).status, q).toBe(400);
     }
   });
 
-  describe('createStaffRules', () => {
-    const body = { name: 'New Editor', email: 'new@example.com', role: 'editor' };
+  describe('createAdminRules', () => {
+    const body = { name: 'New Admin', email: 'new@example.com', password: 'Strong-Pass-2026', permissions: ['events.read', 'events.publish'] };
 
-    it.each(['admin', 'editor', 'viewer'])('allows creating a %s', async (role) => {
-      expect((await probe(createStaffRules).post('/t').send({ ...body, role })).status).toBe(200);
+    it('accepts a name, email and selectable permissions (also an empty or missing list)', async () => {
+      expect((await probe(createAdminRules).post('/t').send(body)).status).toBe(200);
+      expect((await probe(createAdminRules).post('/t').send({ ...body, permissions: [] })).status).toBe(200);
+      expect((await probe(createAdminRules).post('/t').send({ name: body.name, email: body.email, password: body.password })).status).toBe(200);
+      expect((await probe(createAdminRules).post('/t').send({ ...body, permissions: [...SELECTABLE_PERMISSIONS] })).status).toBe(200);
     });
 
-    it.each(['superadmin', 'member', 'root', ''])('refuses to create a %j', async (role) => {
-      const res = await probe(createStaffRules).post('/t').send({ ...body, role });
+    it.each(['superadmin', 'member', 'editor', 'root', ''])('refuses the role %j', async (role) => {
+      const res = await probe(createAdminRules).post('/t').send({ ...body, role });
       expect(res.status).toBe(400);
       expect(fields(res)).toContain('role');
     });
 
+    it('rejects permissions outside the selectable catalog, duplicates and non-lists', async () => {
+      for (const permissions of [['users.manage'], ['roles.manage'], ['sessions.revoke'], ['settings.security'], ['events.fly'], ['events.read', 'events.read'], 'events.read', [5]]) {
+        const res = await probe(createAdminRules).post('/t').send({ ...body, permissions });
+        expect(res.status, JSON.stringify(permissions)).toBe(400);
+        expect(fields(res)).toContain('permissions');
+      }
+    });
+
+    it('requires a strong password ', async () => {
+      for (const password of [undefined, 'short1', 'onlyletterspassword', 'password123']) {
+        const res = await probe(createAdminRules).post('/t').send({ ...body, password });
+        expect(res.status, String(password)).toBe(400);
+        expect(fields(res)).toContain('password');
+      }
+    });
+
     it('validates name and email', async () => {
-      expect((await probe(createStaffRules).post('/t').send({ ...body, name: '<x>' })).status).toBe(400);
-      expect((await probe(createStaffRules).post('/t').send({ ...body, email: 'bad' })).status).toBe(400);
+      expect((await probe(createAdminRules).post('/t').send({ ...body, name: '<x>' })).status).toBe(400);
+      expect((await probe(createAdminRules).post('/t').send({ ...body, email: 'bad' })).status).toBe(400);
     });
   });
 
-  describe('changeRoleRules', () => {
-    const app = () => probe(changeRoleRules, '/t/:id');
+  describe('updateAdminRules', () => {
+    const app = () => probe(updateAdminRules, '/t/:id');
 
-    it('accepts known roles and grantable extras only', async () => {
-      expect((await app().patch(`/t/${ID}`).send({ role: 'admin' })).status).toBe(200);
-      expect((await app().patch(`/t/${ID}`).send({ role: 'editor', extraPermissions: [...GRANTABLE_PERMISSIONS] })).status).toBe(200);
-      expect((await app().patch(`/t/${ID}`).send({ role: 'editor', extraPermissions: [] })).status).toBe(200);
+    it('accepts a name and/or permissions', async () => {
+      expect((await app().patch(`/t/${ID}`).send({ name: 'Renamed Admin' })).status).toBe(200);
+      expect((await app().patch(`/t/${ID}`).send({ permissions: ['events.read'] })).status).toBe(200);
+      expect((await app().patch(`/t/${ID}`).send({ name: 'Renamed Admin', permissions: [] })).status).toBe(200);
     });
 
-    it('rejects unknown roles, ungrantable permissions, oversize lists and bad ids', async () => {
-      expect((await app().patch(`/t/${ID}`).send({ role: 'god' })).status).toBe(400);
-      expect((await app().patch(`/t/${ID}`).send({ role: 'editor', extraPermissions: ['users.manage'] })).status).toBe(400);
-      expect((await app().patch(`/t/${ID}`).send({ role: 'editor', extraPermissions: 'events.publish' })).status).toBe(400);
-      expect((await app().patch(`/t/${ID}`).send({ role: 'editor', extraPermissions: Array(11).fill(GRANTABLE_PERMISSIONS[0]) })).status).toBe(400);
-      expect((await app().patch('/t/nope').send({ role: 'editor' })).status).toBe(400);
+    it('rejects an empty change, bad names, unselectable permissions and bad ids', async () => {
+      expect((await app().patch(`/t/${ID}`).send({})).status).toBe(400);
+      expect((await app().patch(`/t/${ID}`).send({ name: 'A' })).status).toBe(400);
+      expect((await app().patch(`/t/${ID}`).send({ permissions: ['users.manage'] })).status).toBe(400);
+      expect((await app().patch(`/t/${ID}`).send({ permissions: 'events.read' })).status).toBe(400);
+      expect((await app().patch(`/t/${ID}`).send({ role: 'superadmin', name: 'Ok Name' })).status).toBe(200); // role is simply never read
+      expect((await app().patch('/t/nope').send({ name: 'Ok Name' })).status).toBe(400);
     });
   });
 
@@ -312,21 +284,18 @@ describe('event validators', () => {
       description: 'An evening of garba.',
       category: 'Festival',
       endsAt: FUTURE(11),
-      registrationOpensAt: FUTURE(1),
-      registrationClosesAt: FUTURE(9),
-      capacity: 100,
       featured: true,
       imageMediaId: ID,
     };
     expect((await probe(createEventRules).post('/t').send(full)).status).toBe(200);
   });
 
-  it('turns date strings into dates and numeric strings into numbers', async () => {
+  it('turns date strings into dates and boolean strings into booleans', async () => {
     const inspect: RequestHandler = (req, res) => {
-      res.json({ startsAt: req.body.startsAt instanceof Date, capacity: req.body.capacity });
+      res.json({ startsAt: req.body.startsAt instanceof Date, featured: req.body.featured });
     };
-    const res = await probe([...createEventRules.slice(0, -1), inspect]).post('/t').send({ ...body, capacity: '25' });
-    expect(res.body).toEqual({ startsAt: true, capacity: 25 });
+    const res = await probe([...createEventRules.slice(0, -1), inspect]).post('/t').send({ ...body, featured: 'true' });
+    expect(res.body).toEqual({ startsAt: true, featured: true });
   });
 
   it.each([
@@ -337,8 +306,6 @@ describe('event validators', () => {
     ['no start time', { startsAt: undefined }, 'startsAt'],
     ['an invalid start time', { startsAt: 'tomorrow-ish' }, 'startsAt'],
     ['an unknown category', { category: 'Party' }, 'category'],
-    ['a negative capacity', { capacity: -1 }, 'capacity'],
-    ['a huge capacity', { capacity: 100001 }, 'capacity'],
     ['a non-UUID image', { imageMediaId: 'x' }, 'imageMediaId'],
   ])('rejects %s', async (_label, over, field) => {
     const res = await probe(createEventRules).post('/t').send({ ...body, ...over });
@@ -349,8 +316,6 @@ describe('event validators', () => {
   it('rejects inconsistent schedules', async () => {
     const bad = [
       { endsAt: FUTURE(9) }, // ends before it starts
-      { registrationOpensAt: FUTURE(5), registrationClosesAt: FUTURE(5) },
-      { registrationClosesAt: FUTURE(11) }, // closes after start
     ];
     for (const over of bad) expect((await probe(createEventRules).post('/t').send({ ...body, ...over })).status, JSON.stringify(over)).toBe(400);
   });
@@ -358,13 +323,13 @@ describe('event validators', () => {
   it('allows partial updates, but still checks any field that is sent', async () => {
     const app = probe(updateEventRules, '/t/:id');
     expect((await app.patch(`/t/${ID}`).send({})).status).toBe(200);
-    expect((await app.patch(`/t/${ID}`).send({ capacity: 0 })).status).toBe(200);
+    expect((await app.patch(`/t/${ID}`).send({ featured: false })).status).toBe(200);
     expect((await app.patch(`/t/${ID}`).send({ title: '<b>x</b>' })).status).toBe(400);
     expect((await app.patch(`/t/${ID}`).send({ title: 'x'.repeat(151) })).status).toBe(400);
-    expect((await app.patch('/t/not-an-id').send({ capacity: 1 })).status).toBe(400);
+    expect((await app.patch('/t/not-an-id').send({ featured: true })).status).toBe(400);
   });
 
-  it('validates ids, filters, cancellation, RSVP and registration lists', async () => {
+  it('validates ids, filters and cancellation', async () => {
     expect((await probe(eventIdRules, '/t/:id').get('/t/x')).status).toBe(400);
 
     const list = probe(publicEventListRules);
@@ -374,19 +339,6 @@ describe('event validators', () => {
     const cancel = probe(cancelEventRules, '/t/:id');
     expect((await cancel.post(`/t/${ID}`).send({ reason: 'Rain' })).status).toBe(200);
     expect((await cancel.post(`/t/${ID}`).send({ reason: 'x'.repeat(501) })).status).toBe(400);
-
-    const rsvp = probe(rsvpRules, '/t/:id');
-    expect((await rsvp.post(`/t/${ID}`).send({})).status).toBe(200);
-    expect((await rsvp.post(`/t/${ID}`).send({ attendees: 10 })).status).toBe(200);
-    for (const attendees of [0, 11, 'many']) expect((await rsvp.post(`/t/${ID}`).send({ attendees })).status).toBe(400);
-
-    const regs = probe(registrationListRules, '/t/:id');
-    expect((await regs.get(`/t/${ID}?status=confirmed`)).status).toBe(200);
-    expect((await regs.get(`/t/${ID}?status=pending`)).status).toBe(400);
-
-    const regId = probe(registrationIdRules, '/t/:id/r/:registrationId');
-    expect((await regId.delete(`/t/${ID}/r/${ID}`)).status).toBe(200);
-    expect((await regId.delete(`/t/${ID}/r/nope`)).status).toBe(400);
   });
 });
 
@@ -528,41 +480,18 @@ describe('member validators', () => {
     for (const q of ['sort=password', 'limit=51', `village=${'x'.repeat(81)}`, 'page=0']) expect((await dir.get(`/t?${q}`)).status, q).toBe(400);
   });
 
-  describe('own profile', () => {
-    const app = () => probe(updateOwnProfileRules);
-
-    it('accepts valid details and converts the family size to a number', async () => {
-      const res = await app().patch('/t').send({ village: 'Unjha', familySize: '5', phone: '+91 98765 43210', visibility: 'members', bio: 'Hello' });
-      expect(res.status).toBe(200);
-      expect(res.body.body.familySize).toBe(5);
-    });
-
-    it.each([
-      ['family size 0', { familySize: 0 }],
-      ['family size 41', { familySize: 41 }],
-      ['a bad phone', { phone: 'abc' }],
-      ['an unknown visibility', { visibility: 'everyone' }],
-      ['a bio over 500 characters', { bio: 'x'.repeat(501) }],
-      ['markup in the village', { village: '<b>x</b>' }],
-      ['a non-text city', { city: 5 }],
-    ])('rejects %s', async (_label, body) => {
-      expect((await app().patch('/t').send(body)).status).toBe(400);
-    });
-
-    it('allows null to clear optional text', async () => {
-      expect((await app().patch('/t').send({ village: null, familySize: null })).status).toBe(200);
-    });
-  });
-
   it('validates staff-created and staff-edited entries', async () => {
     const create = probe(createMemberRules);
-    expect((await create.post('/t').send({ displayName: 'Asha Patel', joinedYear: 2010, membershipStatus: 'inactive', highlighted: true })).status).toBe(200);
+    expect((await create.post('/t').send({ displayName: 'Asha Patel', joinedYear: 2010, membershipStatus: 'inactive', highlighted: true, visibility: 'public' })).status).toBe(200);
+    expect((await create.post('/t').send({ displayName: 'Asha Patel', visibility: 'hidden', familySize: '5', phone: '+91 98765 43210' })).status).toBe(200);
     for (const body of [
       {},
       { displayName: 'A' },
       { displayName: '<b>x</b>' },
       { displayName: 'Asha', joinedYear: 1800 },
       { displayName: 'Asha', membershipStatus: 'pending' },
+      { displayName: 'Asha', visibility: 'members' },
+      { displayName: 'Asha', visibility: 'everyone' },
       { displayName: 'Asha', highlighted: 'sometimes' },
     ]) {
       expect((await create.post('/t').send(body)).status, JSON.stringify(body)).toBe(400);
@@ -587,12 +516,11 @@ describe('settings validators', () => {
       footerNote: 'Footer',
       contact: { email: 'office@example.com', phone: '+91 1', address: 'Unjha', officeHours: '9-5' },
       socialLinks: [{ label: 'Facebook', url: 'https://facebook.com/samaj' }],
-      registrationOpen: 'false',
-      directoryPublic: true,
+      publicTabs: { events: false, news: true },
       themeDefault: 'dark',
     });
     expect(res.status).toBe(200);
-    expect(res.body.body.registrationOpen).toBe(false);
+    expect(res.body.body.publicTabs).toEqual({ events: false, news: true });
   });
 
   it.each([
@@ -604,7 +532,10 @@ describe('settings validators', () => {
     ['a javascript: social link', { socialLinks: [{ label: 'L', url: 'javascript:alert(1)' }] }],
     ['a social link with credentials', { socialLinks: [{ label: 'L', url: 'https://u:p@example.com' }] }],
     ['a social link with no label', { socialLinks: [{ label: '', url: 'https://example.com' }] }],
-    ['a non-boolean switch', { registrationOpen: 'maybe' }],
+    ['a non-boolean tab switch', { publicTabs: { events: 'maybe' } }],
+    ['an unknown public tab', { publicTabs: { registration: true } }],
+    ['public tabs that are not an object', { publicTabs: [true] }],
+    ['a null tab switch', { publicTabs: { news: null } }],
     ['an unknown theme', { themeDefault: 'neon' }],
     ['a non-UUID logo', { logoMediaId: 'logo.png' }],
   ])('rejects %s', async (_label, body) => {

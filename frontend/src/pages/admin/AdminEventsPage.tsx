@@ -7,10 +7,9 @@ import {
   type AdminEvent,
 } from '../../api/adminApi';
 import { EVENT_CATEGORIES } from '../../api/types';
-import { ActionMenu } from '../../components/admin/ActionMenu';
+import { RowMenu } from '../../components/admin/RowActions';
 import { DataTable, type Column } from '../../components/admin/DataTable';
 import { EventFormDrawer } from '../../components/admin/EventFormDrawer';
-import { RegistrationsDrawer } from '../../components/admin/RegistrationsDrawer';
 import { StatusBadge } from '../../components/admin/StatusBadge';
 import { FilterSelect, Toolbar } from '../../components/admin/Toolbar';
 import { useCan } from '../../components/admin/usePermissions';
@@ -47,7 +46,6 @@ export default function AdminEventsPage() {
   const { busy, run } = useRunner(list.retry);
 
   const [editing, setEditing] = useState<AdminEvent | null | 'new'>(null);
-  const [viewing, setViewing] = useState<AdminEvent | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
   const [reason, setReason] = useState('');
 
@@ -56,7 +54,7 @@ export default function AdminEventsPage() {
     setPage(1);
   };
 
-  // Editors without publish rights may only touch drafts; the server enforces the same rule.
+  // Admins without publish rights may only touch drafts; the server enforces the same rule.
   const canEdit = (e: AdminEvent) => can('events.update') && (e.status === 'draft' || can('events.publish'));
 
   const columns: Column<AdminEvent>[] = [
@@ -72,27 +70,21 @@ export default function AdminEventsPage() {
       ),
     },
     { header: 'Starts', className: 'whitespace-nowrap font-mono text-[13px]', cell: (e) => formatDateTime(e.startsAt) },
-    {
-      header: 'Registered',
-      className: 'whitespace-nowrap font-mono text-[13px]',
-      cell: (e) => (e.capacity > 0 ? `${e.registeredCount}/${e.capacity}` : `${e.registeredCount}`),
-    },
     { header: 'Status', cell: (e) => <StatusBadge status={e.status} /> },
     {
       header: 'Actions',
       srOnlyHeader: true,
       className: 'text-right',
       cell: (e) => (
-        <ActionMenu
-          label={`Actions for ${e.title}`}
+        <RowMenu
+          name={e.title}
           actions={[
-            { label: 'Edit', show: canEdit(e), onSelect: () => setEditing(e) },
-            { label: 'Registrations', show: can('registrations.read'), onSelect: () => setViewing(e) },
+            { label: 'Edit', kind: 'edit', show: canEdit(e), onSelect: () => setEditing(e) },
             { label: 'Publish', show: can('events.publish') && (e.status === 'draft' || e.status === 'archived'), onSelect: () => void run(() => eventActionApi(e.id, 'publish'), 'Event published.') },
             { label: 'Unpublish', show: can('events.publish') && e.status === 'published', onSelect: () => void run(() => eventActionApi(e.id, 'unpublish'), 'Event moved back to draft.') },
             { label: 'Cancel event', show: can('events.publish') && e.status === 'published', onSelect: () => (setReason(''), setPending({ kind: 'cancel', event: e })) },
             { label: 'Archive', show: can('events.publish') && e.status !== 'archived', onSelect: () => setPending({ kind: 'archive', event: e }) },
-            { label: 'Delete', danger: true, show: can('events.delete'), onSelect: () => setPending({ kind: 'delete', event: e }) },
+            { label: 'Delete', kind: 'delete', danger: true, show: can('events.delete'), onSelect: () => setPending({ kind: 'delete', event: e }) },
           ]}
         />
       ),
@@ -116,7 +108,7 @@ export default function AdminEventsPage() {
 
   return (
     <>
-      <PageHeader title="Events" description="Create events, open registration and see who is coming." />
+      <PageHeader title="Events" description="Create and publish events with their date, time and venue." />
       <Toolbar
         search={search}
         onSearch={reset(setSearch)}
@@ -153,7 +145,6 @@ export default function AdminEventsPage() {
         onClose={() => setEditing(null)}
         onSaved={list.retry}
       />
-      <RegistrationsDrawer event={viewing} onClose={() => setViewing(null)} onChanged={list.retry} />
 
       <ConfirmDialog
         open={pending !== null}
@@ -164,12 +155,12 @@ export default function AdminEventsPage() {
         onConfirm={() => void confirm()}
         onCancel={() => setPending(null)}
       >
-        {pending?.kind === 'delete' && `“${pending.event.title}” will be removed. This is blocked while people are registered.`}
+        {pending?.kind === 'delete' && `“${pending.event.title}” will be removed.`}
         {pending?.kind === 'archive' && `“${pending.event.title}” will no longer appear on the public site.`}
         {pending?.kind === 'cancel' && (
           <div className="space-y-3">
-            <p>Registered members will see that “{pending.event.title}” was cancelled.</p>
-            <TextAreaField label="Reason (shown to members)" rows={3} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
+            <p>Visitors will see that “{pending.event.title}” was cancelled.</p>
+            <TextAreaField label="Reason (shown on the event page)" rows={3} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
           </div>
         )}
       </ConfirmDialog>

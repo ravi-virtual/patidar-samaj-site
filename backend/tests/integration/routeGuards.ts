@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { ORIGIN, anon, connectTestDb, disconnectTestDb, resetDb, signInAs } from '../helpers';
+import { ADMIN_PERMISSIONS_WITHOUT_USER_RESET, ORIGIN, anon, connectTestDb, disconnectTestDb, resetDb, signInAs } from '../helpers';
 import { Roles } from '../../src/config/constants';
 
 beforeAll(connectTestDb);
@@ -38,8 +38,7 @@ for (const m of indexSource.matchAll(/router\.(get|post|put|patch|delete)\('([^'
 /** Public on purpose. Each entry is a decision someone made; everything else must require sign-in. */
 const PUBLIC = new Set([
   'get /api/health',
-  'post /api/auth/register',
-  'post /api/auth/login',
+  'post /api/auth/admin-login',
   'post /api/auth/forgot-password',
   'post /api/auth/reset-password',
   'get /api/members',
@@ -62,7 +61,6 @@ const PUBLIC = new Set([
 
 const concrete = (path: string) =>
   path
-    .replace(':registrationId', '22222222-2222-4222-8222-222222222222')
     .replace(':resource', 'faqs')
     .replace(':key', 'about.mission')
     .replace(':id', '11111111-1111-4111-8111-111111111111');
@@ -104,10 +102,33 @@ describe('routes that are not public', () => {
     expect(failures).toEqual([]);
   });
 
-  it('every /api/admin and /api/users route refuses a plain member', async () => {
-    const { client } = await signInAs(Roles.MEMBER);
+  it('has no member sign-in or registration route at all', () => {
+    const found = new Set(discovered.map(key));
+    expect(found.has('post /api/auth/register')).toBe(false);
+    expect(found.has('post /api/auth/login')).toBe(false);
+    expect(found.has('get /api/members/me')).toBe(false);
+    expect(found.has('patch /api/members/me')).toBe(false);
+    expect(found.has('get /api/admin/roles')).toBe(false);
+  });
+
+  it('every /api/admin and /api/users route refuses an admin who holds no permissions', async () => {
+    const { client } = await signInAs(Roles.ADMIN, { permissions: [] });
     const failures: string[] = [];
     for (const r of protectedRoutes.filter((x) => /^\/api\/(admin|users)/.test(x.path))) {
+      const res = await client[r.method === 'delete' ? 'del' : r.method](concrete(r.path)).send({});
+      if (res.status !== 403) failures.push(`${key(r)} → ${res.status}`);
+    }
+    expect(failures).toEqual([]);
+  });
+});
+
+describe('admin account management', () => {
+  it('every /api/users route refuses an admin without users.reset_password, even with every other selectable permission', async () => {
+    const { client } = await signInAs(Roles.ADMIN, { permissions: ADMIN_PERMISSIONS_WITHOUT_USER_RESET });
+    const failures: string[] = [];
+    const userRoutes = protectedRoutes.filter((x) => x.path.startsWith('/api/users'));
+    expect(userRoutes.length).toBeGreaterThanOrEqual(8);
+    for (const r of userRoutes) {
       const res = await client[r.method === 'delete' ? 'del' : r.method](concrete(r.path)).send({});
       if (res.status !== 403) failures.push(`${key(r)} → ${res.status}`);
     }

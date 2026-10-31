@@ -3,8 +3,7 @@ import { matchedData } from 'express-validator';
 import User from '../models/User';
 import Session from '../models/Session';
 import PasswordResetToken from '../models/PasswordResetToken';
-import OrganizationSettings from '../models/OrganizationSettings';
-import { AccountStatus, ErrorCodes, ResponseCodes, Roles, config } from '../config/constants';
+import { AccountStatus, ErrorCodes, ResponseCodes, StaffRoles, config } from '../config/constants';
 import { ApiResponse, sendError } from '../utils/apiResponse';
 import { hashPassword, verifyAgainstDummy, verifyPassword } from '../utils/password';
 import { csrfTokenFor, generateToken, hashToken } from '../utils/tokens';
@@ -17,101 +16,20 @@ import {
 import { writeAudit } from '../utils/audit';
 import { sendMail } from '../utils/mailer';
 import { toSessionUser } from '../utils/userView';
-import { syncProfileForAccount } from '../utils/memberSync';
-import { MembershipStatus } from '../config/constants';
 
 const GENERIC_LOGIN_ERROR = 'Invalid email or password';
 
-const INACTIVE_MESSAGES: Record<string, string> = {
-  [AccountStatus.PENDING]: 'Your registration is awaiting approval by the Samaj office.',
-  [AccountStatus.REJECTED]: 'Your registration was not approved. Please contact the Samaj office.',
-  [AccountStatus.SUSPENDED]: 'This account has been suspended. Please contact the Samaj office.',
-};
-
 /**
- * @name register
+ * @name adminLogin
  * @file AuthController.ts
  * @param {Request} req
  * @param {Response} res
- * @description Public member registration. Always creates a member in "pending" status; the role
- * is never read from the request. An administrator must approve the account before it can sign in.
+ * @description The only sign-in: the Super Admin and admins sign in to the admin panel with email
+ * and password. Errors are generic so they never reveal whether an email is registered. Failed
+ * attempts lock the account temporarily. A new session is issued on every successful login (rotation).
  * @author Ravi Patel
  */
-export const register = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const settings = await OrganizationSettings.findOne({ key: 'main' }).lean();
-    if (settings && settings.registrationOpen === false) {
-      return sendError(res, {
-        statusCode: ResponseCodes.FORBIDDEN,
-        message: 'Registration is currently closed. Please contact the Samaj office.',
-        code: ErrorCodes.FORBIDDEN,
-      });
-    }
-
-    const { name, email, phone, password } = matchedData<{
-      name: string;
-      email: string;
-      phone?: string;
-      password: string;
-    }>(req, { locations: ['body'] });
-
-    const existing = await User.findOne({ email }).select('_id').lean();
-    if (existing) {
-      await writeAudit(req, { action: 'auth.register_duplicate', outcome: 'failure', actorId: null });
-      return sendError(res, {
-        statusCode: ResponseCodes.CONFLICT,
-        message: 'An account with this email already exists. Try signing in instead.',
-        code: ErrorCodes.DUPLICATE,
-      });
-    }
-
-    const user = await User.create({
-      name,
-      email,
-      phone: phone || undefined,
-      passwordHash: await hashPassword(password),
-      role: Roles.MEMBER, // fixed: public registration can never choose a role
-      status: AccountStatus.PENDING,
-      membershipAcknowledgedAt: new Date(),
-    });
-
-    // The directory entry starts pending and hidden from the directory until approval.
-    try {
-      await syncProfileForAccount(user, MembershipStatus.PENDING);
-    } catch (err) {
-      await User.deleteOne({ _id: user._id }); // no half-created accounts
-      throw err;
-    }
-
-    await writeAudit(req, {
-      action: 'auth.register',
-      actorId: user._id,
-      actorRole: user.role,
-      targetType: 'user',
-      targetId: user._id,
-    });
-
-    return new ApiResponse(
-      ResponseCodes.CREATED,
-      'Registration received. The Samaj office will review it and you will be able to sign in once it is approved.',
-      { user: { id: user._id, name: user.name, status: user.status } },
-    ).send(res);
-  } catch (err) {
-    return next(err);
-  }
-};
-
-/**
- * @name login
- * @file AuthController.ts
- * @param {Request} req
- * @param {Response} res
- * @description Signs a user in with email and password. Errors are generic so they never reveal
- * whether an email is registered. Failed attempts lock the account temporarily. A new session is
- * issued on every successful login (rotation).
- * @author Ravi Patel
- */
-export const login = async (req: Request, res: Response, next: NextFunction) => {
+export const adminLogin = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email: rawEmail, password } = matchedData<{ email: string; password: string }>(req, {
       locations: ['body'],
@@ -156,18 +74,26 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
 
     const passwordOk = await verifyPassword(user.passwordHash, password);
     if (!passwordOk) {
+      // updateOne, not save(): a damaged record must never be able to block the bookkeeping.
       const failures = (user.failedLoginCount ?? 0) + 1;
-      if (failures >= config.auth.maxFailedLogins) {
-        user.failedLoginCount = 0;
-        user.lockUntil = new Date(Date.now() + config.auth.lockMinutes * 60_000);
-      } else {
-        user.failedLoginCount = failures;
-      }
-      await user.save();
+      const lock = failures >= config.auth.maxFailedLogins;
+      await User.updateOne(
+        { _id: user._id },
+        {
+          $set: lock
+            ? { failedLoginCount: 0, lockUntil: new Date(Date.now() + config.auth.lockMinutes * 60_000) }
+            : { failedLoginCount: failures },
+        },
+      );
       return invalid('bad_password');
     }
 
     // Password is correct: only now is it safe to say anything about the account's state.
+    if (!StaffRoles.includes(user.role)) {
+      // A leftover account with a role that no longer exists can never sign in.
+      return invalid('unsupported_role');
+    }
+
     if (user.status !== AccountStatus.ACTIVE) {
       await writeAudit(req, {
         action: 'auth.login_blocked',
@@ -177,7 +103,7 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
       });
       return sendError(res, {
         statusCode: ResponseCodes.FORBIDDEN,
-        message: INACTIVE_MESSAGES[user.status] ?? 'This account is not active.',
+        message: 'This account is inactive. Please contact the Super Admin.',
         code: ErrorCodes.ACCOUNT_NOT_ACTIVE,
       });
     }
@@ -186,14 +112,15 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
     const previous = readSessionToken(req);
     if (previous) await Session.deleteOne({ tokenHash: hashToken(previous) });
 
-    user.failedLoginCount = 0;
-    user.lockUntil = undefined;
-    user.lastLoginAt = new Date();
-    await user.save();
+    user.lastLoginAt = new Date(); // shown in the response; persisted below without re-validating the record
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { failedLoginCount: 0, lastLoginAt: user.lastLoginAt }, $unset: { lockUntil: 1 } },
+    );
 
     const token = await startSession(req, res, user._id);
     await writeAudit(req, {
-      action: 'auth.login',
+      action: 'auth.admin_login',
       actorId: user._id,
       actorRole: user.role,
     });

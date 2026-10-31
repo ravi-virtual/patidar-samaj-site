@@ -3,17 +3,7 @@ import { ThemePreferences } from '../config/constants';
 import { validatePasswordStrength } from '../utils/password';
 import { validateRequest } from './validateRequest';
 
-const nameRule = body('name')
-  .isString()
-  .withMessage('Name is required')
-  .bail()
-  .trim()
-  .isLength({ min: 2, max: 100 })
-  .withMessage('Name must be 2–100 characters')
-  .matches(/^[^<>]+$/)
-  .withMessage('Name contains invalid characters');
-
-const emailRule = body('email')
+export const emailRule = body('email')
   .isString()
   .withMessage('Email is required')
   .bail()
@@ -34,26 +24,6 @@ const newPasswordRule = (field: string, emailField = 'email') =>
       if (problem) throw new Error(problem);
       return true;
     });
-
-export const registerRules = [
-  nameRule,
-  emailRule,
-  body('phone')
-    .optional({ values: 'falsy' })
-    .isString()
-    .trim()
-    .matches(/^\+?[0-9 ()-]{7,20}$/)
-    .withMessage('Enter a valid phone number'),
-  newPasswordRule('password'),
-  body('confirmPassword')
-    .isString()
-    .custom((value: string, { req }) => value === req.body?.password)
-    .withMessage('Passwords do not match'),
-  body('acknowledge')
-    .custom((value: unknown) => value === true)
-    .withMessage('You must confirm the membership acknowledgement'),
-  validateRequest,
-];
 
 export const loginRules = [
   body('email').isString().trim().notEmpty().withMessage('Email is required'),

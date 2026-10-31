@@ -20,7 +20,7 @@ export const rateLimiter = rateLimit({
   handler: onLimit,
 });
 
-/** Stricter limiter for login, registration, password reset and contact endpoints. */
+/** Stricter limiter for login, password reset and contact endpoints. */
 export const authRateLimiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
   limit: config.rateLimit.authMax,

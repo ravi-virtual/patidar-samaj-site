@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import { getCommitteeApi, mediaUrl } from '../api/siteApi';
+import { getCommitteeApi } from '../api/siteApi';
+import { MemberCard } from '../components/site/ContentViews';
 import { Async } from '../components/ui/Async';
-import { Avatar } from '../components/ui/Avatar';
-import { Badge } from '../components/ui/Badge';
-import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -59,27 +57,11 @@ export default function CommitteePage() {
                 <EmptyState title="No members listed for this term" />
               ) : (
                 <ul className="m-0 grid list-none gap-3.5 p-0 [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
-                  {d.members.map((m) => {
-                    const image = mediaUrl(m.imageMediaId);
-                    return (
-                      <li key={m.id}>
-                        <Card className="flex h-full gap-3.5">
-                          {image ? (
-                            <img src={image} alt="" loading="lazy" className="h-14 w-14 shrink-0 rounded-full object-cover" />
-                          ) : (
-                            <Avatar name={m.name} size="lg" />
-                          )}
-                          <div className="min-w-0">
-                            <h2 className="text-[15px] font-semibold leading-snug">{m.name}</h2>
-                            <div className="mt-0.5">
-                              <Badge tone="accent">{m.position}</Badge>
-                            </div>
-                            {m.bio && <p className="mt-2 text-[13px] text-text-muted">{m.bio}</p>}
-                          </div>
-                        </Card>
-                      </li>
-                    );
-                  })}
+                  {d.members.map((m) => (
+                    <li key={m.id}>
+                      <MemberCard m={m} />
+                    </li>
+                  ))}
                 </ul>
               )}
             </div>

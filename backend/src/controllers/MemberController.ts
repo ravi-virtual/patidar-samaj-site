@@ -1,35 +1,25 @@
 import type { NextFunction, Request, Response } from 'express';
 import { matchedData } from 'express-validator';
 import MemberProfile from '../models/MemberProfile';
-import User from '../models/User';
 import { ErrorCodes, MemberVisibility, MembershipStatus, ResponseCodes } from '../config/constants';
 import { ApiResponse, sendError } from '../utils/apiResponse';
 import { escapeRegex } from '../utils/escapeRegex';
 import { pageParams } from '../utils/pagination';
-import { getSettings } from '../utils/settings';
-import { toDirectoryEntry, toOwnerProfile } from '../utils/memberView';
-import { writeAudit } from '../utils/audit';
+import { toDirectoryEntry } from '../utils/memberView';
 
 /**
- * Which directory entries the current visitor may see. Anonymous visitors get only entries whose
- * owner chose "public" (and only if the organisation allows a public directory); signed-in members
- * also get "members" entries. "hidden" entries are staff-only. Suspended, rejected, pending and
- * anonymised entries never appear.
+ * The public directory shows only entries marked "public" that are active and not anonymised.
+ * Everyone gets the same view (there is no member sign-in). "hidden" entries, and any legacy
+ * value other than "public", are for the office only. The whole directory is switched off with
+ * the "Members directory" public tab (routes use requireTab('directory')).
  */
-const visibleFilter = async (req: Request) => {
-  const settings = await getSettings();
-  const levels: string[] = [MemberVisibility.PUBLIC];
-  if (req.user) levels.push(MemberVisibility.MEMBERS);
-  return {
-    allowed: Boolean(req.user) || settings?.directoryPublic !== false,
-    filter: {
-      isDeleted: false,
-      membershipStatus: MembershipStatus.ACTIVE,
-      visibility: { $in: levels },
-      anonymizedAt: { $exists: false },
-    } as Record<string, unknown>,
-  };
-};
+const visibleFilter = () =>
+  ({
+    isDeleted: false,
+    membershipStatus: MembershipStatus.ACTIVE,
+    visibility: MemberVisibility.PUBLIC,
+    anonymizedAt: { $exists: false },
+  }) as Record<string, unknown>;
 
 const exactCi = (value: string) => new RegExp(`^${escapeRegex(value)}$`, 'i');
 
@@ -54,14 +44,7 @@ export const listDirectory = async (req: Request, res: Response, next: NextFunct
       sort?: string;
     }>(req, { locations: ['query'] });
 
-    const { allowed, filter } = await visibleFilter(req);
-    if (!allowed) {
-      return sendError(res, {
-        statusCode: ResponseCodes.UNAUTHORIZED,
-        message: 'Please sign in to view the member directory.',
-        code: ErrorCodes.UNAUTHORIZED,
-      });
-    }
+    const filter = visibleFilter();
 
     if (q.search) {
       const rx = new RegExp(escapeRegex(q.search), 'i');
@@ -103,14 +86,7 @@ export const listDirectory = async (req: Request, res: Response, next: NextFunct
  */
 export const listDirectoryFilters = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { allowed, filter } = await visibleFilter(req);
-    if (!allowed) {
-      return sendError(res, {
-        statusCode: ResponseCodes.UNAUTHORIZED,
-        message: 'Please sign in to view the member directory.',
-        code: ErrorCodes.UNAUTHORIZED,
-      });
-    }
+    const filter = visibleFilter();
     const [villages, cities] = await Promise.all([
       MemberProfile.distinct('village', filter),
       MemberProfile.distinct('city', filter),
@@ -139,8 +115,7 @@ export const listDirectoryFilters = async (req: Request, res: Response, next: Ne
  */
 export const getMember = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { allowed, filter } = await visibleFilter(req);
-    const profile = allowed ? await MemberProfile.findOne({ ...filter, _id: req.params.id }).lean() : null;
+    const profile = await MemberProfile.findOne({ ...visibleFilter(), _id: req.params.id }).lean();
     if (!profile) {
       return sendError(res, {
         statusCode: ResponseCodes.NOT_FOUND,
@@ -150,86 +125,6 @@ export const getMember = async (req: Request, res: Response, next: NextFunction)
     }
     return new ApiResponse(ResponseCodes.OK, 'Member fetched successfully', {
       member: toDirectoryEntry(profile),
-    }).send(res);
-  } catch (err) {
-    return next(err);
-  }
-};
-
-/**
- * @name getMyProfile
- * @file MemberController.ts
- * @param {Request} req
- * @param {Response} res
- * @description The signed-in user's own profile, including private details only they (and
- * staff with the private permission) can see.
- * @author Ravi Patel
- */
-export const getMyProfile = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const [profile, user] = await Promise.all([
-      MemberProfile.findOne({ userId: req.user?.id, isDeleted: false }).lean(),
-      User.findOne({ _id: req.user?.id, isDeleted: false }).select('phone').lean(),
-    ]);
-    return new ApiResponse(ResponseCodes.OK, 'Profile fetched successfully', {
-      profile: profile ? toOwnerProfile(profile, user?.phone) : null,
-    }).send(res);
-  } catch (err) {
-    return next(err);
-  }
-};
-
-/**
- * @name updateMyProfile
- * @file MemberController.ts
- * @param {Request} req
- * @param {Response} res
- * @description Members edit only their own details and directory visibility. Name, email, status
- * and roles can only be changed by the office. Only the listed fields are read from the request.
- * @author Ravi Patel
- */
-export const updateMyProfile = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const data = matchedData<{
-      village?: string;
-      city?: string;
-      country?: string;
-      occupation?: string;
-      kul?: string;
-      bio?: string;
-      familySize?: number;
-      phone?: string;
-      visibility?: (typeof MemberVisibility)[keyof typeof MemberVisibility];
-    }>(req, { locations: ['body'], includeOptionals: false });
-
-    const profile = await MemberProfile.findOne({ userId: req.user?.id, isDeleted: false });
-    if (!profile) {
-      return sendError(res, {
-        statusCode: ResponseCodes.NOT_FOUND,
-        message: 'No profile found for this account',
-        code: ErrorCodes.NOT_FOUND,
-      });
-    }
-
-    const { phone, ...profileData } = data;
-    profile.set(profileData);
-    await profile.save();
-    if (phone !== undefined) {
-      await User.updateOne({ _id: req.user?.id }, { $set: { phone: phone || undefined } });
-    }
-
-    if (data.visibility) {
-      await writeAudit(req, {
-        action: 'member.visibility_changed',
-        targetType: 'member',
-        targetId: profile._id,
-        metadata: { visibility: data.visibility },
-      });
-    }
-
-    const user = await User.findOne({ _id: req.user?.id }).select('phone').lean();
-    return new ApiResponse(ResponseCodes.OK, 'Profile updated', {
-      profile: toOwnerProfile(profile.toObject(), user?.phone),
     }).send(res);
   } catch (err) {
     return next(err);

@@ -8,11 +8,14 @@ import Faq from '../../src/models/Faq';
 import ImportantLink from '../../src/models/ImportantLink';
 import MediaAsset from '../../src/models/MediaAsset';
 import OrganizationSettings from '../../src/models/OrganizationSettings';
-import { AccountStatus, Roles } from '../../src/config/constants';
+import { Roles } from '../../src/config/constants';
+import { Permissions } from '../../src/config/permissions';
 import {
   DAY,
+  DRAFT_ADMIN_PERMISSIONS,
+  OPS_ADMIN_PERMISSIONS,
+  READ_ONLY_ADMIN_PERMISSIONS,
   ORIGIN,
-  PASSWORD,
   anon,
   connectTestDb,
   disconnectTestDb,
@@ -45,7 +48,7 @@ describe('public home', () => {
     await ImportantLink.create({ label: 'Public form', url: 'https://example.org', status: 'published' });
     await ImportantLink.create({ label: 'Draft link', url: 'https://example.org', status: 'draft' });
     await makeProfile({ displayName: 'Highlight Public', highlighted: true, visibility: 'public' });
-    await makeProfile({ displayName: 'Highlight Members', highlighted: true, visibility: 'members' });
+    await makeProfile({ displayName: 'Highlight Hidden', highlighted: true, visibility: 'hidden' });
     await makeProfile({ displayName: 'Not Highlighted', highlighted: false });
 
     const res = await anon().get('/api/public/home');
@@ -60,14 +63,15 @@ describe('public home', () => {
     expect(d.settings.name).toBe('Uttar Gujarat Kadva Patidar Samaj');
   });
 
-  it('shows members-level highlights only to signed-in members, and no private fields to anyone', async () => {
-    await makeProfile({ displayName: 'Highlight Members', highlighted: true, visibility: 'members', phone: '+91 98250 12345', familySize: 5 });
-    expect((await anon().get('/api/public/home')).body.data.memberHighlights).toHaveLength(0);
-    const { client } = await signInAs(Roles.MEMBER);
-    const res = await client.get('/api/public/home');
-    expect(res.body.data.memberHighlights).toHaveLength(1);
+  it('shows only public highlights to everyone, and no private fields', async () => {
+    await makeProfile({ displayName: 'Highlight Hidden', highlighted: true, visibility: 'hidden', phone: '+91 98250 12345', familySize: 5 });
+    await makeProfile({ displayName: 'Highlight Public', highlighted: true, visibility: 'public', phone: '+91 98250 54321', familySize: 3 });
+    const res = await anon().get('/api/public/home');
+    expect(res.body.data.memberHighlights.map((m: { name: string }) => m.name)).toEqual(['Highlight Public']);
     expect(JSON.stringify(res.body.data.memberHighlights)).not.toMatch(/98250|familySize|phone/);
-    expect(JSON.stringify(res.body)).not.toContain('98250'); // the member's number appears nowhere
+    expect(JSON.stringify(res.body)).not.toContain('98250');
+    const { client } = await signInAs(Roles.SUPER_ADMIN);
+    expect((await client.get('/api/public/home')).body.data.memberHighlights).toHaveLength(1);
   });
 
   it('works on an empty site', async () => {
@@ -80,33 +84,35 @@ describe('public home', () => {
     await makeEvent({ title: 'E' + 'vent title', featured: true });
     await makeAnnouncement();
     const dump = JSON.stringify((await anon().get('/api/public/home')).body);
-    expect(dump).not.toMatch(/createdBy|updatedBy|isDeleted|registeredCount|passwordHash|ipHash/);
+    expect(dump).not.toMatch(/createdBy|updatedBy|isDeleted|passwordHash|ipHash/);
   });
 });
 
 describe('organisation settings', () => {
   it('serves public settings with defaults when nothing has been configured', async () => {
     const res = await anon().get('/api/public/settings');
-    expect(res.body.data.settings).toMatchObject({ registrationOpen: true, directoryPublic: true, themeDefault: 'system', logoUrl: null });
+    expect(res.body.data.settings).toMatchObject({ themeDefault: 'system', logoUrl: null });
+    expect(res.body.data.settings.publicTabs).toEqual({
+      about: true, history: true, committee: true, faq: true, links: true, directory: true, events: true, news: true, contact: true,
+    });
+    expect(JSON.stringify(res.body)).not.toMatch(/registrationOpen|directoryPublic/);
     expect(JSON.stringify(res.body)).not.toMatch(/_id|createdAt|key/);
   });
 
-  it('is editable by Admin and Super Admin only', async () => {
+  it('is editable by a Super Admin or an Admin granted settings.manage, nobody else', async () => {
     expect((await anon().get('/api/admin/settings')).status).toBe(401);
-    for (const role of [Roles.MEMBER, Roles.VIEWER, Roles.EDITOR]) {
-      const { client } = await signInAs(role);
-      expect((await client.get('/api/admin/settings')).status, role).toBe(403);
-      expect((await client.patch('/api/admin/settings').send({ name: 'Hijacked' })).status, role).toBe(403);
-    }
-    for (const role of [Roles.ADMIN, Roles.SUPER_ADMIN]) {
-      const { client } = await signInAs(role);
+    const { client: plain } = await signInAs(Roles.ADMIN, { permissions: DRAFT_ADMIN_PERMISSIONS });
+    expect((await plain.get('/api/admin/settings')).status).toBe(403);
+    expect((await plain.patch('/api/admin/settings').send({ name: 'Hijacked' })).status).toBe(403);
+    for (const extra of [{ permissions: [Permissions.SETTINGS_MANAGE] }, undefined]) {
+      const { client } = await signInAs(extra ? Roles.ADMIN : Roles.SUPER_ADMIN, extra);
       expect((await client.get('/api/admin/settings')).status).toBe(200);
     }
     expect((await anon().get('/api/public/settings')).body.data.settings.name).not.toBe('Hijacked');
   });
 
   it('updates details, contact info and social links, and the public site follows', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: [Permissions.SETTINGS_MANAGE] });
     const res = await client.patch('/api/admin/settings').send({
       name: 'Uttar Gujarat Kadva Patidar Samaj',
       tagline: 'One family of Maa Umiya',
@@ -126,7 +132,7 @@ describe('organisation settings', () => {
   });
 
   it('validates input: markup, unsafe links, unknown theme, bad email', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: [Permissions.SETTINGS_MANAGE] });
     for (const body of [
       { name: '<script>x</script>' },
       { contact: { email: 'not-an-email' } },
@@ -134,7 +140,8 @@ describe('organisation settings', () => {
       { socialLinks: [{ label: 'Bad', url: 'data:text/html,x' }] },
       { socialLinks: Array.from({ length: 9 }, () => ({ label: 'x', url: 'https://example.org' })) },
       { themeDefault: 'neon' },
-      { registrationOpen: 'maybe' },
+      { publicTabs: { events: 'maybe' } },
+      { publicTabs: { registration: true } },
       { logoMediaId: 'not-an-id' },
     ]) {
       expect((await client.patch('/api/admin/settings').send(body)).status, JSON.stringify(body)).toBe(400);
@@ -142,7 +149,7 @@ describe('organisation settings', () => {
   });
 
   it('checks the logo is an existing image', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: [Permissions.SETTINGS_MANAGE] });
     const doc = await MediaAsset.create({ storedName: 'a.pdf', originalName: 'a.pdf', mimeType: 'application/pdf', size: 1, kind: 'document' });
     const img = await MediaAsset.create({ storedName: 'a.png', originalName: 'a.png', mimeType: 'image/png', size: 1, kind: 'image' });
     expect((await client.patch('/api/admin/settings').send({ logoMediaId: doc._id })).status).toBe(400);
@@ -153,7 +160,7 @@ describe('organisation settings', () => {
   });
 
   it('ignores fields it does not own', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: [Permissions.SETTINGS_MANAGE] });
     await client.patch('/api/admin/settings').send({ key: 'other', _id: 'x', mongoUri: 'mongodb://evil', sessionSecret: 'x', tagline: 'Fine' });
     const docs = await OrganizationSettings.find().lean();
     expect(docs).toHaveLength(1);
@@ -161,22 +168,23 @@ describe('organisation settings', () => {
     expect(JSON.stringify(docs[0])).not.toMatch(/evil|sessionSecret/);
   });
 
-  it('closing registration blocks new sign-ups, reopening restores them, and the change is audited', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
-    const register = () =>
-      anon().post('/api/auth/register').set('Origin', ORIGIN).send({
-        name: 'Late Joiner', email: `late${Math.random().toString(36).slice(2)}@example.test`,
-        password: PASSWORD, confirmPassword: PASSWORD, acknowledge: true,
-      });
+  it('switches public tabs (partial updates), audits what changed and rejects unknown tabs', async () => {
+    const { client } = await signInAs(Roles.ADMIN, { permissions: [Permissions.SETTINGS_MANAGE] });
+    const tabs = async () => (await anon().get('/api/public/settings')).body.data.settings.publicTabs;
 
-    await client.patch('/api/admin/settings').send({ registrationOpen: false });
-    expect((await register()).status).toBe(403);
-    expect((await anon().get('/api/public/settings')).body.data.settings.registrationOpen).toBe(false);
-    await client.patch('/api/admin/settings').send({ registrationOpen: true });
-    expect((await register()).status).toBe(201);
+    expect((await client.patch('/api/admin/settings').send({ publicTabs: { events: false } })).status).toBe(200);
+    expect(await tabs()).toMatchObject({ events: false, news: true, directory: true });
+    const res = await client.patch('/api/admin/settings').send({ publicTabs: { news: false, events: false } });
+    expect(res.body.data.settings.publicTabs).toMatchObject({ events: false, news: false, about: true });
+    expect((await client.get('/api/admin/settings')).body.data.settings.publicTabs.news).toBe(false);
+    expect((await client.patch('/api/admin/settings').send({ publicTabs: { registration: false } })).status).toBe(400);
+    expect((await client.patch('/api/admin/settings').send({ publicTabs: { faq: 'no' } })).status).toBe(400);
 
     const entries = await AuditLog.find({ action: 'settings.updated' }).sort({ createdAt: 1 }).lean();
-    expect(entries[0]?.metadata).toMatchObject({ registrationOpen: { from: true, to: false } });
+    expect(entries).toHaveLength(2);
+    expect(entries[0]?.metadata).toMatchObject({ publicTabs: { events: { from: true, to: false } } });
+    // Only tabs that actually changed are recorded.
+    expect(entries[1]?.metadata?.publicTabs).toEqual({ news: { from: true, to: false } });
   });
 });
 
@@ -185,21 +193,19 @@ describe('dashboard', () => {
     await makeProfile({ membershipStatus: 'active' });
     await makeProfile({ membershipStatus: 'active' });
     await makeProfile({ membershipStatus: 'inactive' });
-    await makeUser({ role: Roles.MEMBER, status: AccountStatus.PENDING });
-    await makeUser({ role: Roles.MEMBER, status: AccountStatus.PENDING });
-    await makeEvent({ registeredCount: 7 });
-    await makeEvent({ registeredCount: 3 });
-    await makeEvent({ status: 'draft', registeredCount: 50 });
-    await makeEvent({ startsAt: new Date(Date.now() - DAY), registeredCount: 99 });
+    await makeEvent();
+    await makeEvent();
+    await makeEvent({ status: 'draft' });
+    await makeEvent({ startsAt: new Date(Date.now() - DAY) });
     await makeAnnouncement();
     await makeAnnouncement({ status: 'draft' });
     await ContactMessage.create({ name: 'A B', email: 'a@b.co', message: 'A message long enough.', status: 'new' });
     await ContactMessage.create({ name: 'C D', email: 'c@d.co', message: 'Another message long enough.', status: 'resolved' });
   };
 
-  it('requires staff', async () => {
+  it('requires the dashboard.view permission', async () => {
     expect((await anon().get('/api/admin/dashboard')).status).toBe(401);
-    const { client } = await signInAs(Roles.MEMBER);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: [] });
     expect((await client.get('/api/admin/dashboard')).status).toBe(403);
   });
 
@@ -209,27 +215,25 @@ describe('dashboard', () => {
     const s = (await client.get('/api/admin/dashboard')).body.data.stats;
     expect(s).toMatchObject({
       totalMembers: 2,
-      pendingRegistrations: 2,
       upcomingEvents: 2,
-      eventRsvps: 10,
       publishedAnnouncements: 1,
       unreadContactMessages: 1,
     });
     expect(Array.isArray(s.recentActivity)).toBe(true);
   });
 
-  it('gives a Viewer only what their permissions allow: no contact counts, no activity', async () => {
+  it('gives a read-only admin only what their permissions allow: no contact counts, no activity', async () => {
     await seed();
-    const { client } = await signInAs(Roles.VIEWER);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: READ_ONLY_ADMIN_PERMISSIONS });
     const s = (await client.get('/api/admin/dashboard')).body.data.stats;
     expect(s).toMatchObject({ totalMembers: 2, upcomingEvents: 2, publishedAnnouncements: 1 });
     expect(s).not.toHaveProperty('unreadContactMessages');
     expect(s).not.toHaveProperty('recentActivity');
   });
 
-  it('gives an Editor event and announcement figures but no member or contact data', async () => {
+  it('gives a drafting admin event and announcement figures but no member or contact data', async () => {
     await seed();
-    const { client } = await signInAs(Roles.EDITOR);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: DRAFT_ADMIN_PERMISSIONS });
     const s = (await client.get('/api/admin/dashboard')).body.data.stats;
     expect(s).toHaveProperty('upcomingEvents');
     expect(s).toHaveProperty('publishedAnnouncements');
@@ -238,9 +242,9 @@ describe('dashboard', () => {
     }
   });
 
-  it('gives Admin contact counts but not the activity feed', async () => {
+  it('gives an operations admin contact counts but not the activity feed', async () => {
     await seed();
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const s = (await client.get('/api/admin/dashboard')).body.data.stats;
     expect(s.unreadContactMessages).toBe(1);
     expect(s).not.toHaveProperty('recentActivity');
@@ -257,12 +261,14 @@ describe('dashboard', () => {
 });
 
 describe('audit log viewer', () => {
-  it('is for Super Admin only', async () => {
+  it('needs audit.read: the Super Admin has it, an admin only when it is selected', async () => {
     expect((await anon().get('/api/admin/audit')).status).toBe(401);
-    for (const role of [Roles.MEMBER, Roles.VIEWER, Roles.EDITOR, Roles.ADMIN]) {
-      const { client } = await signInAs(role);
-      expect((await client.get('/api/admin/audit')).status, role).toBe(403);
+    for (const permissions of [[], OPS_ADMIN_PERMISSIONS]) {
+      const { client } = await signInAs(Roles.ADMIN, { permissions });
+      expect((await client.get('/api/admin/audit')).status).toBe(403);
     }
+    const { client: granted } = await signInAs(Roles.ADMIN, { permissions: ['audit.read'] });
+    expect((await granted.get('/api/admin/audit')).status).toBe(200);
     const { client } = await signInAs(Roles.SUPER_ADMIN);
     expect((await client.get('/api/admin/audit')).status).toBe(200);
   });
@@ -270,7 +276,7 @@ describe('audit log viewer', () => {
   it('lists newest first with actor details, and filters by action, outcome, actor and date', async () => {
     const { user, client } = await signInAs(Roles.SUPER_ADMIN);
     await client.post('/api/admin/announcements').send({ title: 'Audit One', body: 'text' });
-    await anon().post('/api/auth/login').set('Origin', ORIGIN).send({ email: user.email, password: 'wrong-Password-1' });
+    await anon().post('/api/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: 'wrong-Password-1' });
 
     const all = await client.get('/api/admin/audit');
     expect(all.body.data.totalCount).toBeGreaterThanOrEqual(3);
@@ -318,42 +324,29 @@ describe('global search', () => {
   it('finds published content across types and respects visibility', async () => {
     await makeEvent({ title: 'Diwali Dinner', venue: 'Main Hall' });
     await makeEvent({ title: 'Diwali Draft', status: 'draft' });
-    await makeAnnouncement({ title: 'Diwali registrations open' });
+    await makeAnnouncement({ title: 'Diwali dinner details' });
     await makeAnnouncement({ title: 'Diwali secret draft', status: 'draft' });
     await makeAnnouncement({ title: 'Diwali later', publishAt: new Date(Date.now() + DAY) });
     await Faq.create({ question: 'Is Diwali dinner free?', answer: 'Children under five eat free.', status: 'published' });
     await Faq.create({ question: 'Diwali hidden?', answer: 'x', status: 'draft' });
     await ImportantLink.create({ label: 'Diwali booking form', url: 'https://example.org', status: 'published' });
     await makeProfile({ displayName: 'Diwali Patel', visibility: 'public' });
-    await makeProfile({ displayName: 'Diwali Members', visibility: 'members' });
     await makeProfile({ displayName: 'Diwali Hidden', visibility: 'hidden' });
 
     const res = await anon().get('/api/search?q=diwali');
     expect(res.status).toBe(200);
     const r = res.body.data.results;
     expect(r.events.map((e: { title: string }) => e.title)).toEqual(['Diwali Dinner']);
-    expect(r.announcements.map((a: { title: string }) => a.title)).toEqual(['Diwali registrations open']);
+    expect(r.announcements.map((a: { title: string }) => a.title)).toEqual(['Diwali dinner details']);
     expect(r.faqs).toHaveLength(1);
     expect(r.links).toHaveLength(1);
     expect(r.members.map((m: { title: string }) => m.title)).toEqual(['Diwali Patel']);
-
-    const { client } = await signInAs(Roles.MEMBER);
-    const signedIn = (await client.get('/api/search?q=diwali')).body.data.results;
-    expect(signedIn.members.map((m: { title: string }) => m.title).sort()).toEqual(['Diwali Members', 'Diwali Patel']);
   });
 
   it('never returns private fields for members', async () => {
     await makeProfile({ displayName: 'Searchable Person', phone: '+91 98250 55555', familySize: 9, visibility: 'public' });
     const dump = JSON.stringify((await anon().get('/api/search?q=searchable')).body);
     expect(dump).not.toMatch(/98250|familySize|phone/);
-  });
-
-  it('honours the organisation switch for the public directory', async () => {
-    await makeProfile({ displayName: 'Directory Person', visibility: 'public' });
-    await OrganizationSettings.create({ key: 'main', directoryPublic: false });
-    expect((await anon().get('/api/search?q=directory')).body.data.results.members).toHaveLength(0);
-    const { client } = await signInAs(Roles.MEMBER);
-    expect((await client.get('/api/search?q=directory')).body.data.results.members).toHaveLength(1);
   });
 
   it('matches text literally and validates the query', async () => {
@@ -379,8 +372,8 @@ describe('global search', () => {
 });
 
 describe('sessions across features', () => {
-  it('a suspended staff account loses dashboard access at once', async () => {
-    const staff = await makeUser({ role: Roles.ADMIN });
+  it('a suspended admin loses dashboard access at once', async () => {
+    const staff = await makeUser({ role: Roles.ADMIN, permissions: ['dashboard.view'] });
     const client = await signIn(staff.email);
     expect((await client.get('/api/admin/dashboard')).status).toBe(200);
     const { client: sa } = await signInAs(Roles.SUPER_ADMIN);

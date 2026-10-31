@@ -1,4 +1,8 @@
 // Single source of truth for authorization. Mirrors docs/permissions.md — update both together.
+//
+// There are only two roles. The Super Admin always has every permission. An Admin has NO default
+// permissions: exactly the list the Super Admin ticked for that account (stored on the user as
+// `permissions`) applies.
 import { Roles, type Role } from './constants';
 
 export const Permissions = {
@@ -8,8 +12,6 @@ export const Permissions = {
   MEMBERS_READ_PRIVATE: 'members.read.private',
   MEMBERS_CREATE: 'members.create',
   MEMBERS_UPDATE: 'members.update',
-  MEMBERS_APPROVE: 'members.approve',
-  MEMBERS_SUSPEND: 'members.suspend',
   MEMBERS_EXPORT: 'members.export',
   MEMBERS_ANONYMIZE: 'members.anonymize',
 
@@ -18,10 +20,6 @@ export const Permissions = {
   EVENTS_UPDATE: 'events.update',
   EVENTS_PUBLISH: 'events.publish',
   EVENTS_DELETE: 'events.delete',
-  EVENTS_RSVP: 'events.rsvp',
-  REGISTRATIONS_READ: 'registrations.read',
-  REGISTRATIONS_MANAGE: 'registrations.manage',
-  REGISTRATIONS_EXPORT: 'registrations.export',
 
   ANNOUNCEMENTS_READ: 'announcements.read',
   ANNOUNCEMENTS_CREATE: 'announcements.create',
@@ -38,108 +36,59 @@ export const Permissions = {
   CONTACTS_ASSIGN: 'contacts.assign',
   CONTACTS_RESOLVE: 'contacts.resolve',
 
+  SETTINGS_MANAGE: 'settings.manage',
+  AUDIT_READ: 'audit.read',
+
+  // Managing admin accounts and security. All except USERS_RESET_PASSWORD are Super-Admin-only and
+  // never selectable; users.reset_password can be ticked for an admin so they can set another
+  // admin's password directly.
   USERS_READ: 'users.read',
   USERS_MANAGE: 'users.manage',
   USERS_RESET_PASSWORD: 'users.reset_password',
   ROLES_MANAGE: 'roles.manage',
   SESSIONS_REVOKE: 'sessions.revoke',
-
-  SETTINGS_MANAGE: 'settings.manage',
   SETTINGS_SECURITY: 'settings.security',
-  AUDIT_READ: 'audit.read',
 } as const;
 
 export type Permission = (typeof Permissions)[keyof typeof Permissions];
 
-export const ALL_PERMISSIONS = Object.values(Permissions) as Permission[];
-
 const P = Permissions;
 
-/** Default permissions per role. "grant only" items in the matrix are absent here on purpose. */
-export const RolePermissions: Record<Role, readonly Permission[]> = {
-  [Roles.VIEWER]: [
-    P.DASHBOARD_VIEW,
-    P.MEMBERS_READ,
-    P.EVENTS_READ,
-    P.ANNOUNCEMENTS_READ,
-    P.CONTENT_READ,
-  ],
-
-  [Roles.MEMBER]: [P.MEMBERS_READ, P.EVENTS_READ, P.EVENTS_RSVP],
-
-  [Roles.EDITOR]: [
-    P.DASHBOARD_VIEW,
-    P.EVENTS_READ,
-    P.EVENTS_CREATE,
-    P.EVENTS_UPDATE,
-    P.EVENTS_RSVP,
-    P.ANNOUNCEMENTS_READ,
-    P.ANNOUNCEMENTS_CREATE,
-    P.ANNOUNCEMENTS_UPDATE,
-    P.CONTENT_READ,
-    P.CONTENT_MANAGE, // drafts only; publishing needs CONTENT_PUBLISH (grant)
-    P.MEDIA_UPLOAD,
-  ],
-
-  [Roles.ADMIN]: [
-    P.DASHBOARD_VIEW,
-    P.MEMBERS_READ,
-    P.MEMBERS_CREATE,
-    P.MEMBERS_UPDATE,
-    P.MEMBERS_APPROVE,
-    P.MEMBERS_SUSPEND,
-    P.EVENTS_READ,
-    P.EVENTS_CREATE,
-    P.EVENTS_UPDATE,
-    P.EVENTS_PUBLISH,
-    P.EVENTS_DELETE,
-    P.EVENTS_RSVP,
-    P.REGISTRATIONS_READ,
-    P.REGISTRATIONS_MANAGE,
-    P.REGISTRATIONS_EXPORT,
-    P.ANNOUNCEMENTS_READ,
-    P.ANNOUNCEMENTS_CREATE,
-    P.ANNOUNCEMENTS_UPDATE,
-    P.ANNOUNCEMENTS_PUBLISH,
-    P.ANNOUNCEMENTS_DELETE,
-    P.CONTENT_READ,
-    P.CONTENT_MANAGE,
-    P.CONTENT_PUBLISH,
-    P.MEDIA_UPLOAD,
-    P.CONTACTS_READ,
-    P.CONTACTS_ASSIGN,
-    P.CONTACTS_RESOLVE,
-    P.USERS_READ,
-    P.USERS_RESET_PASSWORD,
-    P.SETTINGS_MANAGE,
-  ],
-
-  [Roles.SUPER_ADMIN]: ALL_PERMISSIONS,
-};
-
-/** Permissions a Super Admin may grant individually on top of a role. */
-export const GRANTABLE_PERMISSIONS: readonly Permission[] = [
-  P.EVENTS_PUBLISH,
-  P.ANNOUNCEMENTS_PUBLISH,
-  P.CONTENT_PUBLISH,
-  P.MEMBERS_EXPORT,
+/** Held by the Super Admin only; cannot be given to an admin. */
+export const SUPERADMIN_ONLY_PERMISSIONS: readonly Permission[] = [
+  P.USERS_READ,
+  P.USERS_MANAGE,
+  P.ROLES_MANAGE,
+  P.SESSIONS_REVOKE,
+  P.SETTINGS_SECURITY,
 ];
+
+export const ALL_PERMISSIONS = Object.values(Permissions) as Permission[];
+
+/** The catalog the Super Admin picks from when creating or editing an admin. */
+export const SELECTABLE_PERMISSIONS: readonly Permission[] = ALL_PERMISSIONS.filter(
+  (p) => !SUPERADMIN_ONLY_PERMISSIONS.includes(p),
+);
 
 export const isPermission = (value: unknown): value is Permission =>
   typeof value === 'string' && (ALL_PERMISSIONS as string[]).includes(value);
 
+export const isSelectablePermission = (value: unknown): value is Permission =>
+  typeof value === 'string' && (SELECTABLE_PERMISSIONS as readonly string[]).includes(value);
+
 interface PermissionSubject {
   role: Role;
-  extraPermissions?: readonly string[];
+  permissions?: readonly string[];
 }
 
-/** Role defaults plus individually granted permissions. Unknown values are ignored. */
+/**
+ * Effective permissions. Super Admin: everything. Admin: only the selected permissions; unknown
+ * values and Super-Admin-only values are ignored, so a tampered record cannot gain them.
+ */
 export const permissionsFor = (subject: PermissionSubject): Permission[] => {
-  const set = new Set<Permission>(RolePermissions[subject.role] ?? []);
-  for (const extra of subject.extraPermissions ?? []) {
-    if (isPermission(extra) && GRANTABLE_PERMISSIONS.includes(extra)) set.add(extra);
-  }
-  return [...set];
+  if (subject.role === Roles.SUPER_ADMIN) return [...ALL_PERMISSIONS];
+  if (subject.role !== Roles.ADMIN) return [];
+  return [...new Set((subject.permissions ?? []).filter(isSelectablePermission))];
 };
 
 export const hasPermissionFor = (subject: PermissionSubject, permission: Permission): boolean =>

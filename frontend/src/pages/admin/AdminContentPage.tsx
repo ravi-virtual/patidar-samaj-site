@@ -10,7 +10,7 @@ import {
   type AdminBlock,
   type ContentRow,
 } from '../../api/adminApi';
-import { ActionMenu } from '../../components/admin/ActionMenu';
+import { RowMenu } from '../../components/admin/RowActions';
 import { BlockDrawer } from '../../components/admin/BlockDrawer';
 import { blocks, resources, type BlockDef, type ResourceDef } from '../../components/admin/contentConfig';
 import { ContentFormDrawer } from '../../components/admin/ContentFormDrawer';
@@ -60,10 +60,10 @@ function BlocksPanel() {
               // Without publish rights a live block is read-only (the server enforces this too).
               const editable = can('content.manage') && (!written || block.status !== 'published' || can('content.publish'));
               return (
-                <ActionMenu
-                  label={`Actions for ${def.label}`}
+                <RowMenu
+                  name={def.label}
                   actions={[
-                    { label: written ? 'Edit' : 'Write', show: editable, onSelect: () => setEditing(def) },
+                    { label: 'Edit', kind: 'edit', show: editable, onSelect: () => setEditing(def) },
                     { label: 'Publish', show: can('content.publish') && Boolean(written) && block?.status !== 'published', onSelect: () => void run(() => blockActionApi(def.key, 'publish'), 'Published.') },
                     { label: 'Unpublish', show: can('content.publish') && block?.status === 'published', onSelect: () => void run(() => blockActionApi(def.key, 'unpublish'), 'Moved back to draft.') },
                   ]}
@@ -75,7 +75,7 @@ function BlocksPanel() {
         return (
           <>
             <DataTable caption="Page text blocks" columns={columns} rows={rows} rowKey={(r) => r.def.key} minWidth={640} />
-            <BlockDrawer def={editing} block={editing ? byKey.get(editing.key) : undefined} onClose={() => setEditing(null)} onSaved={list.retry} />
+            <BlockDrawer def={editing} block={editing ? byKey.get(editing.key) : undefined} allBlocks={data} onClose={() => setEditing(null)} onSaved={list.retry} />
           </>
         );
       }}
@@ -120,16 +120,16 @@ function ResourcePanel({ def }: { def: ResourceDef }) {
       cell: (r) => {
         const index = rows?.findIndex((x) => x.id === r.id) ?? 0;
         return (
-          <ActionMenu
-            label={`Actions for ${def.title(r)}`}
+          <RowMenu
+            name={def.title(r)}
             actions={[
-              { label: 'Edit', show: editable(r), onSelect: () => setEditing(r) },
+              { label: 'Edit', kind: 'edit', show: editable(r), onSelect: () => setEditing(r) },
               { label: 'Publish', show: publisher && r.status !== 'published', onSelect: () => void run(() => contentActionApi(def.key, r.id, 'publish'), 'Published.') },
               { label: 'Unpublish', show: publisher && r.status === 'published', onSelect: () => void run(() => contentActionApi(def.key, r.id, 'unpublish'), 'Moved back to draft.') },
               { label: 'Archive', show: publisher && r.status === 'published', onSelect: () => void run(() => contentActionApi(def.key, r.id, 'archive'), 'Archived.') },
               { label: 'Move up', show: publisher && index > 0, onSelect: () => move(index, -1) },
               { label: 'Move down', show: publisher && rows !== undefined && index < rows.length - 1, onSelect: () => move(index, 1) },
-              { label: 'Delete', danger: true, show: publisher, onSelect: () => setDeleting(r) },
+              { label: 'Delete', kind: 'delete', danger: true, show: publisher, onSelect: () => setDeleting(r) },
             ]}
           />
         );

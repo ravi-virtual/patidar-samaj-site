@@ -6,14 +6,7 @@ import ContactMessage from '../models/ContactMessage';
 import Event from '../models/Event';
 import MemberProfile from '../models/MemberProfile';
 import User from '../models/User';
-import {
-  AccountStatus,
-  ContactStatus,
-  EventStatus,
-  MembershipStatus,
-  ResponseCodes,
-  Roles,
-} from '../config/constants';
+import { ContactStatus, EventStatus, MembershipStatus, ResponseCodes } from '../config/constants';
 import { Permissions } from '../config/permissions';
 import { ApiResponse } from '../utils/apiResponse';
 import { pageParams } from '../utils/pagination';
@@ -25,7 +18,7 @@ import { visibleNowFilter } from '../utils/announcementView';
  * @param {Request} req
  * @param {Response} res
  * @description Operational numbers for the admin home. Each figure is included only for staff who
- * hold the permission behind it, so a Viewer never receives data beyond their own access. Recent
+ * hold the permission behind it, so an admin never receives data beyond their own access. Recent
  * activity (who did what) needs audit.read and carries no addresses or request details.
  * @author Ravi Patel
  */
@@ -38,26 +31,15 @@ export const getDashboard = async (req: Request, res: Response, next: NextFuncti
 
     if (can(Permissions.MEMBERS_READ)) {
       jobs.push(
-        Promise.all([
-          MemberProfile.countDocuments({ isDeleted: false, membershipStatus: MembershipStatus.ACTIVE }),
-          User.countDocuments({ isDeleted: false, role: Roles.MEMBER, status: AccountStatus.PENDING }),
-        ]).then(([totalMembers, pendingRegistrations]) => {
-          out.totalMembers = totalMembers;
-          out.pendingRegistrations = pendingRegistrations;
+        MemberProfile.countDocuments({ isDeleted: false, membershipStatus: MembershipStatus.ACTIVE }).then((n) => {
+          out.totalMembers = n;
         }),
       );
     }
     if (can(Permissions.EVENTS_READ)) {
       jobs.push(
-        Promise.all([
-          Event.countDocuments({ isDeleted: false, status: EventStatus.PUBLISHED, startsAt: { $gte: now } }),
-          Event.aggregate<{ total: number }>([
-            { $match: { isDeleted: false, status: EventStatus.PUBLISHED, startsAt: { $gte: now } } },
-            { $group: { _id: null, total: { $sum: '$registeredCount' } } },
-          ]),
-        ]).then(([upcomingEvents, rsvps]) => {
-          out.upcomingEvents = upcomingEvents;
-          out.eventRsvps = rsvps[0]?.total ?? 0;
+        Event.countDocuments({ isDeleted: false, status: EventStatus.PUBLISHED, startsAt: { $gte: now } }).then((n) => {
+          out.upcomingEvents = n;
         }),
       );
     }
@@ -87,7 +69,7 @@ export const getDashboard = async (req: Request, res: Response, next: NextFuncti
             const names = new Map(actors.map((a) => [a._id, a.name]));
             out.recentActivity = entries.map((e) => ({
               action: e.action,
-              actor: e.actorId ? (names.get(e.actorId) ?? 'Former member') : 'System',
+              actor: e.actorId ? (names.get(e.actorId) ?? 'Former admin') : 'System',
               at: e.createdAt,
             }));
           }),
@@ -149,7 +131,7 @@ export const listAudit = async (req: Request, res: Response, next: NextFunction)
         id: e._id,
         action: e.action,
         outcome: e.outcome,
-        actor: e.actorId ? { id: e.actorId, name: names.get(e.actorId) ?? 'Former member', role: e.actorRole ?? null } : null,
+        actor: e.actorId ? { id: e.actorId, name: names.get(e.actorId) ?? 'Former admin', role: e.actorRole ?? null } : null,
         targetType: e.targetType ?? null,
         targetId: e.targetId ?? null,
         metadata: e.metadata ?? null,

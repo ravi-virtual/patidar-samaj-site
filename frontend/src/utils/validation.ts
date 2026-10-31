@@ -24,29 +24,6 @@ export const loginSchema = z.object({
 });
 export type LoginForm = z.infer<typeof loginSchema>;
 
-export const registerSchema = z
-  .object({
-    name: z
-      .string()
-      .trim()
-      .min(2, 'Name must be at least 2 characters')
-      .max(100, 'Name must be at most 100 characters')
-      .refine((v) => !/[<>]/.test(v), 'Name contains invalid characters'),
-    email: emailRule,
-    phone: z
-      .string()
-      .trim()
-      .refine((v) => v === '' || /^\+?[0-9 ()-]{7,20}$/.test(v), 'Enter a valid phone number'),
-    password: passwordRule,
-    confirmPassword: z.string().min(1, 'Please confirm your password'),
-    acknowledge: z.boolean().refine((v) => v, 'You must confirm to continue'),
-  })
-  .refine((v) => v.password === v.confirmPassword, {
-    path: ['confirmPassword'],
-    message: 'Passwords do not match',
-  });
-export type RegisterForm = z.infer<typeof registerSchema>;
-
 export const forgotPasswordSchema = z.object({ email: emailRule });
 export type ForgotPasswordForm = z.infer<typeof forgotPasswordSchema>;
 

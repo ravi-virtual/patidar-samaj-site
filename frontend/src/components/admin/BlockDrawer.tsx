@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { useFieldArray, useForm } from 'react-hook-form';
+import { useEffect, useState } from 'react';
+import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { Plus, Trash2 } from 'lucide-react';
 import { saveBlockApi, type AdminBlock } from '../../api/adminApi';
 import { getErrorMessage } from '../../api/axiosInstance';
@@ -12,6 +12,7 @@ import { TextField } from '../ui/TextField';
 import type { BlockDef } from './contentConfig';
 import { FormDrawer, FullWidth } from './FormDrawer';
 import { MediaPicker } from './MediaPicker';
+import { BlockPreview, PreviewButton } from './ContentPreview';
 
 interface Values {
   title: string;
@@ -31,18 +32,23 @@ const fromBlock = (def: BlockDef, b: AdminBlock | undefined): Values => ({
 export function BlockDrawer({
   def,
   block,
+  allBlocks,
   onClose,
   onSaved,
 }: {
   def: BlockDef | null;
   block: AdminBlock | undefined;
+  /** All saved blocks, so a page preview can show the edited block among its neighbours. */
+  allBlocks: AdminBlock[];
   onClose: () => void;
   onSaved: () => void;
 }) {
   const dispatch = useAppDispatch();
   const form = useForm<Values>({ defaultValues: { title: '', body: '', items: [] } });
   const { register, handleSubmit, reset, setError, control, formState } = form;
+  const values = useWatch({ control }) as Values;
   const { fields, append, remove } = useFieldArray({ control, name: 'items' });
+  const [previewing, setPreviewing] = useState(false);
 
   useEffect(() => {
     if (def) reset(fromBlock(def, block));
@@ -92,7 +98,10 @@ export function BlockDrawer({
         </FullWidth>
       )}
       <FullWidth>
-        <p className="text-[13px] text-text-muted">Appears on: {def.where}.</p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[13px] text-text-muted">Appears on: {def.where}.</p>
+          <PreviewButton onClick={() => setPreviewing(true)} />
+        </div>
       </FullWidth>
       {def.title && (
         <FullWidth>
@@ -119,9 +128,9 @@ export function BlockDrawer({
                     <TextField key={f.name} label={f.label} maxLength={f.max} {...register(`items.${index}.${f.name}` as const)} />
                   ),
                 )}
-                <Button variant="ghost" size="sm" onClick={() => remove(index)}>
+                <Button variant="ghost" size="sm" onClick={() => remove(index)} aria-label={`Delete ${def.itemLabel?.toLowerCase() ?? 'item'} ${index + 1}`}>
                   <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
-                  Remove {def.itemLabel?.toLowerCase()}
+                  Delete
                 </Button>
               </div>
             ))}
@@ -134,6 +143,14 @@ export function BlockDrawer({
           </fieldset>
         </FullWidth>
       )}
+      <BlockPreview
+        open={previewing}
+        onClose={() => setPreviewing(false)}
+        def={def}
+        values={values}
+        others={allBlocks}
+        status={block && block.status !== 'empty' ? block.status : 'draft'}
+      />
     </FormDrawer>
   );
 }

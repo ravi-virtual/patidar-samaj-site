@@ -10,6 +10,9 @@ import {
   makeAnnouncement,
   resetDb,
   signInAs,
+  READ_ONLY_ADMIN_PERMISSIONS,
+  DRAFT_ADMIN_PERMISSIONS,
+  OPS_ADMIN_PERMISSIONS,
 } from '../helpers';
 
 beforeAll(connectTestDb);
@@ -102,7 +105,7 @@ describe('announcement management permissions', () => {
   it('closes every admin endpoint to visitors and members', async () => {
     const item = await makeAnnouncement({ status: 'draft' });
     expect((await anon().get('/api/admin/announcements')).status).toBe(401);
-    const { client: member } = await signInAs(Roles.MEMBER);
+    const { client: member } = await signInAs(Roles.ADMIN, { permissions: [] });
     for (const res of await Promise.all([
       member.get('/api/admin/announcements'),
       member.post('/api/admin/announcements').send({ title: 'Nope', body: 'x' }),
@@ -116,7 +119,7 @@ describe('announcement management permissions', () => {
 
   it('gives Viewers read-only access', async () => {
     const item = await makeAnnouncement({ status: 'draft' });
-    const { client } = await signInAs(Roles.VIEWER);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: READ_ONLY_ADMIN_PERMISSIONS });
     expect((await client.get('/api/admin/announcements')).body.data.totalCount).toBe(1);
     expect((await client.get(`/api/admin/announcements/${item._id}`)).status).toBe(200);
     for (const res of await Promise.all([
@@ -133,7 +136,7 @@ describe('announcement management permissions', () => {
   it('lets Editors write drafts but not publish, pin, feature, delete or edit live items', async () => {
     const draft = await makeAnnouncement({ status: 'draft', title: 'Editor Draft' });
     const live = await makeAnnouncement({ title: 'Live Item' });
-    const { user, client } = await signInAs(Roles.EDITOR);
+    const { user, client } = await signInAs(Roles.ADMIN, { permissions: DRAFT_ADMIN_PERMISSIONS });
 
     const created = await client.post('/api/admin/announcements').send({ title: 'My Draft', body: 'Text', status: 'published', pinned: true, order: -5, createdBy: 'x' });
     expect(created.status).toBe(201);
@@ -153,7 +156,7 @@ describe('announcement management permissions', () => {
 
   it('lets an Editor with the publish permission granted do everything except delete', async () => {
     const draft = await makeAnnouncement({ status: 'draft' });
-    const { client } = await signInAs(Roles.EDITOR, { extraPermissions: ['announcements.publish'] });
+    const { client } = await signInAs(Roles.ADMIN, { permissions: [...DRAFT_ADMIN_PERMISSIONS, ...['announcements.publish']] });
     expect((await client.post(`/api/admin/announcements/${draft._id}/publish`)).status).toBe(200);
     expect((await client.post(`/api/admin/announcements/${draft._id}/pin`)).status).toBe(200);
     expect((await client.del(`/api/admin/announcements/${draft._id}`)).status).toBe(403);
@@ -162,7 +165,7 @@ describe('announcement management permissions', () => {
 
 describe('announcement lifecycle (Admin)', () => {
   it('runs create → publish → pin → archive → unpublish with the public site following each step', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const created = await client.post('/api/admin/announcements').send({ title: 'Diwali Dinner', body: 'Register by 1 November.', category: 'Event', summary: 'Register now' });
     const id = created.body.data.announcement.id as string;
     expect(titles(await anon().get('/api/announcements'))).toEqual([]);
@@ -191,7 +194,7 @@ describe('announcement lifecycle (Admin)', () => {
   });
 
   it('only pins published announcements and clears the pin on archive', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const draft = await makeAnnouncement({ status: 'draft' });
     expect((await client.post(`/api/admin/announcements/${draft._id}/pin`)).status).toBe(409);
     const live = await makeAnnouncement({ pinned: true });
@@ -200,7 +203,7 @@ describe('announcement lifecycle (Admin)', () => {
   });
 
   it('schedules publication for the future', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const draft = await makeAnnouncement({ status: 'draft', publishAt: undefined });
     const when = new Date(Date.now() + 2 * DAY).toISOString();
     const res = await client.post(`/api/admin/announcements/${draft._id}/publish`).send({ publishAt: when });
@@ -212,13 +215,13 @@ describe('announcement lifecycle (Admin)', () => {
   });
 
   it('rejects an invalid schedule date', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const draft = await makeAnnouncement({ status: 'draft', publishAt: undefined });
     expect((await client.post(`/api/admin/announcements/${draft._id}/publish`).send({ publishAt: 'next tuesday' })).status).toBe(400);
   });
 
   it('saves a new display order and ignores unknown ids', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const a = await makeAnnouncement({ title: 'First', pinned: true });
     const b = await makeAnnouncement({ title: 'Second', pinned: true });
     const c = await makeAnnouncement({ title: 'Third', pinned: true });
@@ -230,7 +233,7 @@ describe('announcement lifecycle (Admin)', () => {
   });
 
   it('soft-deletes and then hides the announcement everywhere', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const item = await makeAnnouncement({ pinned: true });
     expect((await client.del(`/api/admin/announcements/${item._id}`)).status).toBe(200);
     expect((await Announcement.findById(item._id).lean())?.isDeleted).toBe(true);
@@ -240,7 +243,7 @@ describe('announcement lifecycle (Admin)', () => {
   });
 
   it('filters the staff list by status, category and search', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     await makeAnnouncement({ title: 'Draft Notice', status: 'draft' });
     await makeAnnouncement({ title: 'Live Seva', category: 'Seva' });
     await makeAnnouncement({ title: 'Archived Thing', status: 'archived' });
@@ -251,7 +254,7 @@ describe('announcement lifecycle (Admin)', () => {
   });
 
   it('validates content: plain text only, lengths and categories', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const bad = [
       { title: 'ab', body: 'text' },
       { title: 'Good title', body: '' },

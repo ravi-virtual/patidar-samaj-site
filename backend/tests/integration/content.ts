@@ -7,7 +7,9 @@ import Faq from '../../src/models/Faq';
 import ImportantLink from '../../src/models/ImportantLink';
 import MediaAsset from '../../src/models/MediaAsset';
 import { Roles } from '../../src/config/constants';
-import { anon, connectTestDb, disconnectTestDb, resetDb, signInAs } from '../helpers';
+import { anon, connectTestDb, disconnectTestDb, resetDb, signInAs, READ_ONLY_ADMIN_PERMISSIONS,
+  DRAFT_ADMIN_PERMISSIONS,
+  OPS_ADMIN_PERMISSIONS } from '../helpers';
 
 beforeAll(connectTestDb);
 afterAll(disconnectTestDb);
@@ -87,7 +89,7 @@ describe('public content', () => {
 describe('content management permissions', () => {
   it('keeps admin content endpoints closed to visitors and members', async () => {
     expect((await anon().get('/api/admin/content/faqs')).status).toBe(401);
-    const { client } = await signInAs(Roles.MEMBER);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: [] });
     for (const res of await Promise.all([
       client.get('/api/admin/content/faqs'),
       client.post('/api/admin/content/faqs').send({ question: 'Sneaky question?', answer: 'x' }),
@@ -100,7 +102,7 @@ describe('content management permissions', () => {
 
   it('gives Viewers read-only access', async () => {
     const faq = await Faq.create({ question: 'A draft question?', answer: 'Answer' });
-    const { client } = await signInAs(Roles.VIEWER);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: READ_ONLY_ADMIN_PERMISSIONS });
     expect((await client.get('/api/admin/content/faqs')).body.data.totalCount).toBe(1);
     expect((await client.get('/api/admin/content/blocks')).status).toBe(200);
     for (const res of await Promise.all([
@@ -116,7 +118,7 @@ describe('content management permissions', () => {
 
   it('lets Editors draft and edit drafts, but not publish, reorder, delete or touch live content', async () => {
     const live = await Faq.create({ question: 'A live question?', answer: 'Live answer', status: 'published' });
-    const { client } = await signInAs(Roles.EDITOR);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: DRAFT_ADMIN_PERMISSIONS });
 
     const created = await client.post('/api/admin/content/faqs').send({ question: 'Editor question?', answer: 'Draft answer', status: 'published', order: -9 });
     expect(created.status).toBe(201);
@@ -134,13 +136,13 @@ describe('content management permissions', () => {
 
   it('applies the same draft-only rule to text blocks', async () => {
     await ContentBlock.create({ key: 'about.mission', body: 'Live text', status: 'published' });
-    const { client: editor } = await signInAs(Roles.EDITOR);
+    const { client: editor } = await signInAs(Roles.ADMIN, { permissions: DRAFT_ADMIN_PERMISSIONS });
     expect((await editor.put('/api/admin/content/blocks/about.mission').send({ body: 'Hijacked' })).status).toBe(403);
     expect((await editor.put('/api/admin/content/blocks/about.vision').send({ title: 'Vision', body: 'Draft vision' })).status).toBe(200);
     expect((await editor.post('/api/admin/content/blocks/about.vision/publish')).status).toBe(403);
     expect((await ContentBlock.findOne({ key: 'about.mission' }).lean())?.body).toBe('Live text');
 
-    const { client: admin } = await signInAs(Roles.ADMIN);
+    const { client: admin } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     expect((await admin.put('/api/admin/content/blocks/about.mission').send({ body: 'Updated by admin' })).status).toBe(200);
     expect((await anon().get('/api/content/blocks/about.mission')).body.data.block.body).toBe('Updated by admin');
   });
@@ -148,7 +150,7 @@ describe('content management permissions', () => {
 
 describe('content lifecycle (Admin)', () => {
   it('creates a draft at the end of the list, publishes it, reorders and unpublishes', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const ids: string[] = [];
     for (const q of ['First question?', 'Second question?', 'Third question?']) {
       const r = await client.post('/api/admin/content/faqs').send({ question: q, answer: 'Answer' });
@@ -178,7 +180,7 @@ describe('content lifecycle (Admin)', () => {
   });
 
   it('soft-deletes and hides an item', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const faq = await Faq.create({ question: 'To be deleted?', answer: 'x', status: 'published' });
     expect((await client.del(`/api/admin/content/faqs/${faq._id}`)).status).toBe(200);
     expect((await Faq.findById(faq._id).lean())?.isDeleted).toBe(true);
@@ -187,8 +189,8 @@ describe('content lifecycle (Admin)', () => {
   });
 
   it('filters and searches the staff list', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
-    await Faq.create({ question: 'How do I RSVP?', answer: 'Log in first', status: 'published' });
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
+    await Faq.create({ question: 'How do I register?', answer: 'Log in first', status: 'published' });
     await Faq.create({ question: 'Who can join?', answer: 'Any family', status: 'draft' });
     expect((await client.get('/api/admin/content/faqs?status=draft')).body.data.items[0].question).toBe('Who can join?');
     expect((await client.get('/api/admin/content/faqs?search=log%20in')).body.data.totalCount).toBe(1);
@@ -198,7 +200,7 @@ describe('content lifecycle (Admin)', () => {
   });
 
   it('accepts only the fields that belong to each content type', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const r = await client.post('/api/admin/content/faqs').send({ question: 'Real question?', answer: 'Real', url: 'https://evil.example', isDeleted: true, createdBy: 'x', _id: 'x' });
     expect(r.status).toBe(201);
     const stored = await Faq.findById(r.body.data.item.id).lean();
@@ -207,7 +209,7 @@ describe('content lifecycle (Admin)', () => {
   });
 
   it('validates text: plain only, with lengths', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     for (const body of [
       { question: 'Hi', answer: 'x' },
       { question: 'A proper question?', answer: '' },
@@ -224,7 +226,7 @@ describe('content lifecycle (Admin)', () => {
 
 describe('important links', () => {
   it('accepts http(s) addresses and rejects unsafe or malformed ones', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const post = (url: string) => client.post('/api/admin/content/links').send({ label: 'A link here', url, category: 'Forms' });
     expect((await post('https://example.org/form.pdf')).status).toBe(201);
     expect((await post('http://example.org/page?x=1')).status).toBe(201);
@@ -247,7 +249,7 @@ describe('important links', () => {
   });
 
   it('requires a web address or a document, but not both, and checks the document exists', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     expect((await client.post('/api/admin/content/links').send({ label: 'Nothing here' })).status).toBe(400);
     const pdf = await asset('document');
     const img = await asset('image');
@@ -259,7 +261,7 @@ describe('important links', () => {
   });
 
   it('checks the URL again when an update changes it', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const link = await ImportantLink.create({ label: 'Existing link', url: 'https://example.org' });
     expect((await client.patch(`/api/admin/content/links/${link._id}`).send({ url: 'javascript:alert(1)' })).status).toBe(400);
     expect((await ImportantLink.findById(link._id).lean())?.url).toBe('https://example.org');
@@ -268,7 +270,7 @@ describe('important links', () => {
 
 describe('committee management', () => {
   it('creates terms and members, keeping exactly one current term', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const a = await client.post('/api/admin/content/committee-terms').send({ label: '2022–2024', startYear: 2022, endYear: 2024, isCurrent: true });
     const b = await client.post('/api/admin/content/committee-terms').send({ label: '2025–2027', startYear: 2025, endYear: 2027 });
     expect(a.status).toBe(201);
@@ -283,7 +285,7 @@ describe('committee management', () => {
   });
 
   it('validates years and requires an existing term for a member', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     expect((await client.post('/api/admin/content/committee-terms').send({ label: 'Bad', startYear: 2027, endYear: 2025 })).status).toBe(400);
     expect((await client.post('/api/admin/content/committee-terms').send({ label: 'Bad', startYear: 1500, endYear: 1600 })).status).toBe(400);
     expect((await client.post('/api/admin/content/committee-members').send({ termId: '11111111-1111-4111-8111-111111111111', name: 'Orphan', position: 'Chair' })).status).toBe(400);
@@ -292,7 +294,7 @@ describe('committee management', () => {
   });
 
   it('checks that a member’s picture is an existing image', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const term = await CommitteeTerm.create({ label: '2025–2027', startYear: 2025, endYear: 2027 });
     const pdf = await asset('document');
     const img = await asset('image');
@@ -303,7 +305,7 @@ describe('committee management', () => {
   });
 
   it('does not delete a term that still has members', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const term = await CommitteeTerm.create({ label: '2025–2027', startYear: 2025, endYear: 2027 });
     const member = await CommitteeMember.create({ termId: term._id, name: 'Real Person', position: 'Chair' });
     const res = await client.del(`/api/admin/content/committee-terms/${term._id}`);
@@ -316,7 +318,7 @@ describe('committee management', () => {
 
 describe('milestones and text blocks', () => {
   it('stores history milestones with era labels and sources', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const res = await client.post('/api/admin/content/milestones').send({ periodLabel: 'Legend', title: 'Born of Maa Uma’s clay', text: 'Community tradition holds…', sourceRef: 'PS-ARC-0001' });
     expect(res.status).toBe(201);
     await client.post(`/api/admin/content/milestones/${res.body.data.item.id}/publish`);
@@ -324,7 +326,7 @@ describe('milestones and text blocks', () => {
   });
 
   it('saves structured block items and lists unwritten blocks as empty', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const saved = await client.put('/api/admin/content/blocks/home.stats').send({
       items: [
         { value: '1,146', label: 'Families' },
@@ -345,7 +347,7 @@ describe('milestones and text blocks', () => {
   });
 
   it('rejects markup, too many items and unknown keys in blocks', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     expect((await client.put('/api/admin/content/blocks/about.mission').send({ body: '<script>x</script>' })).status).toBe(400);
     expect((await client.put('/api/admin/content/blocks/home.stats').send({ items: Array.from({ length: 21 }, () => ({ value: '1', label: 'x' })) })).status).toBe(400);
     expect((await client.put('/api/admin/content/blocks/home.stats').send({ items: [{ value: '<b>1</b>', label: 'x' }] })).status).toBe(400);

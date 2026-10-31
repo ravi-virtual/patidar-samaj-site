@@ -5,23 +5,23 @@ interface UserLike {
   _id: string;
   name: string;
   email: string;
-  phone?: string | null;
   role: Role;
   status: AccountStatusValue;
-  extraPermissions?: string[] | null;
+  permissions?: string[] | null;
   themePreference?: ThemePreference | null;
   createdAt?: Date;
   lastLoginAt?: Date | null;
+  suspendedAt?: Date | null;
 }
 
 export interface SessionUserView {
   id: string;
   name: string;
   email: string;
-  phone: string | null;
   role: Role;
   status: AccountStatusValue;
   themePreference: ThemePreference;
+  /** Effective permissions: everything for the Super Admin, the selected list for an admin. */
   permissions: Permission[];
   createdAt?: Date;
   lastLoginAt: Date | null;
@@ -31,34 +31,25 @@ export interface AdminUserView {
   id: string;
   name: string;
   email: string;
-  phone?: string | null;
   role: Role;
   status: AccountStatusValue;
-  extraPermissions: string[];
+  /** The permissions the Super Admin selected for this admin. */
+  permissions: string[];
   createdAt?: Date;
   lastLoginAt: Date | null;
-  approvedAt: Date | null;
   suspendedAt: Date | null;
 }
 
-/**
- * What staff see in account lists. The email is the account identifier, so anyone allowed to
- * manage accounts sees it; the phone number is private and only included when `includePhone`.
- */
-export const toAdminUser = (
-  user: UserLike & { approvedAt?: Date | null; suspendedAt?: Date | null },
-  includePhone: boolean,
-): AdminUserView => ({
+/** What the Super Admin sees in the admin list. Allowlist only; never spread a document. */
+export const toAdminUser = (user: UserLike): AdminUserView => ({
   id: user._id,
   name: user.name,
   email: user.email,
-  ...(includePhone ? { phone: user.phone ?? null } : {}),
   role: user.role,
   status: user.status,
-  extraPermissions: [...(user.extraPermissions ?? [])],
+  permissions: permissionsFor({ role: user.role, permissions: user.permissions ?? [] }),
   createdAt: user.createdAt,
   lastLoginAt: user.lastLoginAt ?? null,
-  approvedAt: user.approvedAt ?? null,
   suspendedAt: user.suspendedAt ?? null,
 });
 
@@ -67,11 +58,10 @@ export const toSessionUser = (user: UserLike): SessionUserView => ({
   id: user._id,
   name: user.name,
   email: user.email,
-  phone: user.phone ?? null,
   role: user.role,
   status: user.status,
   themePreference: user.themePreference ?? 'system',
-  permissions: permissionsFor({ role: user.role, extraPermissions: user.extraPermissions ?? [] }),
+  permissions: permissionsFor({ role: user.role, permissions: user.permissions ?? [] }),
   createdAt: user.createdAt,
   lastLoginAt: user.lastLoginAt ?? null,
 });

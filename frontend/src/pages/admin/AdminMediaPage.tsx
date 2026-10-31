@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { FileText, Upload } from 'lucide-react';
+import { FileText, Pencil, Trash2, Upload } from 'lucide-react';
 import { deleteMediaApi, listMediaApi, updateMediaApi, uploadMediaApi, type MediaItem } from '../../api/adminApi';
 import { getErrorMessage } from '../../api/axiosInstance';
 import { FilterSelect, Toolbar } from '../../components/admin/Toolbar';
@@ -176,11 +176,13 @@ export default function AdminMediaPage() {
                   <div className="mt-auto flex gap-1.5 pt-1.5">
                     {can('media.upload') && (
                       <Button variant="secondary" size="sm" onClick={() => setEditing(m)} aria-label={`Edit ${m.name}`}>
+                        <Pencil aria-hidden="true" className="h-3.5 w-3.5" />
                         Edit
                       </Button>
                     )}
                     {can('content.publish') && (
                       <Button variant="ghost" size="sm" onClick={() => setDeleting(m)} aria-label={`Delete ${m.name}`}>
+                        <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
                         Delete
                       </Button>
                     )}

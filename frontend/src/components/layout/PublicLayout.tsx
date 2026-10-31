@@ -15,34 +15,37 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { AppShell, type NavSection } from './AppShell';
-import { HeaderActions } from './HeaderActions';
-import { SidebarAccount } from './SidebarAccount';
 import { SiteFooter } from './SiteFooter';
 import { SearchPalette } from '../overlays/SearchPalette';
 import { Toaster } from '../overlays/Toaster';
 import { useAppSelector } from '../../store/hooks';
-import { workspaceSections } from './workspaceNav';
 import { usePageTitle } from '../../lib/usePageTitle';
+import { isTabOn } from '../../lib/publicTabs';
+import type { PublicTabKey } from '../../api/types';
+import { Breadcrumbs, type Crumb } from '../ui/Breadcrumbs';
 
-const publicSections: NavSection[] = [
+type PublicNavItem = NavSection['items'][number] & { tab?: PublicTabKey };
+
+// Items with a `tab` disappear from the menu while an administrator has that tab switched off.
+const publicSections: (Omit<NavSection, 'items'> & { items: PublicNavItem[] })[] = [
   {
     heading: 'Community',
     items: [
       { to: '/', label: 'Home', icon: Home, end: true },
-      { to: '/about', label: 'About', icon: Info },
-      { to: '/history', label: 'History', icon: BookOpen },
-      { to: '/committee', label: 'Committee', icon: Landmark },
-      { to: '/members', label: 'Directory', icon: UsersRound },
-      { to: '/events', label: 'Events', icon: CalendarDays },
-      { to: '/news', label: 'News', icon: Megaphone },
+      { to: '/about', label: 'About', icon: Info, tab: 'about' },
+      { to: '/history', label: 'History', icon: BookOpen, tab: 'history' },
+      { to: '/committee', label: 'Committee', icon: Landmark, tab: 'committee' },
+      { to: '/members', label: 'Directory', icon: UsersRound, tab: 'directory' },
+      { to: '/events', label: 'Events', icon: CalendarDays, tab: 'events' },
+      { to: '/news', label: 'News', icon: Megaphone, tab: 'news' },
     ],
   },
   {
     heading: 'Help',
     items: [
-      { to: '/faq', label: 'FAQ', icon: CircleHelp },
-      { to: '/links', label: 'Important links', icon: Link2 },
-      { to: '/contact', label: 'Contact', icon: Mail },
+      { to: '/faq', label: 'FAQ', icon: CircleHelp, tab: 'faq' },
+      { to: '/links', label: 'Important links', icon: Link2, tab: 'links' },
+      { to: '/contact', label: 'Contact', icon: Mail, tab: 'contact' },
     ],
   },
 ];
@@ -57,18 +60,24 @@ const titles: { prefix: string; label: string; icon?: LucideIcon }[] = [
   { prefix: '/faq', label: 'FAQ' },
   { prefix: '/links', label: 'Important links' },
   { prefix: '/contact', label: 'Contact' },
-  { prefix: '/login', label: 'Sign in' },
-  { prefix: '/register', label: 'Create account' },
   { prefix: '/forgot-password', label: 'Reset password' },
   { prefix: '/reset-password', label: 'Reset password' },
-  { prefix: '/app', label: 'My workspace' },
 ];
 
 const breadcrumbFor = (pathname: string) => titles.find((t) => pathname.startsWith(t.prefix))?.label ?? 'Home';
 
+/** "Home > Events" and, on a detail page, "Home > Events > Details". */
+const crumbsFor = (pathname: string): Crumb[] => {
+  const t = titles.find((x) => pathname.startsWith(x.prefix));
+  if (!t) return [{ label: 'Home' }];
+  const isDetail = pathname.replace(/\/+$/, '') !== t.prefix;
+  return isDetail
+    ? [{ label: 'Home', to: '/' }, { label: t.label, to: t.prefix }, { label: 'Details' }]
+    : [{ label: 'Home', to: '/' }, { label: t.label }];
+};
+
 export function PublicLayout() {
   const location = useLocation();
-  const { user } = useAppSelector((s) => s.auth);
   const siteName = useAppSelector((s) => s.site.settings?.shortName) ?? 'Kadva Patidar Samaj';
   const [searchOpen, setSearchOpen] = useState(false);
   usePageTitle(breadcrumbFor(location.pathname), siteName);
@@ -85,18 +94,19 @@ export function PublicLayout() {
     return () => document.removeEventListener('keydown', onKey);
   }, []);
 
-  const sections = user ? [...publicSections, ...workspaceSections(user)] : publicSections;
+  const settings = useAppSelector((s) => s.site.settings);
+  const visibleSections = publicSections
+    .map((section) => ({ ...section, items: section.items.filter((item) => !item.tab || isTabOn(settings, item.tab)) }))
+    .filter((section) => section.items.length > 0);
 
   return (
     <AppShell
       brandName={siteName}
       brandTagline="Uttar Gujarat · Jay Umiya Maa"
       navLabel="Main"
-      navSections={sections}
+      navSections={visibleSections}
       onSearch={() => setSearchOpen(true)}
-      sidebarFooter={<SidebarAccount />}
-      breadcrumb={<span>{breadcrumbFor(location.pathname)}</span>}
-      headerActions={<HeaderActions />}
+      breadcrumb={<Breadcrumbs crumbs={crumbsFor(location.pathname)} />}
       footer={<SiteFooter />}
       overlays={
         <>

@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useMemo, useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { listContentApi, saveContentApi, type ContentRow } from '../../api/adminApi';
 import { getErrorMessage, getFieldErrors } from '../../api/axiosInstance';
 import { useFetch } from '../../lib/useFetch';
@@ -8,9 +8,11 @@ import { showToast } from '../../store/slices/toastSlice';
 import { Alert } from '../ui/Alert';
 import { SelectField, TextAreaField } from '../ui/FormFields';
 import { TextField } from '../ui/TextField';
+import { Toggle } from '../ui/Toggle';
 import type { FieldDef, ResourceDef } from './contentConfig';
 import { FormDrawer, FullWidth } from './FormDrawer';
 import { MediaPicker } from './MediaPicker';
+import { PreviewButton, ResourcePreview } from './ContentPreview';
 
 type Values = Record<string, string | boolean>;
 
@@ -78,10 +80,7 @@ function Field({ f, form, errors, terms }: { f: FieldDef; form: ReturnType<typeo
       return <MediaPicker label={f.label} kind={f.type === 'image' ? 'image' : 'document'} error={error} {...reg} />;
     case 'checkbox':
       return (
-        <label className="flex items-center gap-2.5 text-sm">
-          <input type="checkbox" className="h-4 w-4 accent-[var(--accent)]" {...reg} />
-          {f.label}
-        </label>
+        <Toggle label={f.label} {...reg} />
       );
     default:
       return <TextField label={f.label} required={f.required} hint={f.hint} inputMode={f.type === 'number' ? 'numeric' : undefined} error={error} {...reg} />;
@@ -105,7 +104,9 @@ export function ContentFormDrawer({
   const dispatch = useAppDispatch();
   const defaults = useMemo(() => initialValues(def, null), [def]);
   const form = useForm<Values>({ defaultValues: defaults });
-  const { handleSubmit, reset, setError, formState } = form;
+  const { handleSubmit, reset, setError, formState, control } = form;
+  const values = useWatch({ control }) as Values;
+  const [previewing, setPreviewing] = useState(false);
   const needsTerms = def.fields.some((f) => f.type === 'term');
   const terms = useFetch(`terms:${needsTerms}`, () => (needsTerms ? listContentApi('committee-terms', { limit: 100 }) : Promise.resolve(null)));
 
@@ -151,6 +152,11 @@ export function ContentFormDrawer({
       submitting={formState.isSubmitting}
       pristine={Boolean(row) && !formState.isDirty}
     >
+      <FullWidth>
+        <div className="flex justify-end">
+          <PreviewButton onClick={() => setPreviewing(true)} />
+        </div>
+      </FullWidth>
       {rootError && (
         <FullWidth>
           <Alert tone="danger">{rootError}</Alert>
@@ -160,6 +166,14 @@ export function ContentFormDrawer({
         const node = <Field f={f} form={form} errors={formState.errors as Record<string, { message?: string } | undefined>} terms={terms.data?.items ?? []} />;
         return f.wide || f.type === 'checkbox' ? <FullWidth key={f.name}>{node}</FullWidth> : <div key={f.name}>{node}</div>;
       })}
+      <ResourcePreview
+        open={previewing}
+        onClose={() => setPreviewing(false)}
+        def={def}
+        values={values}
+        termLabel={terms.data?.items.find((t) => t.id === values.termId)?.label ?? undefined}
+        status={row?.status ?? 'draft'}
+      />
     </FormDrawer>
   );
 }

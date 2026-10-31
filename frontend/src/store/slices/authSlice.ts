@@ -1,10 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import {
-  loginApi,
-  logoutApi,
-  meApi,
-  type SessionUser,
-} from '../../api/authApi';
+import { adminLoginApi, logoutApi, meApi, type SessionUser } from '../../api/authApi';
 import { getErrorCode, getErrorMessage } from '../../api/axiosInstance';
 import { setCsrfToken } from '../../api/csrf';
 
@@ -37,22 +32,25 @@ export const bootstrapAuth = createAsyncThunk<SessionUser | null>('auth/bootstra
   }
 });
 
-export const login = createAsyncThunk<
-  SessionUser,
-  { email: string; password: string },
-  { rejectValue: { message: string; code?: string } }
->('auth/login', async (credentials, { rejectWithValue }) => {
-  try {
-    const { user, csrfToken } = await loginApi(credentials);
-    setCsrfToken(csrfToken);
-    return user;
-  } catch (err) {
-    return rejectWithValue({
-      message: getErrorMessage(err, 'Could not sign in'),
-      code: getErrorCode(err),
-    });
-  }
-});
+type LoginArg = { email: string; password: string };
+type LoginReject = { rejectValue: { message: string; code?: string } };
+
+/** The only sign-in: admins (and the Super Admin) sign in to the admin panel. */
+export const adminLogin = createAsyncThunk<SessionUser, LoginArg, LoginReject>(
+  'auth/adminLogin',
+  async (credentials, { rejectWithValue }) => {
+    try {
+      const { user, csrfToken } = await adminLoginApi(credentials);
+      setCsrfToken(csrfToken);
+      return user;
+    } catch (err) {
+      return rejectWithValue({
+        message: getErrorMessage(err, 'Could not sign in'),
+        code: getErrorCode(err),
+      });
+    }
+  },
+);
 
 export const logout = createAsyncThunk<void>('auth/logout', async () => {
   try {
@@ -85,23 +83,23 @@ const authSlice = createSlice({
         state.user = action.payload;
         state.bootstrapped = true;
       })
-      .addCase(login.pending, (state) => {
+      .addCase(logout.fulfilled, (state) => {
+        state.user = null;
+      })
+      .addCase(adminLogin.pending, (state) => {
         state.loginStatus = 'loading';
         state.loginError = null;
         state.loginErrorCode = null;
       })
-      .addCase(login.fulfilled, (state, action) => {
+      .addCase(adminLogin.fulfilled, (state, action) => {
         state.user = action.payload;
         state.loginStatus = 'idle';
         state.bootstrapped = true;
       })
-      .addCase(login.rejected, (state, action) => {
+      .addCase(adminLogin.rejected, (state, action) => {
         state.loginStatus = 'failed';
         state.loginError = action.payload?.message ?? 'Could not sign in';
         state.loginErrorCode = action.payload?.code ?? null;
-      })
-      .addCase(logout.fulfilled, (state) => {
-        state.user = null;
       });
   },
 });

@@ -54,11 +54,11 @@ function SidebarContent({ brandName, brandTagline, navLabel, navSections, sideba
         <button
           type="button"
           onClick={onSearch}
-          className="flex w-full items-center gap-2 rounded-lg border border-border bg-bg px-2.5 py-2 text-sm text-text-muted hover:bg-surface-muted"
+          className="flex h-10 w-full items-center gap-2.5 rounded-md border border-border-strong bg-surface px-3 text-sm text-text-subtle hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-[var(--focus-ring)]"
         >
           <Search aria-hidden="true" className="h-4 w-4" />
           Search
-          <kbd className="ml-auto rounded border border-border bg-surface px-1.5 font-mono text-[11px]">Ctrl K</kbd>
+          <kbd className="ml-auto rounded border border-border px-1.5 py-0.5 font-mono text-[11px] text-text-subtle">Ctrl K</kbd>
         </button>
       )}
 
@@ -100,8 +100,9 @@ function SidebarContent({ brandName, brandTagline, navLabel, navSections, sideba
 }
 
 /**
- * Responsive application frame shared by the public site, the member workspace and the admin
- * panel: fixed sidebar on large screens, slide-in drawer on small ones, skip link and landmarks.
+ * Responsive application frame shared by the public site and the admin
+ * panel: fixed sidebar on large screens, a drawer that slides in from the right on small ones,
+ * skip link and landmarks.
  */
 export function AppShell({ headerActions, breadcrumb, footer, overlays, onSearch, ...sidebar }: AppShellProps) {
   // The drawer remembers the path it was opened on and counts as open only while the route is
@@ -154,7 +155,7 @@ export function AppShell({ headerActions, breadcrumb, footer, overlays, onSearch
             className="absolute inset-0 bg-[var(--overlay)]"
             onClick={() => setDrawerOpen(false)}
           />
-          <div className="relative h-full w-72 max-w-[85vw] bg-surface shadow-pop">
+          <div className="absolute inset-y-0 right-0 h-full w-72 max-w-[85vw] bg-surface shadow-pop">
             <button
               ref={closeButton}
               type="button"
@@ -174,6 +175,19 @@ export function AppShell({ headerActions, breadcrumb, footer, overlays, onSearch
 
       <div className="flex min-h-screen flex-1 flex-col lg:pl-64">
         <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-border bg-surface/90 px-4 backdrop-blur sm:px-6">
+          <div className="min-w-0 flex-1 truncate text-sm text-text-muted">{breadcrumb}</div>
+          {onSearch && (
+            <button
+              type="button"
+              onClick={onSearch}
+              aria-label="Search"
+              className="flex h-10 w-10 items-center justify-center rounded-md border border-border-strong bg-surface text-text-muted hover:bg-surface-muted hover:text-text"
+            >
+              <Search aria-hidden="true" className="h-4 w-4" />
+            </button>
+          )}
+          <ThemeToggle />
+          {headerActions}
           <button
             ref={menuButton}
             type="button"
@@ -184,19 +198,6 @@ export function AppShell({ headerActions, breadcrumb, footer, overlays, onSearch
           >
             <Menu aria-hidden="true" className="h-5 w-5" />
           </button>
-          <div className="min-w-0 flex-1 truncate text-sm text-text-muted">{breadcrumb}</div>
-          {onSearch && (
-            <button
-              type="button"
-              onClick={onSearch}
-              aria-label="Search"
-              className="rounded-md border border-border bg-surface p-1.5 text-text-secondary hover:bg-surface-muted"
-            >
-              <Search aria-hidden="true" className="h-4 w-4" />
-            </button>
-          )}
-          <ThemeToggle />
-          {headerActions}
         </header>
 
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 outline-none sm:px-6">

@@ -11,26 +11,25 @@ import {
   place,
   toDateTimeInput,
 } from '../../src/lib/format';
-import { registrationStateLabel, roleLabel } from '../../src/lib/labels';
+import { roleLabel } from '../../src/lib/labels';
 import {
   forgotPasswordSchema,
   loginSchema,
-  registerSchema,
   resetPasswordSchema,
 } from '../../src/utils/validation';
 import { createStore } from '../../src/store';
 import { dismissToast, showToast } from '../../src/store/slices/toastSlice';
 import { fetchSiteSettings, settingsReplaced } from '../../src/store/slices/siteSlice';
-import { bootstrapAuth, clearLoginError, login, logout, sessionLost } from '../../src/store/slices/authSlice';
+import { adminLogin, bootstrapAuth, clearLoginError, logout, sessionLost } from '../../src/store/slices/authSlice';
 import { getCsrfToken, setCsrfToken } from '../../src/api/csrf';
 import * as authApi from '../../src/api/authApi';
 import * as siteApi from '../../src/api/siteApi';
 import type { PublicSettings } from '../../src/api/types';
-import { apiError, memberUser } from '../helpers';
+import { adminUser, apiError } from '../helpers';
 
 vi.mock('../../src/api/authApi', () => ({
   meApi: vi.fn(),
-  loginApi: vi.fn(),
+  adminLoginApi: vi.fn(),
   logoutApi: vi.fn(),
   updateThemeApi: vi.fn(),
 }));
@@ -90,8 +89,9 @@ describe('format helpers', () => {
 
 describe('labels', () => {
   it('describes known audit actions in plain language', () => {
-    expect(describeAction('auth.login')).toBe('Signed in');
-    expect(describeAction('user.role_changed')).toBe('Changed a role');
+    expect(describeAction('auth.admin_login')).toBe('Signed in');
+    expect(describeAction('user.admin_updated')).toBe('Edited an admin');
+    expect(describeAction('user.deleted')).toBe('Deleted an admin');
   });
 
   it('turns unknown action codes into readable text', () => {
@@ -103,53 +103,10 @@ describe('labels', () => {
     expect(roleLabel('superadmin')).toBe('Super Admin');
     expect(roleLabel('custom')).toBe('custom');
   });
-
-  it('covers every registration state with a label', () => {
-    expect(Object.keys(registrationStateLabel).sort()).toEqual(
-      ['cancelled', 'closed', 'full', 'not_yet_open', 'open', 'past', 'unavailable'],
-    );
-    expect(registrationStateLabel.full.tone).toBe('warning');
-  });
 });
 
 describe('validation schemas', () => {
-  const valid = {
-    name: 'Asha Patel',
-    email: 'asha@example.test',
-    phone: '',
-    password: 'Correct-Horse-9',
-    confirmPassword: 'Correct-Horse-9',
-    acknowledge: true,
-  };
   const messages = (r: { error?: { issues: { message: string }[] } }) => r.error?.issues.map((i) => i.message) ?? [];
-
-  it('accepts a valid registration', () => {
-    expect(registerSchema.safeParse(valid).success).toBe(true);
-  });
-
-  it.each([
-    ['short password', { password: 'abc1', confirmPassword: 'abc1' }, 'at least 10 characters'],
-    ['no digit', { password: 'OnlyLettersHere', confirmPassword: 'OnlyLettersHere' }, 'letter and a number'],
-    ['no letter', { password: '1234567890123', confirmPassword: '1234567890123' }, 'letter and a number'],
-    ['mismatch', { confirmPassword: 'Different-1234' }, 'Passwords do not match'],
-    ['bad email', { email: 'not-an-email' }, 'valid email'],
-    ['markup in name', { name: '<b>Asha</b>' }, 'invalid characters'],
-    ['bad phone', { phone: 'abc' }, 'valid phone'],
-    ['unticked acknowledgement', { acknowledge: false }, 'confirm to continue'],
-  ])('rejects %s', (_label, over, text) => {
-    const r = registerSchema.safeParse({ ...valid, ...over });
-    expect(r.success).toBe(false);
-    expect(messages(r).join(' | ')).toContain(text);
-  });
-
-  it('puts the mismatch error on the confirmation field', () => {
-    const r = registerSchema.safeParse({ ...valid, confirmPassword: 'nope' });
-    expect(r.error?.issues.find((i) => i.message === 'Passwords do not match')?.path).toEqual(['confirmPassword']);
-  });
-
-  it('accepts a well-formed phone number', () => {
-    expect(registerSchema.safeParse({ ...valid, phone: '+91 98765 43210' }).success).toBe(true);
-  });
 
   it('only requires something in the login fields (the server decides the rest)', () => {
     expect(loginSchema.safeParse({ email: 'x', password: 'y' }).success).toBe(true);
@@ -227,21 +184,21 @@ describe('authSlice', () => {
   });
 
   it('restores the user and CSRF token on bootstrap', async () => {
-    auth.meApi.mockResolvedValue({ user: memberUser, csrfToken: 'abc' });
+    auth.meApi.mockResolvedValue({ user: adminUser, csrfToken: 'abc' });
     const store = createStore();
     await store.dispatch(bootstrapAuth());
     expect(store.getState().auth.user?.id).toBe('u1');
     expect(getCsrfToken()).toBe('abc');
   });
 
-  it('keeps the server error message and code when login fails, and clears them', async () => {
-    auth.loginApi.mockRejectedValue(apiError(403, 'Awaiting approval', 'ACCOUNT_NOT_ACTIVE'));
+  it('keeps the server error message and code when sign-in fails, and clears them', async () => {
+    auth.adminLoginApi.mockRejectedValue(apiError(403, 'This account has been suspended.', 'ACCOUNT_NOT_ACTIVE'));
     const store = createStore();
-    await store.dispatch(login({ email: 'a@b.test', password: 'x' }));
+    await store.dispatch(adminLogin({ email: 'a@b.test', password: 'x' }));
     expect(store.getState().auth).toMatchObject({
       user: null,
       loginStatus: 'failed',
-      loginError: 'Awaiting approval',
+      loginError: 'This account has been suspended.',
       loginErrorCode: 'ACCOUNT_NOT_ACTIVE',
     });
     store.dispatch(clearLoginError());
@@ -249,19 +206,19 @@ describe('authSlice', () => {
   });
 
   it('signs out locally even when the logout request fails', async () => {
-    auth.loginApi.mockResolvedValue({ user: memberUser, csrfToken: 'abc' });
+    auth.adminLoginApi.mockResolvedValue({ user: adminUser, csrfToken: 'abc' });
     auth.logoutApi.mockRejectedValue(new Error('offline'));
     const store = createStore();
-    await store.dispatch(login({ email: 'a@b.test', password: 'x' }));
+    await store.dispatch(adminLogin({ email: 'a@b.test', password: 'x' }));
     await store.dispatch(logout());
     expect(store.getState().auth.user).toBeNull();
     expect(getCsrfToken()).toBeNull();
   });
 
   it('drops the user and CSRF token when the server ends the session', async () => {
-    auth.loginApi.mockResolvedValue({ user: memberUser, csrfToken: 'abc' });
+    auth.adminLoginApi.mockResolvedValue({ user: adminUser, csrfToken: 'abc' });
     const store = createStore();
-    await store.dispatch(login({ email: 'a@b.test', password: 'x' }));
+    await store.dispatch(adminLogin({ email: 'a@b.test', password: 'x' }));
     store.dispatch(sessionLost());
     expect(store.getState().auth.user).toBeNull();
     expect(getCsrfToken()).toBeNull();

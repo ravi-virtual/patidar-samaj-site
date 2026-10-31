@@ -9,7 +9,9 @@ import Event from '../../src/models/Event';
 import ImportantLink from '../../src/models/ImportantLink';
 import MediaAsset from '../../src/models/MediaAsset';
 import { Roles, config } from '../../src/config/constants';
-import { ORIGIN, anon, connectTestDb, disconnectTestDb, makeEvent, resetDb, signInAs } from '../helpers';
+import { ORIGIN, anon, connectTestDb, disconnectTestDb, makeEvent, resetDb, signInAs, READ_ONLY_ADMIN_PERMISSIONS,
+  DRAFT_ADMIN_PERMISSIONS,
+  OPS_ADMIN_PERMISSIONS } from '../helpers';
 
 const PNG = Buffer.concat([
   Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
@@ -39,21 +41,21 @@ const upload = (client: Awaited<ReturnType<typeof signInAs>>['client'], buf: Buf
 };
 
 describe('upload permissions', () => {
-  it('rejects visitors, members and viewers; allows editors and admins', async () => {
+  it('rejects visitors and admins without media.upload; allows those who have it and the Super Admin', async () => {
     expect((await anon().post('/api/admin/media').set('Origin', ORIGIN).attach('file', PNG, { filename: 'a.png', contentType: 'image/png' })).status).toBe(401);
-    for (const role of [Roles.MEMBER, Roles.VIEWER]) {
-      const { client } = await signInAs(role);
-      expect((await upload(client, PNG, 'a.png', 'image/png')).status, role).toBe(403);
+    for (const permissions of [[], READ_ONLY_ADMIN_PERMISSIONS]) {
+      const { client } = await signInAs(Roles.ADMIN, { permissions });
+      expect((await upload(client, PNG, 'a.png', 'image/png')).status).toBe(403);
     }
-    for (const role of [Roles.EDITOR, Roles.ADMIN, Roles.SUPER_ADMIN]) {
-      const { client } = await signInAs(role);
+    for (const [role, permissions] of [[Roles.ADMIN, DRAFT_ADMIN_PERMISSIONS], [Roles.ADMIN, OPS_ADMIN_PERMISSIONS], [Roles.SUPER_ADMIN, []]] as const) {
+      const { client } = await signInAs(role, { permissions: [...permissions] });
       expect((await upload(client, PNG, 'a.png', 'image/png')).status, role).toBe(201);
     }
     expect(filesOnDisk()).toHaveLength(3);
   });
 
   it('needs the CSRF token even for multipart uploads', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const res = await client.agent.post('/api/admin/media').set('Origin', ORIGIN).attach('file', PNG, { filename: 'a.png', contentType: 'image/png' });
     expect(res.status).toBe(403);
     expect(filesOnDisk()).toHaveLength(0);
@@ -67,7 +69,7 @@ describe('what an upload may be', () => {
     ['WebP', WEBP, 'image/webp', 'webp', 'image'],
     ['PDF', PDF, 'application/pdf', 'pdf', 'document'],
   ])('accepts a real %s and stores it under a generated name', async (_n, buf, type, ext, kind) => {
-    const { user, client } = await signInAs(Roles.ADMIN);
+    const { user, client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const res = await upload(client, buf, `holiday photo.${ext}`, type, { altText: 'A description' });
     expect(res.status).toBe(201);
     const m = res.body.data.media;
@@ -83,7 +85,7 @@ describe('what an upload may be', () => {
   });
 
   it('takes the extension from the content, not from the filename, and never uses the name as a path', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     for (const name of ['evil.php.png', '../../etc/passwd.png', '..\\..\\windows\\system.ini', 'name with spaces.PNG', 'x'.repeat(300) + '.png']) {
       const res = await upload(client, PNG, name, 'image/png');
       expect(res.status, name).toBe(201);
@@ -107,7 +109,7 @@ describe('what an upload may be', () => {
     ['an empty file', Buffer.alloc(0), 'x.png', 'image/png'],
     ['plain text as PDF', Buffer.from('just text'), 'x.pdf', 'application/pdf'],
   ])('rejects %s', async (_label, buf, name, type) => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const res = await upload(client, buf, name, type);
     expect(res.status).toBe(400);
     expect(filesOnDisk()).toHaveLength(0);
@@ -115,7 +117,7 @@ describe('what an upload may be', () => {
   });
 
   it('rejects a file whose content does not match the type it declares', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     expect((await upload(client, PNG, 'a.jpg', 'image/jpeg')).status).toBe(400); // PNG bytes, JPEG label
     expect((await upload(client, PDF, 'a.png', 'image/png')).status).toBe(400); // PDF bytes, PNG label
     expect((await upload(client, PNG, 'a.pdf', 'application/pdf')).status).toBe(400);
@@ -123,7 +125,7 @@ describe('what an upload may be', () => {
   });
 
   it('enforces size limits: images 5 MB, documents 10 MB', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const bigImage = Buffer.concat([PNG, Buffer.alloc(config.uploads.maxImageBytes)]);
     expect((await upload(client, bigImage, 'big.png', 'image/png')).status).toBe(413);
 
@@ -136,7 +138,7 @@ describe('what an upload may be', () => {
   });
 
   it('rejects requests with no file, the wrong field name, or more than one file', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     expect((await client.post('/api/admin/media').field('altText', 'x')).status).toBe(400);
     expect((await client.post('/api/admin/media').attach('document', PNG, { filename: 'a.png', contentType: 'image/png' })).status).toBe(400);
     const two = await client
@@ -148,7 +150,7 @@ describe('what an upload may be', () => {
   });
 
   it('validates the description and visibility fields', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     expect((await upload(client, PNG, 'a.png', 'image/png', { altText: '<script>x</script>' })).status).toBe(400);
     expect((await upload(client, PNG, 'a.png', 'image/png', { visibility: 'everyone' })).status).toBe(400);
     expect((await upload(client, PNG, 'a.png', 'image/png', { altText: 'x'.repeat(201) })).status).toBe(400);
@@ -158,7 +160,7 @@ describe('what an upload may be', () => {
 
 describe('serving files', () => {
   const putAsset = async (over: Partial<{ visibility: 'public' | 'private'; buf: Buffer; ext: string; mime: string }> = {}) => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const res = await upload(client, over.buf ?? PNG, `file.${over.ext ?? 'png'}`, over.mime ?? 'image/png', { visibility: over.visibility ?? 'public' });
     return res.body.data.media as { id: string; url: string };
   };
@@ -183,12 +185,10 @@ describe('serving files', () => {
     expect(res.headers['content-security-policy']).toMatch(/sandbox/);
   });
 
-  it('keeps staff-only files from visitors and members (404, not 403) but shows them to staff', async () => {
+  it('keeps staff-only files from visitors (404, not 403) but shows them to signed-in staff', async () => {
     const m = await putAsset({ visibility: 'private' });
     expect((await anon().get(m.url)).status).toBe(404);
-    const { client: member } = await signInAs(Roles.MEMBER);
-    expect((await member.get(m.url)).status).toBe(404);
-    const { client: viewer } = await signInAs(Roles.VIEWER);
+    const { client: viewer } = await signInAs(Roles.ADMIN, { permissions: READ_ONLY_ADMIN_PERMISSIONS });
     const res = await viewer.get(m.url);
     expect(res.status).toBe(200);
     expect(res.headers['cache-control']).toMatch(/private, no-store/);
@@ -218,20 +218,20 @@ describe('serving files', () => {
 });
 
 describe('media library management', () => {
-  it('lists for staff with filters, and not for members', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+  it('lists for staff with filters, and not for admins without the permission', async () => {
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     await upload(client, PNG, 'banner.png', 'image/png');
     await upload(client, PDF, 'minutes-2025.pdf', 'application/pdf');
     expect((await client.get('/api/admin/media')).body.data.totalCount).toBe(2);
     expect((await client.get('/api/admin/media?kind=document')).body.data.media[0].name).toBe('minutes-2025.pdf');
     expect((await client.get('/api/admin/media?search=BANNER')).body.data.totalCount).toBe(1);
     expect((await client.get('/api/admin/media?kind=exe')).status).toBe(400);
-    const { client: member } = await signInAs(Roles.MEMBER);
-    expect((await member.get('/api/admin/media')).status).toBe(403);
+    const { client: none } = await signInAs(Roles.ADMIN, { permissions: [] });
+    expect((await none.get('/api/admin/media')).status).toBe(403);
   });
 
   it('edits description and visibility, and nothing else', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const m = (await upload(client, PNG, 'a.png', 'image/png')).body.data.media;
     const res = await client.patch(`/api/admin/media/${m.id}`).send({ altText: 'New text', visibility: 'private', storedName: 'hacked', size: 1, mimeType: 'text/html' });
     expect(res.status).toBe(200);
@@ -242,7 +242,7 @@ describe('media library management', () => {
   });
 
   it('refuses to delete a file that is still in use, naming where', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const image = (await upload(client, PNG, 'a.png', 'image/png')).body.data.media;
     const pdf = (await upload(client, PDF, 'a.pdf', 'application/pdf')).body.data.media;
     await makeEvent({ title: 'Event With Banner' }).then((e) => Event.updateOne({ _id: e._id }, { $set: { imageMediaId: image.id } }));
@@ -259,7 +259,7 @@ describe('media library management', () => {
   });
 
   it('deleting a record that used a file does not delete the shared file', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const image = (await upload(client, PNG, 'portrait.png', 'image/png')).body.data.media;
     const term = await CommitteeTerm.create({ label: '2025–2027', startYear: 2025, endYear: 2027 });
     const member = await CommitteeMember.create({ termId: term._id, name: 'Real Person', position: 'Chair', imageMediaId: image.id });
@@ -276,16 +276,16 @@ describe('media library management', () => {
     expect(await AuditLog.countDocuments({ action: 'media.deleted' })).toBe(1);
   });
 
-  it('lets Editors upload but not delete', async () => {
-    const { client: admin } = await signInAs(Roles.ADMIN);
+  it('lets admins with only upload permission upload but not delete', async () => {
+    const { client: admin } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const m = (await upload(admin, PNG, 'a.png', 'image/png')).body.data.media;
-    const { client: editor } = await signInAs(Roles.EDITOR);
+    const { client: editor } = await signInAs(Roles.ADMIN, { permissions: DRAFT_ADMIN_PERMISSIONS });
     expect((await editor.del(`/api/admin/media/${m.id}`)).status).toBe(403);
     expect((await MediaAsset.findById(m.id).lean())?.isDeleted).toBe(false);
   });
 
   it('supports replacing an image: upload new, point the record at it, then remove the old one', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const oldImg = (await upload(client, PNG, 'old.png', 'image/png')).body.data.media;
     const newImg = (await upload(client, JPEG, 'new.jpg', 'image/jpeg')).body.data.media;
     const term = await CommitteeTerm.create({ label: '2025–2027', startYear: 2025, endYear: 2027 });

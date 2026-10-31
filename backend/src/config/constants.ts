@@ -82,7 +82,14 @@ export const config = {
   mail: {
     // "outbox" writes messages to backend/.outbox for local development only.
     // "none" (the production default) sends nothing; see docs/security.md for account recovery.
-    driver: (process.env.MAIL_DRIVER ?? (isProduction ? 'none' : 'outbox')) as 'outbox' | 'none',
+    // "smtp" sends real email through the account in the SMTP_* variables (e.g. Gmail with an app password).
+    driver: (process.env.MAIL_DRIVER ?? (isProduction ? 'none' : 'outbox')) as 'outbox' | 'none' | 'smtp',
+    host: process.env.SMTP_HOST ?? 'smtp.gmail.com',
+    port: toInt(process.env.SMTP_PORT, 465),
+    secure: (process.env.SMTP_SECURE ?? 'true') === 'true',
+    user: process.env.SMTP_USER ?? '',
+    pass: process.env.SMTP_PASS ?? '',
+    from: process.env.MAIL_FROM ?? process.env.SMTP_USER ?? '',
   },
   // Development-only helpers. Both are refused in production above.
   devSeedEnabled: !isProduction && process.env.ENABLE_DEV_SEED === 'true',
@@ -106,28 +113,19 @@ export const ResponseCodes = {
 } as const;
 
 // ─── Roles ───────────────────────────────────────────────────────────────────
-// Public visitors are not a stored role. Staff roles can only be granted by a Super Admin.
+// Public visitors are not a stored role: the public site has no sign-in. Only the Super Admin
+// (created once by the bootstrap CLI) and the admins the Super Admin creates can sign in.
 export const Roles = {
   SUPER_ADMIN: 'superadmin',
   ADMIN: 'admin',
-  EDITOR: 'editor',
-  VIEWER: 'viewer',
-  MEMBER: 'member',
 } as const;
 export type Role = (typeof Roles)[keyof typeof Roles];
 
-export const StaffRoles: readonly Role[] = [
-  Roles.SUPER_ADMIN,
-  Roles.ADMIN,
-  Roles.EDITOR,
-  Roles.VIEWER,
-];
+export const StaffRoles: readonly Role[] = [Roles.SUPER_ADMIN, Roles.ADMIN];
 
 // ─── Account lifecycle ───────────────────────────────────────────────────────
 export const AccountStatus = {
-  PENDING: 'pending',
   ACTIVE: 'active',
-  REJECTED: 'rejected',
   SUSPENDED: 'suspended',
 } as const;
 export type AccountStatusValue = (typeof AccountStatus)[keyof typeof AccountStatus];
@@ -147,17 +145,14 @@ export const EventStatus = {
 } as const;
 export type EventStatusValue = (typeof EventStatus)[keyof typeof EventStatus];
 
-export const RegistrationStatus = { CONFIRMED: 'confirmed', CANCELLED: 'cancelled' } as const;
-export type RegistrationStatusValue = (typeof RegistrationStatus)[keyof typeof RegistrationStatus];
-
 export const ContactStatus = { NEW: 'new', IN_PROGRESS: 'in_progress', RESOLVED: 'resolved' } as const;
 export type ContactStatusValue = (typeof ContactStatus)[keyof typeof ContactStatus];
 
-/** Who may see a directory entry: nobody but staff, signed-in members, or everyone. */
-export const MemberVisibility = { HIDDEN: 'hidden', MEMBERS: 'members', PUBLIC: 'public' } as const;
+/** Who may see a directory entry: only the office (hidden) or everyone (public). */
+export const MemberVisibility = { HIDDEN: 'hidden', PUBLIC: 'public' } as const;
 export type MemberVisibilityValue = (typeof MemberVisibility)[keyof typeof MemberVisibility];
 
-export const MembershipStatus = { PENDING: 'pending', ACTIVE: 'active', INACTIVE: 'inactive' } as const;
+export const MembershipStatus = { ACTIVE: 'active', INACTIVE: 'inactive' } as const;
 export type MembershipStatusValue = (typeof MembershipStatus)[keyof typeof MembershipStatus];
 
 export const EventCategories = ['Festival', 'Family', 'Seva', 'Education', 'Meeting', 'Sports', 'Other'] as const;
@@ -180,9 +175,6 @@ export const ErrorCodes = {
   PAYLOAD_TOO_LARGE: 'PAYLOAD_TOO_LARGE',
   ACCOUNT_NOT_ACTIVE: 'ACCOUNT_NOT_ACTIVE',
   DATABASE_UNAVAILABLE: 'DATABASE_UNAVAILABLE',
-  EVENT_FULL: 'EVENT_FULL',
-  REGISTRATION_CLOSED: 'REGISTRATION_CLOSED',
-  ALREADY_REGISTERED: 'ALREADY_REGISTERED',
   HAS_DEPENDENCIES: 'HAS_DEPENDENCIES',
   SERVER_ERROR: 'SERVER_ERROR',
 } as const;

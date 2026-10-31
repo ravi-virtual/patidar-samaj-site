@@ -9,8 +9,6 @@ import {
   cancelEventRules,
   createEventRules,
   eventIdRules,
-  registrationIdRules,
-  registrationListRules,
   updateEventRules,
 } from '../validators/eventValidator';
 import {
@@ -18,12 +16,9 @@ import {
   cancelEvent,
   createEvent,
   deleteEvent,
-  exportRegistrations,
   getAdminEvent,
   listAdminEvents,
-  listRegistrations,
   publishEvent,
-  removeRegistration,
   unpublishEvent,
   updateEvent,
 } from '../controllers/EventAdminController';
@@ -43,9 +38,5 @@ router.post('/:id/publish', hasPermission(P.EVENTS_PUBLISH), eventIdRules, publi
 router.post('/:id/unpublish', hasPermission(P.EVENTS_PUBLISH), eventIdRules, unpublishEvent);
 router.post('/:id/cancel', hasPermission(P.EVENTS_PUBLISH), cancelEventRules, cancelEvent);
 router.post('/:id/archive', hasPermission(P.EVENTS_PUBLISH), eventIdRules, archiveEvent);
-
-router.get('/:id/registrations', hasPermission(P.REGISTRATIONS_READ), registrationListRules, listRegistrations);
-router.get('/:id/registrations/export', hasPermission(P.REGISTRATIONS_EXPORT), eventIdRules, exportRegistrations);
-router.delete('/:id/registrations/:registrationId', hasPermission(P.REGISTRATIONS_MANAGE), registrationIdRules, removeRegistration);
 
 export default router;

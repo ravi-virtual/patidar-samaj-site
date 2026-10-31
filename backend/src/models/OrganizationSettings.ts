@@ -1,8 +1,9 @@
 import mongoose, { Schema } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
+import { PublicTabs } from '../config/publicTabs';
 
 // Singleton document (key = "main"). Holds public organisation details and switches such as
-// whether registration is open. Never store secrets or infrastructure configuration here.
+// which public website tabs are shown. Never store secrets or infrastructure configuration here.
 const organizationSettingsSchema = new Schema(
   {
     _id: { type: String, default: () => uuidv4() },
@@ -26,8 +27,8 @@ const organizationSettingsSchema = new Schema(
     },
     footerNote: { type: String, default: '', maxlength: 400 },
 
-    registrationOpen: { type: Boolean, default: true },
-    directoryPublic: { type: Boolean, default: true },
+    // One on/off switch per public tab. A missing key counts as on (see config/publicTabs.ts).
+    publicTabs: Object.fromEntries(PublicTabs.map((tab) => [tab, { type: Boolean, default: true }])),
     themeDefault: { type: String, enum: ['system', 'light', 'dark'], default: 'system' },
   },
   { timestamps: true, _id: false },

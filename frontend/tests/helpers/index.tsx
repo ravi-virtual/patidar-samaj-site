@@ -4,20 +4,20 @@ import { MemoryRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { createStore } from '../../src/store';
-import { login } from '../../src/store/slices/authSlice';
+import { adminLogin } from '../../src/store/slices/authSlice';
 import * as authApi from '../../src/api/authApi';
 import type { SessionUser } from '../../src/api/authApi';
 import type { EventItem } from '../../src/api/types';
 
-export const memberUser: SessionUser = {
+/** A signed-in admin. Tests override `permissions` to give exactly the ticked list. */
+export const adminUser: SessionUser = {
   id: 'u1',
   name: 'Asha Patel',
   email: 'asha@example.test',
-  phone: null,
-  role: 'member',
+  role: 'admin',
   status: 'active',
   themePreference: 'system',
-  permissions: ['members.read', 'events.rsvp'],
+  permissions: ['members.read', 'events.read'],
   lastLoginAt: null,
 };
 
@@ -38,13 +38,13 @@ export const apiError = (
 
 /**
  * Store with a signed-in user (or none), built through the real login thunk.
- * The spec must mock '../../src/api/authApi' (loginApi) with vi.mock for this to work.
+ * The spec must mock '../../src/api/authApi' (adminLoginApi) with vi.mock for this to work.
  */
 export const makeStore = async (user: SessionUser | null = null) => {
   const store = createStore();
   if (user) {
-    vi.mocked(authApi.loginApi).mockResolvedValueOnce({ user, csrfToken: 'csrf' });
-    await store.dispatch(login({ email: user.email, password: 'x' }));
+    vi.mocked(authApi.adminLoginApi).mockResolvedValueOnce({ user, csrfToken: 'csrf' });
+    await store.dispatch(adminLogin({ email: user.email, password: 'x' }));
   }
   return store;
 };
@@ -73,11 +73,5 @@ export const makeEvent = (over: Partial<EventItem> = {}): EventItem => ({
   cancellationReason: null,
   featured: false,
   imageMediaId: null,
-  capacity: 100,
-  spotsLeft: 40,
-  registrationOpensAt: null,
-  registrationClosesAt: '2030-09-30T13:00:00.000Z',
-  registrationState: 'open',
-  myRegistration: null,
   ...over,
 });

@@ -10,7 +10,7 @@ const tones: Record<string, BadgeTone> = {
   active: 'success',
   pending: 'warning',
   rejected: 'danger',
-  suspended: 'danger',
+  suspended: 'neutral',
   inactive: 'neutral',
   // contact inbox
   new: 'warning',
@@ -21,7 +21,7 @@ const tones: Record<string, BadgeTone> = {
   failure: 'danger',
 };
 
-const labels: Record<string, string> = { in_progress: 'In progress' };
+const labels: Record<string, string> = { in_progress: 'In progress', suspended: 'Inactive' };
 
 /** The status is always spelled out, so colour is never the only signal. */
 export function StatusBadge({ status }: { status: string }) {

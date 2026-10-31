@@ -6,30 +6,27 @@ import { Card } from '../components/ui/Card';
 import { Chip } from '../components/ui/Chip';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
-import { SearchInput } from '../components/ui/FormFields';
+import { SearchInput } from '../components/ui/SearchInput';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Pagination } from '../components/ui/Pagination';
 import { Skeleton } from '../components/ui/Skeleton';
 import { place } from '../lib/format';
 import { useDebounced } from '../lib/useDebounced';
 import { useFetch } from '../lib/useFetch';
-import { useAppSelector } from '../store/hooks';
 
 const PAGE_SIZE = 20;
 
 export default function DirectoryPage() {
-  const user = useAppSelector((s) => s.auth.user);
   const [search, setSearch] = useState('');
   const [village, setVillage] = useState('');
   const [page, setPage] = useState(1);
   const term = useDebounced(search.trim(), 300);
 
-  const filters = useFetch(`member-filters:${Boolean(user)}`, getMemberFiltersApi);
-  const list = useFetch(`members:${Boolean(user)}:${term}:${village}:${page}`, () =>
+  const filters = useFetch('member-filters', getMemberFiltersApi);
+  const list = useFetch(`members:${term}:${village}:${page}`, () =>
     listMembersApi({ search: term || undefined, village: village || undefined, page, limit: PAGE_SIZE }),
   );
 
-  const needsSignIn = !user && list.error?.toLowerCase().includes('sign in');
   const reset = () => {
     setSearch('');
     setVillage('');
@@ -47,7 +44,7 @@ export default function DirectoryPage() {
             : 'Find families by name, village or city.'
         }
         actions={
-          <div className="w-72 max-w-full">
+          <div className="w-full sm:w-72">
             <SearchInput
               label="Search the directory"
               placeholder="Search name, city, village…"
@@ -74,21 +71,7 @@ export default function DirectoryPage() {
         </div>
       )}
 
-      {needsSignIn ? (
-        <EmptyState
-          title="The directory is for signed-in members"
-          description="Sign in with your approved account to find other families."
-          action={
-            <Link
-              to="/login"
-              state={{ from: '/members' }}
-              className="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-hover"
-            >
-              Log in
-            </Link>
-          }
-        />
-      ) : list.error && !list.data ? (
+      {list.error && !list.data ? (
         <ErrorState message={list.error} onRetry={list.retry} />
       ) : !list.data ? (
         <Skeleton className="h-80" />

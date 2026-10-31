@@ -6,18 +6,16 @@ import {
   changePasswordRules,
   forgotPasswordRules,
   loginRules,
-  registerRules,
   resetPasswordRules,
   themeRules,
 } from '../validators/authValidator';
 import {
+  adminLogin,
   changePassword,
   forgotPassword,
   getMe,
   listSessions,
-  login,
   logout,
-  register,
   resetPassword,
   revokeSession,
   updateTheme,
@@ -25,9 +23,8 @@ import {
 
 const router = Router();
 
-// Public (stricter rate limit)
-router.post('/register', authRateLimiter, registerRules, register);
-router.post('/login', authRateLimiter, loginRules, login);
+// Public (stricter rate limit). There is no registration and no member sign-in: admins only.
+router.post('/admin-login', authRateLimiter, loginRules, adminLogin);
 router.post('/forgot-password', authRateLimiter, forgotPasswordRules, forgotPassword);
 router.post('/reset-password', authRateLimiter, resetPasswordRules, resetPassword);
 

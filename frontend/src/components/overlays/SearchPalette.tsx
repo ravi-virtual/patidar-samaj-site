@@ -1,31 +1,37 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search } from 'lucide-react';
 import { searchApi } from '../../api/siteApi';
 import type { SearchHit, SearchResults } from '../../api/types';
 import { useDebounced } from '../../lib/useDebounced';
 import { useFetch } from '../../lib/useFetch';
 import { formatShortDate } from '../../lib/format';
+import { isTabOn } from '../../lib/publicTabs';
+import { useAppSelector } from '../../store/hooks';
+import type { PublicTabKey } from '../../api/types';
+import { SearchInput } from '../ui/SearchInput';
 import { Modal } from './Modal';
 
 interface Group {
   key: keyof SearchResults;
   label: string;
+  /** The public tab the results belong to. Hidden while that tab is switched off. */
+  tab: PublicTabKey;
   to: (hit: SearchHit) => string;
 }
 
 const groups: Group[] = [
-  { key: 'events', label: 'Events', to: (h) => `/events/${h.id}` },
-  { key: 'announcements', label: 'News', to: (h) => `/news/${h.id}` },
-  { key: 'members', label: 'Directory', to: (h) => `/members/${h.id}` },
-  { key: 'faqs', label: 'FAQ', to: () => '/faq' },
-  { key: 'history', label: 'History', to: () => '/history' },
-  { key: 'links', label: 'Links', to: () => '/links' },
+  { key: 'events', label: 'Events', tab: 'events', to: (h) => `/events/${h.id}` },
+  { key: 'announcements', label: 'News', tab: 'news', to: (h) => `/news/${h.id}` },
+  { key: 'members', label: 'Directory', tab: 'directory', to: (h) => `/members/${h.id}` },
+  { key: 'faqs', label: 'FAQ', tab: 'faq', to: () => '/faq' },
+  { key: 'history', label: 'History', tab: 'history', to: () => '/history' },
+  { key: 'links', label: 'Links', tab: 'links', to: () => '/links' },
 ];
 
 /** Site-wide search. Opened from the sidebar, the header or Ctrl/⌘+K. Results respect visibility rules on the server. */
 export function SearchPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [query, setQuery] = useState('');
+  const settings = useAppSelector((s) => s.site.settings);
   const term = useDebounced(query.trim(), 250);
   const active = open && term.length >= 2;
   const { data, error, loading } = useFetch(`search:${active ? term : ''}`, () =>
@@ -39,19 +45,16 @@ export function SearchPalette({ open, onClose }: { open: boolean; onClose: () =>
 
   return (
     <Modal open={open} onClose={close} title="Search" hideTitle variant="top">
-      <div className="flex items-center gap-2.5 border-b border-border px-4">
-        <Search aria-hidden="true" className="h-4 w-4 text-text-subtle" />
-        <input
-          type="search"
+      <div className="border-b border-border p-3">
+        <SearchInput
+          size="lg"
           autoFocus
-          aria-label="Search members, events, news and pages"
+          label="Search members, events, news and pages"
           placeholder="Search members, events, news…"
           value={query}
-          maxLength={100}
-          onChange={(e) => setQuery(e.target.value)}
-          className="h-12 flex-1 bg-transparent text-base text-text placeholder:text-text-subtle focus:outline-none"
+          onChange={setQuery}
+          hint="ESC"
         />
-        <kbd className="rounded border border-border px-1.5 py-0.5 font-mono text-[11px] text-text-subtle">ESC</kbd>
       </div>
       <div className="max-h-[50vh] overflow-y-auto p-2" aria-live="polite">
         {term.length < 2 && <p className="px-3 py-4 text-sm text-text-muted">Type at least two letters.</p>}
@@ -64,7 +67,7 @@ export function SearchPalette({ open, onClose }: { open: boolean; onClose: () =>
           data &&
           groups.map((g) => {
             const hits = data.results[g.key];
-            if (!hits.length) return null;
+            if (!hits.length || !isTabOn(settings, g.tab)) return null;
             return (
               <section key={g.key} aria-label={g.label} className="mb-1">
                 <h3 className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-text-subtle">

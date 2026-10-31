@@ -14,9 +14,40 @@ import {
   type MembershipStatusValue,
   type Role,
 } from '../src/config/constants';
+import { Permissions, SELECTABLE_PERMISSIONS } from '../src/config/permissions';
 import { hashPassword } from '../src/utils/password';
 
 export const ORIGIN = 'http://localhost:5173';
+
+// Permission lists to give test admins. An admin has exactly the permissions it is given.
+const P = Permissions;
+/** Everything selectable. */
+export const ALL_ADMIN_PERMISSIONS: string[] = [...SELECTABLE_PERMISSIONS];
+/** Day-to-day operations: everything selectable except private member data, export, anonymise and the audit log. */
+export const OPS_ADMIN_PERMISSIONS: string[] = SELECTABLE_PERMISSIONS.filter(
+  (p) => ![P.MEMBERS_READ_PRIVATE, P.MEMBERS_EXPORT, P.MEMBERS_ANONYMIZE, P.AUDIT_READ].includes(p as never),
+);
+/** Write drafts only: no publish, delete, anonymise or export. */
+export const DRAFT_ADMIN_PERMISSIONS: string[] = [
+  P.DASHBOARD_VIEW,
+  P.EVENTS_READ,
+  P.EVENTS_CREATE,
+  P.EVENTS_UPDATE,
+  P.ANNOUNCEMENTS_READ,
+  P.ANNOUNCEMENTS_CREATE,
+  P.ANNOUNCEMENTS_UPDATE,
+  P.CONTENT_READ,
+  P.CONTENT_MANAGE,
+  P.MEDIA_UPLOAD,
+];
+/** Look but never change. */
+export const READ_ONLY_ADMIN_PERMISSIONS: string[] = [
+  P.DASHBOARD_VIEW,
+  P.MEMBERS_READ,
+  P.EVENTS_READ,
+  P.ANNOUNCEMENTS_READ,
+  P.CONTENT_READ,
+];
 export const PASSWORD = 'Correct-Horse-9';
 
 export const connectTestDb = async () => {
@@ -43,19 +74,18 @@ export const makeUser = async (
     role: Role;
     status: AccountStatusValue;
     password: string | null;
-    extraPermissions: string[];
-    phone: string;
+    /** An admin has exactly these permissions; the Super Admin always has all of them. */
+    permissions: string[];
   }> = {},
 ) => {
   counter += 1;
-  const role = over.role ?? Roles.MEMBER;
+  const role = over.role ?? Roles.ADMIN;
   return User.create({
     name: over.name ?? `Test ${role} ${counter}`,
     email: over.email ?? `${role}${counter}@example.test`,
-    phone: over.phone,
     role,
     status: over.status ?? AccountStatus.ACTIVE,
-    extraPermissions: over.extraPermissions ?? [],
+    permissions: over.permissions ?? [],
     passwordHash: over.password === null ? null : await hashPassword(over.password ?? PASSWORD),
   });
 };
@@ -75,7 +105,7 @@ export interface Client {
 /** Signs a user in and returns a client that sends the Origin and CSRF headers like the real app. */
 export const signIn = async (email: string, password = PASSWORD): Promise<Client> => {
   const agent = request.agent(app);
-  const res = await agent.post('/api/auth/login').set('Origin', ORIGIN).send({ email, password });
+  const res = await agent.post('/api/auth/admin-login').set('Origin', ORIGIN).send({ email, password });
   if (res.status !== 200) throw new Error(`Sign-in failed for ${email}: ${res.status} ${JSON.stringify(res.body)}`);
   const csrf = res.body.data.csrfToken as string;
   const cookie = (res.headers['set-cookie'] as unknown as string[])
@@ -104,10 +134,9 @@ export const signInAs = async (role: Role, extra: Parameters<typeof makeUser>[0]
 export const anon = () => request(app);
 
 let profileCounter = 0;
-/** A directory entry. Pass userId to link it to an account; omit it for an office-created entry. */
+/** A directory entry (a plain record; there are no member accounts). */
 export const makeProfile = async (
   over: Partial<{
-    userId: string | null;
     displayName: string;
     village: string;
     city: string;
@@ -148,11 +177,7 @@ export const makeEvent = async (
     startsAt: Date;
     endsAt: Date;
     venue: string;
-    capacity: number;
-    registeredCount: number;
     status: EventStatusValue;
-    registrationOpensAt: Date;
-    registrationClosesAt: Date;
     featured: boolean;
     description: string;
   }> = {},
@@ -163,7 +188,6 @@ export const makeEvent = async (
     category: 'Festival',
     venue: 'Samaj Bhavan',
     startsAt: new Date(Date.now() + 7 * DAY),
-    capacity: 0,
     status: EventStatus.PUBLISHED,
     ...over,
   });
@@ -197,3 +221,6 @@ export const makeAnnouncement = async (
     ...over,
   });
 };
+
+/** Everything selectable except the right to reset other admins' passwords, which opens part of /api/users. */
+export const ADMIN_PERMISSIONS_WITHOUT_USER_RESET: string[] = SELECTABLE_PERMISSIONS.filter((p) => p !== P.USERS_RESET_PASSWORD);

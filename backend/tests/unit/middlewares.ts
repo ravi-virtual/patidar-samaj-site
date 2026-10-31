@@ -4,8 +4,9 @@ import errorHandler from '../../src/middlewares/errorHandler';
 import hasPermission, { hasAnyPermission } from '../../src/middlewares/hasPermission';
 import isAuthenticated from '../../src/middlewares/isAuthenticated';
 import isStaff from '../../src/middlewares/isStaff';
+import isSuperAdmin from '../../src/middlewares/isSuperAdmin';
 import { originGuard } from '../../src/middlewares/originGuard';
-import { Permissions } from '../../src/config/permissions';
+import { ALL_PERMISSIONS, Permissions } from '../../src/config/permissions';
 import { Roles, config } from '../../src/config/constants';
 
 interface Captured {
@@ -170,12 +171,12 @@ describe('hasPermission', () => {
 
     it('passes with at least one permission and answers 403 with none', () => {
       const next = vi.fn();
-      hasAnyPermission(Permissions.MEMBERS_SUSPEND, Permissions.USERS_MANAGE)(makeReq(user([Permissions.USERS_MANAGE])), makeRes().res, next);
+      hasAnyPermission(Permissions.CONTENT_MANAGE, Permissions.USERS_MANAGE)(makeReq(user([Permissions.USERS_MANAGE])), makeRes().res, next);
       expect(next).toHaveBeenCalledOnce();
 
       const { res, out } = makeRes();
       const denied = vi.fn();
-      hasAnyPermission(Permissions.MEMBERS_SUSPEND, Permissions.USERS_MANAGE)(makeReq(user([Permissions.EVENTS_READ])), res, denied);
+      hasAnyPermission(Permissions.CONTENT_MANAGE, Permissions.USERS_MANAGE)(makeReq(user([Permissions.EVENTS_READ])), res, denied);
       expect(out.status).toBe(403);
       expect(denied).not.toHaveBeenCalled();
     });
@@ -206,13 +207,13 @@ describe('isAuthenticated', () => {
 });
 
 describe('isStaff', () => {
-  it.each([Roles.SUPER_ADMIN, Roles.ADMIN, Roles.EDITOR, Roles.VIEWER])('lets a %s through', (role) => {
+  it.each([Roles.SUPER_ADMIN, Roles.ADMIN])('lets a %s through', (role) => {
     const next = vi.fn();
     isStaff(makeReq({ user: { role } }), makeRes().res, next);
     expect(next).toHaveBeenCalledOnce();
   });
 
-  it.each([Roles.MEMBER, 'ghost', undefined])('refuses %s with 403', (role) => {
+  it.each(['member', 'editor', 'ghost', undefined])('refuses %s with 403', (role) => {
     const { res, out } = makeRes();
     const next = vi.fn();
     isStaff(makeReq({ user: { role } }), res, next);
@@ -224,6 +225,27 @@ describe('isStaff', () => {
     const { res, out } = makeRes();
     isStaff(makeReq(), res, vi.fn());
     expect(out.status).toBe(403);
+  });
+});
+
+describe('isSuperAdmin', () => {
+  it('lets only the Super Admin through, whatever permissions the user holds', () => {
+    const next = vi.fn();
+    isSuperAdmin(makeReq({ user: { role: Roles.SUPER_ADMIN } }), makeRes().res, next);
+    expect(next).toHaveBeenCalledOnce();
+
+    for (const req of [
+      makeReq({ user: { role: Roles.ADMIN, permissions: [...ALL_PERMISSIONS] } }),
+      makeReq({ user: { role: 'member' } }),
+      makeReq({ user: {} }),
+      makeReq(),
+    ]) {
+      const { res, out } = makeRes();
+      const blocked = vi.fn();
+      isSuperAdmin(req, res, blocked);
+      expect(out.status).toBe(403);
+      expect(blocked).not.toHaveBeenCalled();
+    }
   });
 });
 

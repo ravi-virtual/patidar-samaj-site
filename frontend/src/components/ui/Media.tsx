@@ -30,13 +30,3 @@ export function Cover({
     </div>
   );
 }
-
-/** Thin progress bar for event capacity. Purely visual: the numbers beside it carry the meaning. */
-export function Meter({ value, max, className = '' }: { value: number; max: number; className?: string }) {
-  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
-  return (
-    <div aria-hidden="true" className={`h-1.5 overflow-hidden rounded-full bg-surface-muted ${className}`}>
-      <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
-    </div>
-  );
-}

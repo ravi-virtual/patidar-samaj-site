@@ -31,7 +31,7 @@ const familySize = body('familySize')
 const visibility = body('visibility')
   .optional()
   .isIn(Object.values(MemberVisibility))
-  .withMessage('Visibility must be hidden, members or public');
+  .withMessage('Visibility must be hidden or public');
 
 const profileFields = [
   text('village', 80),
@@ -57,14 +57,11 @@ export const directoryQueryRules = [
 
 export const memberIdRules = [param('id').isUUID().withMessage('Invalid member id'), validateRequest];
 
-export const updateOwnProfileRules = [...profileFields, validateRequest];
-
 export const adminListRules = [
   ...paginationRules(100),
   query('search').optional().isString().trim().isLength({ max: 100 }),
   query('membershipStatus').optional().isIn(Object.values(MembershipStatus)),
   query('visibility').optional().isIn(Object.values(MemberVisibility)),
-  query('hasAccount').optional().isBoolean().toBoolean(),
   query('village').optional().isString().trim().isLength({ max: 80 }),
   validateRequest,
 ];

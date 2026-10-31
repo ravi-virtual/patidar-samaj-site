@@ -43,7 +43,6 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 
 export default function ContactPage() {
   const settings = useAppSelector((s) => s.site.settings);
-  const user = useAppSelector((s) => s.auth.user);
   const [sent, setSent] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -55,7 +54,7 @@ export default function ContactPage() {
     formState: { errors, isSubmitting },
   } = useForm<ContactForm>({
     resolver: zodResolver(schema),
-    defaultValues: { name: user?.name ?? '', email: user?.email ?? '', topic: CONTACT_TOPICS[0], message: '', website: '' },
+    defaultValues: { name: '', email: '', topic: CONTACT_TOPICS[0], message: '', website: '' },
   });
 
   const onSubmit = async (values: ContactForm) => {
@@ -89,7 +88,7 @@ export default function ContactPage() {
                 variant="secondary"
                 onClick={() => {
                   setSent(null);
-                  reset({ name: user?.name ?? '', email: user?.email ?? '', topic: CONTACT_TOPICS[0], message: '', website: '' });
+                  reset({ name: '', email: '', topic: CONTACT_TOPICS[0], message: '', website: '' });
                 }}
               >
                 Send another message

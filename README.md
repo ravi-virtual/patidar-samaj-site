@@ -1,9 +1,9 @@
 # Uttar Gujarat Kadva Patidar Samaj — community portal
 
-Public website, member workspace and admin panel for the Uttar Gujarat Kadva Patidar Samaj, built
+Informational public website (no sign-up or sign-in) and admin panel for the Uttar Gujarat Kadva Patidar Samaj, built
 from the client-approved **Design 2 — Modern Platform** prototype. MERN stack in TypeScript.
 
-> **Status:** all eight phases implemented — public website, member workspace, admin panel and API.
+> **Status:** all eight phases implemented — public website, admin panel and API.
 
 ## Prerequisites
 
@@ -75,7 +75,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 Development (needs `ENABLE_DEV_SEED=true` in `backend/.env`):
 
 ```powershell
-npm run seed            # fictional events, news, FAQs, members and five sample accounts
+npm run seed            # fictional events, news, FAQs, directory entries and two sample accounts (a Super Admin and an Admin)
 ```
 
 The sample passwords are random and printed **once**; they are not stored anywhere. `--reset-passwords`
@@ -88,8 +88,11 @@ asks for the password with hidden input and refuses to run if a Super Admin alre
 npm run bootstrap:superadmin --prefix backend
 ```
 
-All other staff are created by a Super Admin in the admin panel. There is no email provider, so
-the panel hands the administrator a one-time setup or reset link to pass on.
+Only the Super Admin signs in alongside the admins it creates. The Super Admin adds admins on the
+Users page and ticks exactly the permissions each admin gets (an admin has none by default). The
+panel emails the new admin their sign-in details, and a password reset sets a new password directly and emails it (when
+`MAIL_DRIVER=smtp`). Sign in at <http://localhost:5173/admin/login>; that page is not linked from
+the public site.
 
 ## Daily commands
 
@@ -106,8 +109,8 @@ the panel hands the administrator a one-time setup or reset link to pass on.
 | `npm run db:check` | Verify the MongoDB connection |
 | `npm run audit` | `npm audit` for production dependencies |
 
-Open <http://localhost:5173>. With the sample data loaded, sign in with one of the accounts printed by
-`npm run seed` (member, viewer, editor, admin, super admin).
+Open <http://localhost:5173>. With the sample data loaded, open /admin/login and sign in with one of the two accounts printed by
+`npm run seed` (Super Admin, Admin).
 
 ## Repository layout
 

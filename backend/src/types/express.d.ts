@@ -9,7 +9,6 @@ declare global {
       email: string;
       role: Role;
       status: AccountStatusValue;
-      extraPermissions: string[];
       permissions: Permission[];
       themePreference: ThemePreference;
       isAuthenticated: true;

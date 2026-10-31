@@ -1,5 +1,6 @@
 import { body, query } from 'express-validator';
 import { ThemePreferences } from '../config/constants';
+import { PublicTabs } from '../config/publicTabs';
 import { paginationRules } from '../utils/pagination';
 import { validateRequest } from './validateRequest';
 
@@ -44,8 +45,16 @@ export const updateSettingsRules = [
   text('socialLinks.*.label', 40),
   body('socialLinks.*.label').optional().isString().trim().isLength({ min: 1 }).withMessage('Each link needs a label'),
   webAddress('socialLinks.*.url').optional(),
-  body('registrationOpen').optional().isBoolean().toBoolean(),
-  body('directoryPublic').optional().isBoolean().toBoolean(),
+  body('publicTabs')
+    .optional()
+    .custom((value: unknown) => {
+      if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error('publicTabs must be an object');
+      for (const [key, on] of Object.entries(value)) {
+        if (!(PublicTabs as readonly string[]).includes(key)) throw new Error(`Unknown public tab "${key}"`);
+        if (typeof on !== 'boolean') throw new Error(`publicTabs.${key} must be true or false`);
+      }
+      return true;
+    }),
   body('themeDefault').optional().isIn([...ThemePreferences]),
   validateRequest,
 ];

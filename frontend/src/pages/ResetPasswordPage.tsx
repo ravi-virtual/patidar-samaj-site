@@ -57,7 +57,7 @@ export default function ResetPasswordPage() {
       <AuthCard title="Password updated">
         <Alert tone="success">{done}</Alert>
         <Link
-          to="/login"
+          to="/admin/login"
           className="inline-flex h-10 w-full items-center justify-center rounded-md bg-primary text-sm font-medium text-primary-foreground hover:bg-primary-hover"
         >
           Go to sign in

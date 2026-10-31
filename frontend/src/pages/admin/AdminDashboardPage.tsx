@@ -18,9 +18,7 @@ interface Tile {
 
 const tiles: Tile[] = [
   { key: 'totalMembers', label: 'Active members', note: 'In the directory', to: '/admin/members' },
-  { key: 'pendingRegistrations', label: 'Pending approvals', note: 'Waiting for review', to: '/admin/users?status=pending' },
   { key: 'upcomingEvents', label: 'Upcoming events', note: 'Published', to: '/admin/events' },
-  { key: 'eventRsvps', label: 'RSVPs', note: 'People registered for upcoming events' },
   { key: 'publishedAnnouncements', label: 'Announcements', note: 'Live on the site', to: '/admin/announcements' },
   { key: 'unreadContactMessages', label: 'New messages', note: 'Not yet opened', to: '/admin/contacts?status=new' },
 ];
@@ -81,7 +79,7 @@ export default function AdminDashboardPage() {
   const { data, initialLoading, error, retry } = useFetch('admin-dashboard', getDashboardApi);
   return (
     <>
-      <PageHeader title="Dashboard" description={`Signed in as ${roleLabel(user.role)}. Figures show only what your role can see.`} />
+      <PageHeader title="Dashboard" description={`Signed in as ${roleLabel(user.role)}. Figures show only what your permissions allow.`} />
       <Async data={data} loading={initialLoading} error={error} onRetry={retry} skeleton={<Skeleton className="h-40" />}>
         {(stats) => <Body stats={stats} />}
       </Async>

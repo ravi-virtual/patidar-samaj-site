@@ -31,7 +31,7 @@ export const createFirstSuperAdmin = async ({ name, email, password }: Bootstrap
   const existing = await User.exists({ role: Roles.SUPER_ADMIN, isDeleted: false });
   if (existing) {
     throw new BootstrapError(
-      'A Super Admin already exists. Further staff must be created from the admin panel.',
+      'A Super Admin already exists. Admins are created by the Super Admin from the admin panel.',
     );
   }
   if (await User.exists({ email: normalizedEmail })) {
@@ -45,7 +45,7 @@ export const createFirstSuperAdmin = async ({ name, email, password }: Bootstrap
     passwordChangedAt: new Date(),
     role: Roles.SUPER_ADMIN,
     status: AccountStatus.ACTIVE,
-    approvedAt: new Date(),
+    permissions: [], // the Super Admin always has every permission; the list is only used by admins
   });
 
   await AuditLog.create({

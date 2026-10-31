@@ -2,22 +2,24 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as siteApi from '../../src/api/siteApi';
+import { Route, Routes } from 'react-router-dom';
 import EventsPage from '../../src/pages/EventsPage';
+import EventDetailPage from '../../src/pages/EventDetailPage';
 import NewsPage from '../../src/pages/NewsPage';
 import DirectoryPage from '../../src/pages/DirectoryPage';
 import FaqPage from '../../src/pages/FaqPage';
 import LinksPage from '../../src/pages/LinksPage';
 import CommitteePage from '../../src/pages/CommitteePage';
 import ContactPage from '../../src/pages/ContactPage';
-import { apiError, makeEvent, makeStore, memberUser, renderWithApp } from '../helpers';
-import * as authApi from '../../src/api/authApi';
+import { apiError, makeEvent, renderWithApp } from '../helpers';
 
-vi.mock('../../src/api/authApi', () => ({ loginApi: vi.fn() }));
+vi.mock('../../src/api/authApi', () => ({ adminLoginApi: vi.fn() }));
 vi.mock('../../src/api/siteApi', async (importOriginal) => {
   const real = await importOriginal<typeof import('../../src/api/siteApi')>();
   return {
     mediaUrl: real.mediaUrl,
     listEventsApi: vi.fn(),
+    getEventApi: vi.fn(),
     listAnnouncementsApi: vi.fn(),
     listMembersApi: vi.fn(),
     getMemberFiltersApi: vi.fn(),
@@ -101,6 +103,24 @@ describe('EventsPage', () => {
   });
 });
 
+describe('EventDetailPage', () => {
+  it('shows date, time and venue only, with no registration box or sign-in prompt', async () => {
+    api.getEventApi.mockResolvedValue(makeEvent({ description: 'Raas under the full moon.' }));
+    api.listEventsApi.mockResolvedValue({ events: [], totalCount: 0 });
+    renderWithApp(
+      <Routes>
+        <Route path="/events/:id" element={<EventDetailPage />} />
+      </Routes>,
+      { path: '/events/e1' },
+    );
+    expect(await screen.findByRole('heading', { name: 'Navratri Garba Night' })).toBeInTheDocument();
+    expect(screen.getByText('Samaj Bhavan')).toBeInTheDocument();
+    expect(screen.getByText('Raas under the full moon.')).toBeInTheDocument();
+    expect(screen.queryByText(/register|sign in|places|going|left/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+});
+
 describe('NewsPage', () => {
   const item = (over = {}) => ({
     id: 'a1',
@@ -155,7 +175,7 @@ describe('DirectoryPage', () => {
   it('lists families and village filters, and never asks for contact details', async () => {
     api.getMemberFiltersApi.mockResolvedValue({ villages: ['Unjha', 'Visnagar'], cities: [] });
     api.listMembersApi.mockResolvedValue({ members: [entry, { ...entry, id: 'm2', name: 'Ravi Shah', village: null, city: null, country: null, occupation: null, joinedYear: null }], totalCount: 2 });
-    renderWithApp(<DirectoryPage />, { store: await makeStore(memberUser) });
+    renderWithApp(<DirectoryPage />);
     expect(await screen.findByRole('link', { name: /Asha Patel/ })).toHaveAttribute('href', '/members/m1');
     expect(screen.getByText('Mehsana, India')).toBeInTheDocument();
     expect(screen.getByText(/2 families listed/)).toBeInTheDocument();
@@ -169,25 +189,17 @@ describe('DirectoryPage', () => {
     api.getMemberFiltersApi.mockResolvedValue({ villages: ['Unjha', 'Visnagar'], cities: [] });
     api.listMembersApi.mockResolvedValue({ members: [entry], totalCount: 1 });
     const user = userEvent.setup();
-    renderWithApp(<DirectoryPage />, { store: await makeStore(memberUser) });
+    renderWithApp(<DirectoryPage />);
     await user.click(await screen.findByRole('button', { name: 'Visnagar' }));
     await waitFor(() => expect(api.listMembersApi).toHaveBeenLastCalledWith(expect.objectContaining({ village: 'Visnagar' })));
     expect(screen.getByRole('button', { name: 'Visnagar' })).toHaveAttribute('aria-pressed', 'true');
-  });
-
-  it('asks visitors to sign in when the API says the directory is members-only', async () => {
-    api.getMemberFiltersApi.mockRejectedValue(apiError(401, 'Please sign in to view the directory'));
-    api.listMembersApi.mockRejectedValue(apiError(401, 'Please sign in to view the directory'));
-    renderWithApp(<DirectoryPage />);
-    expect(await screen.findByText('The directory is for signed-in members')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Log in' })).toHaveAttribute('href', '/login');
   });
 
   it('shows an empty state that names the search term and clears it', async () => {
     api.getMemberFiltersApi.mockResolvedValue({ villages: [], cities: [] });
     api.listMembersApi.mockImplementation(async (p) => (p.search ? { members: [], totalCount: 0 } : { members: [entry], totalCount: 1 }));
     const user = userEvent.setup();
-    renderWithApp(<DirectoryPage />, { store: await makeStore(memberUser) });
+    renderWithApp(<DirectoryPage />);
     await screen.findByRole('link', { name: /Asha Patel/ });
     await user.type(screen.getByRole('searchbox'), 'zzz');
     expect(await screen.findByText('Nothing matches “zzz”.')).toBeInTheDocument();
@@ -198,7 +210,7 @@ describe('DirectoryPage', () => {
   it('shows a generic error with retry for other failures', async () => {
     api.getMemberFiltersApi.mockResolvedValue({ villages: [], cities: [] });
     api.listMembersApi.mockRejectedValue(apiError(500, 'Directory broke'));
-    renderWithApp(<DirectoryPage />, { store: await makeStore(memberUser) });
+    renderWithApp(<DirectoryPage />);
     expect(await screen.findByRole('alert')).toHaveTextContent('Directory broke');
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
   });
@@ -353,11 +365,10 @@ describe('ContactPage', () => {
     expect(screen.getByLabelText(/^message/i)).toHaveValue('');
   });
 
-  it('prefills the name and email of a signed-in member', async () => {
-    renderWithApp(<ContactPage />, { store: await makeStore(memberUser) });
-    expect(screen.getByLabelText(/^name/i)).toHaveValue('Asha Patel');
-    expect(screen.getByLabelText(/^email/i)).toHaveValue('asha@example.test');
-    expect(authApi.loginApi).toHaveBeenCalled();
+  it('starts with empty name and email (there is no sign-in to prefill from)', async () => {
+    renderWithApp(<ContactPage />);
+    expect(screen.getByLabelText(/^name/i)).toHaveValue('');
+    expect(screen.getByLabelText(/^email/i)).toHaveValue('');
   });
 
   it('puts server field errors next to the field and keeps what was typed', async () => {

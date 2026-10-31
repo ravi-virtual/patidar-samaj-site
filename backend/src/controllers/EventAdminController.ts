@@ -1,9 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { matchedData } from 'express-validator';
 import Event, { type IEvent } from '../models/Event';
-import EventRegistration from '../models/EventRegistration';
-import User from '../models/User';
-import { ErrorCodes, EventStatus, RegistrationStatus, ResponseCodes } from '../config/constants';
+import { ErrorCodes, EventStatus, ResponseCodes } from '../config/constants';
 import { Permissions } from '../config/permissions';
 import { ApiResponse, sendError } from '../utils/apiResponse';
 import { escapeRegex } from '../utils/escapeRegex';
@@ -11,7 +9,6 @@ import { pageParams } from '../utils/pagination';
 import { timingError, toAdminEvent } from '../utils/eventView';
 import { mayEditItem } from '../utils/publishPolicy';
 import { writeAudit } from '../utils/audit';
-import { sendCsv, toCsv } from '../utils/csv';
 
 const notFound = (res: Response, what = 'Event') =>
   sendError(res, { statusCode: ResponseCodes.NOT_FOUND, message: `${what} not found`, code: ErrorCodes.NOT_FOUND });
@@ -37,9 +34,6 @@ type EventInput = {
   category?: string;
   startsAt?: Date;
   endsAt?: Date | null;
-  registrationOpensAt?: Date | null;
-  registrationClosesAt?: Date | null;
-  capacity?: number;
   featured?: boolean;
   imageMediaId?: string | null;
 };
@@ -49,7 +43,7 @@ type EventInput = {
  * @file EventAdminController.ts
  * @param {Request} req
  * @param {Response} res
- * @description All events for staff, including drafts and archived, with registration counts.
+ * @description All events for staff, including drafts and archived.
  * @author Ravi Patel
  */
 export const listAdminEvents = async (req: Request, res: Response, next: NextFunction) => {
@@ -80,7 +74,7 @@ export const listAdminEvents = async (req: Request, res: Response, next: NextFun
       Event.countDocuments(filter),
     ]);
     return new ApiResponse(ResponseCodes.OK, 'Events fetched successfully', {
-      events: events.map((e) => toAdminEvent(e, now)),
+      events: events.map(toAdminEvent),
       totalCount,
     }).send(res);
   } catch (err) {
@@ -127,7 +121,6 @@ export const createEvent = async (req: Request, res: Response, next: NextFunctio
     const event = await Event.create({
       ...(data as Partial<IEvent>),
       status: EventStatus.DRAFT,
-      registeredCount: 0,
       createdBy: req.user!.id,
       updatedBy: req.user!.id,
     });
@@ -145,9 +138,8 @@ export const createEvent = async (req: Request, res: Response, next: NextFunctio
  * @file EventAdminController.ts
  * @param {Request} req
  * @param {Response} res
- * @description Edits an event. Without events.publish only drafts can be edited. Capacity cannot
- * drop below the number of places already taken. The status and the counters are never accepted
- * from the request.
+ * @description Edits an event. Without events.publish only drafts can be edited. The status is never
+ * accepted from the request.
  * @author Ravi Patel
  */
 export const updateEvent = async (req: Request, res: Response, next: NextFunction) => {
@@ -162,20 +154,10 @@ export const updateEvent = async (req: Request, res: Response, next: NextFunctio
     if (data.featured !== undefined && !req.user!.permissions.includes(Permissions.EVENTS_PUBLISH)) {
       return forbidden(res, 'Only staff who can publish events may feature them');
     }
-    if (data.capacity !== undefined && data.capacity > 0 && data.capacity < event.registeredCount) {
-      return conflict(
-        res,
-        `${event.registeredCount} places are already taken, so capacity cannot be lower than that.`,
-        ErrorCodes.HAS_DEPENDENCIES,
-      );
-    }
 
     const merged = {
       startsAt: data.startsAt ?? event.startsAt,
       endsAt: data.endsAt === undefined ? event.endsAt : data.endsAt,
-      registrationOpensAt: data.registrationOpensAt === undefined ? event.registrationOpensAt : data.registrationOpensAt,
-      registrationClosesAt:
-        data.registrationClosesAt === undefined ? event.registrationClosesAt : data.registrationClosesAt,
     };
     const problem = timingError(merged);
     if (problem) return badRequest(res, 'startsAt', problem);
@@ -204,7 +186,6 @@ const transition = async (
     action: string;
     message: string;
     extra?: Record<string, unknown>;
-    guard?: (event: { registeredCount: number }) => string | null;
   },
 ) => {
   try {
@@ -213,8 +194,6 @@ const transition = async (
     if (!opts.from.includes(event.status)) {
       return conflict(res, `An event that is ${event.status} cannot be changed this way.`);
     }
-    const blocked = opts.guard?.(event);
-    if (blocked) return conflict(res, blocked, ErrorCodes.HAS_DEPENDENCIES);
 
     event.status = opts.to as typeof event.status;
     event.set({ ...opts.extra, updatedBy: req.user!.id });
@@ -250,8 +229,7 @@ export const publishEvent = (req: Request, res: Response, next: NextFunction) =>
  * @param {Request} req
  * @param {Response} res
  * @param {NextFunction} next
- * @description Returns a published event to draft. Refused once people have registered — cancel it
- * instead, so they can see what happened.
+ * @description Returns a published event to draft.
  * @author Ravi Patel
  */
 export const unpublishEvent = (req: Request, res: Response, next: NextFunction) =>
@@ -260,7 +238,6 @@ export const unpublishEvent = (req: Request, res: Response, next: NextFunction) 
     to: EventStatus.DRAFT,
     action: 'event.unpublished',
     message: 'Event unpublished',
-    guard: (e) => (e.registeredCount > 0 ? 'People have registered for this event. Cancel it instead of unpublishing.' : null),
   });
 
 /**
@@ -269,8 +246,8 @@ export const unpublishEvent = (req: Request, res: Response, next: NextFunction) 
  * @param {Request} req
  * @param {Response} res
  * @param {NextFunction} next
- * @description Cancels a published event. It stays visible marked as cancelled and registrations
- * are kept. No email is sent: the response says so, so nobody assumes attendees were notified.
+ * @description Cancels a published event. It stays visible marked as cancelled
+ * with the reason, if one was given.
  * @author Ravi Patel
  */
 export const cancelEvent = async (req: Request, res: Response, next: NextFunction) => {
@@ -279,7 +256,7 @@ export const cancelEvent = async (req: Request, res: Response, next: NextFunctio
     from: [EventStatus.PUBLISHED],
     to: EventStatus.CANCELLED,
     action: 'event.cancelled',
-    message: 'Event cancelled. Registered members have not been emailed; contact them separately.',
+    message: 'Event cancelled',
     extra: { cancelledAt: new Date(), cancellationReason: reason },
   });
 };
@@ -306,144 +283,17 @@ export const archiveEvent = (req: Request, res: Response, next: NextFunction) =>
  * @file EventAdminController.ts
  * @param {Request} req
  * @param {Response} res
- * @description Soft-deletes an event. Refused if anyone ever registered, so registration history
- * is never lost by accident; archive the event instead.
+ * @description Soft-deletes an event.
  * @author Ravi Patel
  */
 export const deleteEvent = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const event = await Event.findOne({ _id: req.params.id, isDeleted: false });
     if (!event) return notFound(res);
-    const registrations = await EventRegistration.countDocuments({ eventId: event._id });
-    if (registrations > 0) {
-      return conflict(res, 'This event has registrations and cannot be deleted. Archive it instead.', ErrorCodes.HAS_DEPENDENCIES);
-    }
     event.isDeleted = true;
     await event.save();
     await writeAudit(req, { action: 'event.deleted', targetType: 'event', targetId: event._id });
     return new ApiResponse(ResponseCodes.OK, 'Event deleted').send(res);
-  } catch (err) {
-    return next(err);
-  }
-};
-
-const registrationRows = async (eventId: string, status?: string, search?: string, skip = 0, limit = 0) => {
-  const filter: Record<string, unknown> = { eventId };
-  if (status) filter.status = status;
-  if (search) {
-    const rx = new RegExp(escapeRegex(search), 'i');
-    const users = await User.find({ $or: [{ name: rx }, { email: rx }] }).select('_id').limit(1000).lean();
-    filter.userId = { $in: users.map((u) => u._id) };
-  }
-  const query = EventRegistration.find(filter).sort({ createdAt: 1 }).skip(skip);
-  if (limit) query.limit(limit);
-  const [regs, totalCount] = await Promise.all([query.lean(), EventRegistration.countDocuments(filter)]);
-  const users = regs.length
-    ? await User.find({ _id: { $in: regs.map((r) => r.userId) } }).select('name email').lean()
-    : [];
-  const byId = new Map(users.map((u) => [u._id, u]));
-  return { regs, totalCount, byId };
-};
-
-/**
- * @name listRegistrations
- * @file EventAdminController.ts
- * @param {Request} req
- * @param {Response} res
- * @description Registration list for one event: member name, email, number attending, status.
- * @author Ravi Patel
- */
-export const listRegistrations = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const event = await Event.findOne({ _id: req.params.id, isDeleted: false }).lean();
-    if (!event) return notFound(res);
-    const q = matchedData<{ page?: number; limit?: number; status?: string; search?: string }>(req, {
-      locations: ['query'],
-    });
-    const { limit, skip } = pageParams(q, 50);
-    const { regs, totalCount, byId } = await registrationRows(event._id, q.status, q.search, skip, limit);
-
-    return new ApiResponse(ResponseCodes.OK, 'Registrations fetched successfully', {
-      registrations: regs.map((r) => ({
-        id: r._id,
-        userId: r.userId,
-        name: byId.get(r.userId)?.name ?? 'Former member',
-        email: byId.get(r.userId)?.email ?? null,
-        attendees: r.attendees,
-        status: r.status,
-        registeredAt: r.createdAt,
-        cancelledAt: r.cancelledAt ?? null,
-      })),
-      totalCount,
-    }).send(res);
-  } catch (err) {
-    return next(err);
-  }
-};
-
-/**
- * @name removeRegistration
- * @file EventAdminController.ts
- * @param {Request} req
- * @param {Response} res
- * @description Staff cancel someone's registration (for example at their request) and free their
- * places. The record is kept as cancelled for the history.
- * @author Ravi Patel
- */
-export const removeRegistration = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const claimed = await EventRegistration.findOneAndUpdate(
-      { _id: req.params.registrationId, eventId: req.params.id, status: RegistrationStatus.CONFIRMED },
-      { $set: { status: RegistrationStatus.CANCELLED, cancelledAt: new Date(), cancelledBy: req.user!.id } },
-      { returnDocument: 'before' },
-    ).lean();
-    if (!claimed) return notFound(res, 'Registration');
-
-    await Event.updateOne({ _id: claimed.eventId }, { $inc: { registeredCount: -claimed.attendees } });
-    await writeAudit(req, {
-      action: 'event.registration_removed',
-      targetType: 'event',
-      targetId: claimed.eventId,
-      metadata: { registrationId: claimed._id },
-    });
-    return new ApiResponse(ResponseCodes.OK, 'Registration cancelled').send(res);
-  } catch (err) {
-    return next(err);
-  }
-};
-
-/**
- * @name exportRegistrations
- * @file EventAdminController.ts
- * @param {Request} req
- * @param {Response} res
- * @description CSV of an event's registrations. Requires registrations.export and is audited.
- * @author Ravi Patel
- */
-export const exportRegistrations = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const event = await Event.findOne({ _id: req.params.id, isDeleted: false }).lean();
-    if (!event) return notFound(res);
-    const { regs, byId } = await registrationRows(event._id, undefined, undefined, 0, 20_000);
-
-    const rows = regs.map((r) => [
-      byId.get(r.userId)?.name ?? 'Former member',
-      byId.get(r.userId)?.email ?? '',
-      r.attendees,
-      r.status,
-      r.createdAt.toISOString(),
-    ]);
-    await writeAudit(req, {
-      action: 'event.registrations_exported',
-      targetType: 'event',
-      targetId: event._id,
-      metadata: { count: rows.length },
-    });
-    return sendCsv(
-      res,
-      `registrations-${event.title.slice(0, 40)}-${new Date().toISOString().slice(0, 10)}.csv`,
-      toCsv(['Name', 'Email', 'Attendees', 'Status', 'Registered at'], rows),
-    );
   } catch (err) {
     return next(err);
   }

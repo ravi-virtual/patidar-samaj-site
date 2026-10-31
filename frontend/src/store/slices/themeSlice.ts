@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { updateThemeApi } from '../../api/authApi';
-import { bootstrapAuth, login } from './authSlice';
+import { adminLogin, bootstrapAuth } from './authSlice';
 import {
   readStoredTheme,
   resolveTheme,
@@ -49,7 +49,7 @@ const themeSlice = createSlice({
       writeStoredTheme(state.preference);
     };
     builder.addCase(bootstrapAuth.fulfilled, adoptAccountTheme);
-    builder.addCase(login.fulfilled, adoptAccountTheme);
+    builder.addCase(adminLogin.fulfilled, adoptAccountTheme);
   },
 });
 

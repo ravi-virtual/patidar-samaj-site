@@ -78,16 +78,6 @@ export const getEventApi = async (id: string): Promise<EventItem> => {
   return data.data.event;
 };
 
-export const rsvpApi = async (id: string, attendees: number): Promise<EventItem> => {
-  const { data } = await api.post<Envelope<{ event: EventItem }>>(`/events/${id}/rsvp`, { attendees });
-  return data.data.event;
-};
-
-export const cancelRsvpApi = async (id: string): Promise<EventItem> => {
-  const { data } = await api.delete<Envelope<{ event: EventItem }>>(`/events/${id}/rsvp`);
-  return data.data.event;
-};
-
 export const listAnnouncementsApi = async (params: {
   category?: string;
   search?: string;

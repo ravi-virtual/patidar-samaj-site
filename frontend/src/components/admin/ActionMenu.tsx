@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, type LucideIcon } from 'lucide-react';
 
 export interface MenuAction {
   label: string;
   onSelect: () => void;
   danger?: boolean;
+  /** Optional lucide icon shown before the label. */
+  icon?: LucideIcon;
   /** Hidden when false, so callers can list every action and let permissions decide. */
   show?: boolean;
 }
@@ -80,8 +82,9 @@ export function ActionMenu({ label, actions }: { label: string; actions: MenuAct
                   setPos(null);
                   a.onSelect();
                 }}
-                className={`block w-full rounded-md px-3 py-1.5 text-left text-sm hover:bg-surface-muted ${a.danger ? 'text-danger' : 'text-text'}`}
+                className={`flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm hover:bg-surface-muted ${a.danger ? 'text-danger' : 'text-text'}`}
               >
+                {a.icon && <a.icon aria-hidden="true" className="h-4 w-4 shrink-0" />}
                 {a.label}
               </button>
             </li>

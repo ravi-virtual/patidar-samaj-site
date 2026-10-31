@@ -79,21 +79,6 @@ describe('concurrent reuse of a password-reset link', () => {
     expect(await AuditLog.countDocuments({ action: 'auth.password_reset_completed' })).toBe(1);
   });
 
-  it('applies to the one-time setup link of a new staff account as well', async () => {
-    const { client: sa } = await signInAs(Roles.SUPER_ADMIN);
-    const created = await sa.post('/api/users').send({ name: 'Nisha Shah', email: 'nisha@example.test', role: 'editor' });
-    expect(created.status).toBe(201);
-    const token = new URL(created.body.data.setup.url).searchParams.get('token')!;
-
-    const passwords = Array.from({ length: PARALLEL }, (_, i) => `Staff-Setup-Choice-${i + 10}`);
-    const results = await Promise.all(passwords.map((p) => reset(token, p)));
-    const winners = results.map((r, i) => ({ r, i })).filter(({ r }) => r.status === 200);
-    expect(winners).toHaveLength(1);
-
-    const winnerPassword = passwords[winners[0]!.i]!;
-    expect((await signIn('nisha@example.test', winnerPassword)).userId).toBe(created.body.data.user.id);
-  });
-
   it('revokes the sessions once, and nobody can sign in with the old password afterwards', async () => {
     const user = await makeUser();
     const phone = await signIn(user.email);
@@ -105,7 +90,7 @@ describe('concurrent reuse of a password-reset link', () => {
     expect((await phone.get('/api/auth/me')).status).toBe(401);
     expect((await laptop.get('/api/auth/me')).status).toBe(401);
     expect(await Session.countDocuments({ userId: user._id })).toBe(0);
-    const old = await anon().post('/api/auth/login').set('Origin', ORIGIN).send({ email: user.email, password: PASSWORD });
+    const old = await anon().post('/api/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: PASSWORD });
     expect(old.status).toBe(401);
   });
 
@@ -195,29 +180,16 @@ describe('reset link lifecycle', () => {
     expect((await signIn(user.email, 'First-Password-2026')).userId).toBe(user._id);
   });
 
-  it('replaces an earlier link when a new one is requested, so only the latest works', async () => {
+  it('a direct reset by an administrator invalidates any outstanding link', async () => {
     const member = await makeUser();
-    const { client: admin } = await signInAs(Roles.ADMIN);
-    const first = await admin.post(`/api/users/${member._id}/password-reset`);
-    const second = await admin.post(`/api/users/${member._id}/password-reset`);
-    const t1 = new URL(first.body.data.reset.url).searchParams.get('token')!;
-    const t2 = new URL(second.body.data.reset.url).searchParams.get('token')!;
-    expect(t1).not.toBe(t2);
+    const { client: admin } = await signInAs(Roles.SUPER_ADMIN);
+    const token = await issueToken(member._id);
 
-    expect((await reset(t1, 'Old-Link-Choice-2026')).status).toBe(400);
-    expect((await reset(t2, 'New-Link-Choice-2026')).status).toBe(200);
-  });
-
-  it('a forgot-password request invalidates an administrator-issued link', async () => {
-    const member = await makeUser();
-    const { client: admin } = await signInAs(Roles.ADMIN);
-    const issued = await admin.post(`/api/users/${member._id}/password-reset`);
-    const token = new URL(issued.body.data.reset.url).searchParams.get('token')!;
-
-    await anon().post('/api/auth/forgot-password').set('Origin', ORIGIN).send({ email: member.email });
+    const res = await admin.post(`/api/users/${member._id}/password-reset`).send({ password: 'Direct-Reset-2026' });
+    expect(res.status).toBe(200);
 
     expect((await reset(token, 'Admin-Link-Choice-2026')).status).toBe(400);
-    expect(await PasswordResetToken.countDocuments({ userId: member._id, usedAt: null })).toBe(1);
+    expect(await PasswordResetToken.countDocuments({ userId: member._id, usedAt: null })).toBe(0);
   });
 
   it('does not issue a link through forgot-password to a suspended account', async () => {

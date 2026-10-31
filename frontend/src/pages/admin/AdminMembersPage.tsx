@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Download, Plus } from 'lucide-react';
+import { Download, Plus, UserX } from 'lucide-react';
 import { anonymizeMemberApi, downloadCsv, listStaffMembersApi, type StaffMember } from '../../api/adminApi';
 import { getErrorMessage } from '../../api/axiosInstance';
-import { ActionMenu } from '../../components/admin/ActionMenu';
+import { RowMenu } from '../../components/admin/RowActions';
 import { DataTable, type Column } from '../../components/admin/DataTable';
 import { MemberFormDrawer } from '../../components/admin/MemberFormDrawer';
 import { StatusBadge } from '../../components/admin/StatusBadge';
@@ -24,18 +24,18 @@ import { showToast } from '../../store/slices/toastSlice';
 
 const PAGE_SIZE = 20;
 
-const visibilityLabel = { hidden: 'Office only', members: 'Members', public: 'Everyone' } as const;
+const visibilityLabel = { hidden: 'Office only', public: 'Everyone' } as const;
 
+/** The community directory: plain entries added and kept up to date by the office. No accounts. */
 export default function AdminMembersPage() {
   const dispatch = useAppDispatch();
   const can = useCan();
   const [search, setSearch] = useState('');
   const [membershipStatus, setMembershipStatus] = useState('');
   const [visibility, setVisibility] = useState('');
-  const [hasAccount, setHasAccount] = useState('');
   const [page, setPage] = useState(1);
   const term = useDebounced(search.trim(), 300);
-  const filters = { search: term, membershipStatus, visibility, hasAccount };
+  const filters = { search: term, membershipStatus, visibility };
 
   const list = useFetch(`admin-members:${JSON.stringify(filters)}:${page}`, () =>
     listStaffMembersApi({ ...filters, page, limit: PAGE_SIZE }),
@@ -64,10 +64,7 @@ export default function AdminMembersPage() {
       cell: (m) => (
         <div className="flex items-center gap-2.5">
           <Avatar name={m.name} size="sm" />
-          <div className="min-w-0">
-            <p className="truncate font-medium text-text">{m.name}</p>
-            <p className="text-xs text-text-muted">{m.hasAccount ? 'Has an account' : 'Directory entry only'}</p>
-          </div>
+          <p className="truncate font-medium text-text">{m.name}</p>
         </div>
       ),
     },
@@ -75,17 +72,17 @@ export default function AdminMembersPage() {
     { header: 'Location', cell: (m) => place(m.city, m.country) || '—' },
     ...(showPhone ? [{ header: 'Phone', className: 'whitespace-nowrap font-mono text-[13px]', cell: (m: StaffMember) => m.phone ?? '—' }] : []),
     { header: 'Membership', cell: (m) => <StatusBadge status={m.membershipStatus} /> },
-    { header: 'Visible to', cell: (m) => <Badge>{visibilityLabel[m.visibility]}</Badge> },
+    { header: 'Visible to', cell: (m) => <Badge>{visibilityLabel[m.visibility] ?? visibilityLabel.hidden}</Badge> },
     {
       header: 'Actions',
       srOnlyHeader: true,
       className: 'text-right',
       cell: (m) => (
-        <ActionMenu
-          label={`Actions for ${m.name}`}
+        <RowMenu
+          name={m.name}
           actions={[
-            { label: 'Edit', show: can('members.update') && !m.anonymizedAt, onSelect: () => setEditing(m) },
-            { label: 'Anonymise…', danger: true, show: can('members.anonymize') && !m.anonymizedAt, onSelect: () => setAnonymizing(m) },
+            { label: 'Edit', kind: 'edit', show: can('members.update') && !m.anonymizedAt, onSelect: () => setEditing(m) },
+            { label: 'Anonymise…', icon: UserX, danger: true, show: can('members.anonymize') && !m.anonymizedAt, onSelect: () => setAnonymizing(m) },
           ]}
         />
       ),
@@ -94,7 +91,7 @@ export default function AdminMembersPage() {
 
   return (
     <>
-      <PageHeader title="Members" description="The community directory. Account approvals and roles are under Users & roles." />
+      <PageHeader title="Members" description="The community directory. Entries are added and kept up to date by the office; members do not sign in." />
       <Toolbar
         search={search}
         onSearch={reset(setSearch)}
@@ -116,9 +113,8 @@ export default function AdminMembersPage() {
           </>
         }
       >
-        <FilterSelect label="Membership" value={membershipStatus} onChange={reset(setMembershipStatus)} options={[{ value: '', label: 'Any membership' }, { value: 'active', label: 'Active' }, { value: 'pending', label: 'Pending' }, { value: 'inactive', label: 'Inactive' }]} />
-        <FilterSelect label="Visibility" value={visibility} onChange={reset(setVisibility)} options={[{ value: '', label: 'Any visibility' }, { value: 'hidden', label: 'Office only' }, { value: 'members', label: 'Members' }, { value: 'public', label: 'Everyone' }]} />
-        <FilterSelect label="Account" value={hasAccount} onChange={reset(setHasAccount)} options={[{ value: '', label: 'With or without account' }, { value: 'true', label: 'Has an account' }, { value: 'false', label: 'No account' }]} />
+        <FilterSelect label="Membership" value={membershipStatus} onChange={reset(setMembershipStatus)} options={[{ value: '', label: 'Any membership' }, { value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]} />
+        <FilterSelect label="Visibility" value={visibility} onChange={reset(setVisibility)} options={[{ value: '', label: 'Any visibility' }, { value: 'hidden', label: 'Office only' }, { value: 'public', label: 'Everyone' }]} />
       </Toolbar>
 
       <DataTable
@@ -145,9 +141,7 @@ export default function AdminMembersPage() {
         }}
         onCancel={() => setAnonymizing(null)}
       >
-        {anonymizing
-          ? `${anonymizing.name}'s name and personal details are removed for good, their account (if any) is closed and they are signed out. This cannot be undone.`
-          : ''}
+        {anonymizing ? `${anonymizing.name}'s name and personal details are removed for good. This cannot be undone.` : ''}
       </ConfirmDialog>
     </>
   );

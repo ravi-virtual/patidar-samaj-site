@@ -31,9 +31,9 @@ export default function ForgotPasswordPage() {
   return (
     <AuthCard
       title="Reset your password"
-      description="Enter your account email. If email delivery is available you will receive a reset link; otherwise the Samaj office can issue one for you."
+      description="Enter your admin account email. If email delivery is available you will receive a reset link; otherwise the Super Admin can issue one for you."
       footer={
-        <Link to="/login" className="font-medium text-accent hover:underline">
+        <Link to="/admin/login" className="font-medium text-accent hover:underline">
           Back to sign in
         </Link>
       }

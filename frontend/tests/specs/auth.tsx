@@ -7,7 +7,7 @@ import { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { createStore } from '../../src/store';
 import { routes } from '../../src/routes';
 import { RequireAuth, RequirePermission } from '../../src/routes/guards';
-import { bootstrapAuth, login } from '../../src/store/slices/authSlice';
+import { adminLogin, bootstrapAuth } from '../../src/store/slices/authSlice';
 import { changeTheme } from '../../src/store/slices/themeSlice';
 import { HeaderActions } from '../../src/components/layout/HeaderActions';
 import * as authApi from '../../src/api/authApi';
@@ -17,8 +17,7 @@ import type { SessionUser } from '../../src/api/authApi';
 
 vi.mock('../../src/api/authApi', () => ({
   meApi: vi.fn(),
-  loginApi: vi.fn(),
-  registerApi: vi.fn(),
+  adminLoginApi: vi.fn(),
   logoutApi: vi.fn(),
   updateThemeApi: vi.fn(),
   forgotPasswordApi: vi.fn(),
@@ -27,15 +26,14 @@ vi.mock('../../src/api/authApi', () => ({
 
 const mocked = vi.mocked(authApi);
 
-const member: SessionUser = {
+const admin: SessionUser = {
   id: 'u1',
   name: 'Asha Patel',
   email: 'asha@example.test',
-  phone: null,
-  role: 'member',
+  role: 'admin',
   status: 'active',
   themePreference: 'system',
-  permissions: ['members.read', 'events.rsvp'],
+  permissions: ['members.read', 'events.read'],
   lastLoginAt: null,
 };
 
@@ -73,27 +71,33 @@ beforeEach(() => {
   mocked.meApi.mockRejectedValue(apiError(401, 'Not authenticated', 'UNAUTHORIZED'));
 });
 
-describe('login page', () => {
+describe('admin sign-in page', () => {
   it('shows field errors without calling the API when the form is empty', async () => {
     const user = userEvent.setup();
-    await renderApp('/login');
+    await renderApp('/admin/login');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
     expect(await screen.findByText('Email is required')).toBeInTheDocument();
     expect(screen.getByText('Password is required')).toBeInTheDocument();
-    expect(mocked.loginApi).not.toHaveBeenCalled();
+    expect(mocked.adminLoginApi).not.toHaveBeenCalled();
   });
 
   it('labels every field and marks required ones', async () => {
-    await renderApp('/login');
+    await renderApp('/admin/login');
     expect(screen.getByLabelText(/email/i)).toBeRequired();
     expect(screen.getByLabelText(/^password/i)).toBeRequired();
   });
 
-  it('signs in, stores the CSRF token in memory only, and leaves the login page', async () => {
-    mocked.loginApi.mockResolvedValue({ user: member, csrfToken: 'csrf-123' });
+  it('offers only password recovery: no registration, no member sign-in', async () => {
+    await renderApp('/admin/login');
+    expect(screen.getByRole('link', { name: /forgot password/i })).toHaveAttribute('href', '/forgot-password');
+    expect(screen.queryByRole('link', { name: /register|join|create account/i })).not.toBeInTheDocument();
+  });
+
+  it('signs in, stores the CSRF token in memory only, and leaves the sign-in page', async () => {
+    mocked.adminLoginApi.mockResolvedValue({ user: admin, csrfToken: 'csrf-123' });
     const user = userEvent.setup();
     const store = createStore();
-    await renderApp('/login', store);
+    await renderApp('/admin/login', store);
 
     await user.type(screen.getByLabelText(/email/i), 'asha@example.test');
     await user.type(screen.getByLabelText(/^password/i), 'Correct-Horse-9');
@@ -103,86 +107,70 @@ describe('login page', () => {
     expect(getCsrfToken()).toBe('csrf-123');
     expect(window.localStorage.getItem('csrf')).toBeNull();
     expect(JSON.stringify(window.localStorage)).not.toMatch(/csrf-123|token|session/i);
-    await waitFor(() => expect(screen.queryByRole('heading', { name: /sign in to patidar samaj/i })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole('heading', { name: /admin sign in/i })).not.toBeInTheDocument());
   });
 
   it('shows the server’s generic error for bad credentials', async () => {
-    mocked.loginApi.mockRejectedValue(apiError(401, 'Invalid email or password', 'UNAUTHORIZED'));
+    mocked.adminLoginApi.mockRejectedValue(apiError(401, 'Invalid email or password', 'UNAUTHORIZED'));
     const user = userEvent.setup();
-    await renderApp('/login');
+    await renderApp('/admin/login');
     await user.type(screen.getByLabelText(/email/i), 'asha@example.test');
     await user.type(screen.getByLabelText(/^password/i), 'wrong');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email or password');
   });
 
-  it('explains a pending account instead of calling it a wrong password', async () => {
-    mocked.loginApi.mockRejectedValue(
-      apiError(403, 'Your registration is awaiting approval by the Samaj office.', 'ACCOUNT_NOT_ACTIVE'),
+  it('explains a suspended account instead of calling it a wrong password', async () => {
+    mocked.adminLoginApi.mockRejectedValue(
+      apiError(403, 'This account has been suspended. Please contact the Super Admin.', 'ACCOUNT_NOT_ACTIVE'),
     );
     const user = userEvent.setup();
-    await renderApp('/login');
+    await renderApp('/admin/login');
     await user.type(screen.getByLabelText(/email/i), 'asha@example.test');
     await user.type(screen.getByLabelText(/^password/i), 'Correct-Horse-9');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
-    expect(await screen.findByText(/awaiting approval/i)).toBeInTheDocument();
+    expect(await screen.findByText(/suspended/i)).toBeInTheDocument();
   });
 
   it('toggles password visibility with an accessible button', async () => {
     const user = userEvent.setup();
-    await renderApp('/login');
+    await renderApp('/admin/login');
     const input = screen.getByLabelText(/^password/i);
     expect(input).toHaveAttribute('type', 'password');
     await user.click(screen.getByRole('button', { name: /show password/i }));
     expect(input).toHaveAttribute('type', 'text');
     expect(screen.getByRole('button', { name: /hide password/i })).toHaveAttribute('aria-pressed', 'true');
   });
+
+  it('does not show the sign-in form to someone who is already signed in', async () => {
+    mocked.meApi.mockResolvedValue({ user: admin, csrfToken: 'c' });
+    await renderApp('/admin/login');
+    expect(screen.queryByRole('heading', { name: /admin sign in/i })).not.toBeInTheDocument();
+  });
 });
 
-describe('registration page', () => {
-  const fill = async (user: ReturnType<typeof userEvent.setup>, over: Partial<Record<string, string>> = {}) => {
-    await user.type(screen.getByLabelText(/full name/i), over.name ?? 'Asha Patel');
-    await user.type(screen.getByLabelText(/^email/i), over.email ?? 'asha@example.test');
-    await user.type(screen.getByLabelText(/^password/i), over.password ?? 'Correct-Horse-9');
-    await user.type(screen.getByLabelText(/confirm password/i), over.confirm ?? 'Correct-Horse-9');
-  };
-
-  it('validates password strength, confirmation and acknowledgement before submitting', async () => {
-    const user = userEvent.setup();
-    await renderApp('/register');
-    await fill(user, { password: 'short', confirm: 'different' });
-    await user.click(screen.getByRole('button', { name: /create account/i }));
-    expect(await screen.findByText(/at least 10 characters/i)).toBeInTheDocument();
-    expect(screen.getByText('You must confirm to continue')).toBeInTheDocument();
-    expect(mocked.registerApi).not.toHaveBeenCalled();
+describe('member sign-up and sign-in no longer exist', () => {
+  it.each(['/login', '/register', '/app', '/app/settings', '/app/registrations'])('%s is simply not found', async (path) => {
+    await renderApp(path);
+    expect(screen.getByRole('heading', { name: /page not found/i })).toBeInTheDocument();
   });
 
-  it('shows a pending-approval confirmation after a successful registration', async () => {
-    mocked.registerApi.mockResolvedValue('Registration received. The Samaj office will review it.');
-    const user = userEvent.setup();
-    await renderApp('/register');
-    await fill(user);
-    await user.click(screen.getByRole('checkbox'));
-    await user.click(screen.getByRole('button', { name: /create account/i }));
-
-    expect(await screen.findByRole('heading', { name: /registration received/i })).toBeInTheDocument();
-    expect(screen.getByText(/pending approval/i)).toBeInTheDocument();
-    // The request carries no role or status — only what the form collects.
-    const sent = mocked.registerApi.mock.calls[0]![0];
-    expect(Object.keys(sent).sort()).toEqual(['acknowledge', 'confirmPassword', 'email', 'name', 'password', 'phone'].filter((k) => k in sent).sort());
-    expect(sent).not.toHaveProperty('role');
+  it('shows no sign-in, join or workspace links around the public site', async () => {
+    await renderApp('/forgot-password');
+    expect(screen.queryByRole('link', { name: /^(log in|join|sign in|create account)$/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/member workspace|my workspace/i)).not.toBeInTheDocument();
+    expect(document.querySelector('a[href="/login"], a[href="/register"], a[href^="/app"]')).toBeNull();
   });
 
-  it('puts server-side field errors next to the field', async () => {
-    mocked.registerApi.mockRejectedValue(
-      apiError(409, 'An account with this email already exists. Try signing in instead.', 'DUPLICATE_ERROR'),
-    );
-    const user = userEvent.setup();
-    await renderApp('/register');
-    await fill(user);
-    await user.click(screen.getByRole('checkbox'));
-    await user.click(screen.getByRole('button', { name: /create account/i }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(/already exists/i);
+  it('keeps password recovery reachable, leading back to the admin sign-in', async () => {
+    await renderApp('/forgot-password');
+    expect(screen.getByRole('heading', { name: /reset your password/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /back to sign in/i })).toHaveAttribute('href', '/admin/login');
+  });
+
+  it('sends visitors who open an admin page to the admin sign-in', async () => {
+    await renderApp('/admin/members');
+    expect(screen.getByRole('heading', { name: /admin sign in/i })).toBeInTheDocument();
   });
 });
 
@@ -190,12 +178,12 @@ describe('route guards (convenience only — the API enforces access)', () => {
   const Secret = () => <p>secret content</p>;
   const guarded = (el: React.ReactNode) => (
     <Routes>
-      <Route path="/login" element={<p>login screen</p>} />
+      <Route path="/admin/login" element={<p>login screen</p>} />
       <Route path="/private" element={el} />
     </Routes>
   );
 
-  it('sends visitors to the login page', async () => {
+  it('sends visitors to the admin sign-in page', async () => {
     const store = createStore();
     await store.dispatch(bootstrapAuth());
     render(
@@ -218,13 +206,13 @@ describe('route guards (convenience only — the API enforces access)', () => {
   });
 
   it('lets a signed-in user through and blocks missing permissions', async () => {
-    mocked.meApi.mockResolvedValue({ user: member, csrfToken: 'c' });
+    mocked.meApi.mockResolvedValue({ user: admin, csrfToken: 'c' });
     const store = createStore();
     await store.dispatch(bootstrapAuth());
     const { unmount } = render(
       <Provider store={store}>
         <MemoryRouter initialEntries={['/private']}>
-          {guarded(<RequirePermission permissions={['events.rsvp']}><Secret /></RequirePermission>)}
+          {guarded(<RequirePermission permissions={['events.read']}><Secret /></RequirePermission>)}
         </MemoryRouter>
       </Provider>,
     );
@@ -244,7 +232,7 @@ describe('route guards (convenience only — the API enforces access)', () => {
 });
 
 describe('header actions per authentication state', () => {
-  it('offers Join and Log in to visitors', async () => {
+  it('renders nothing for visitors (there is nothing to sign in to on the public site)', async () => {
     const store = createStore();
     await store.dispatch(bootstrapAuth());
     render(
@@ -254,13 +242,12 @@ describe('header actions per authentication state', () => {
         </MemoryRouter>
       </Provider>,
     );
-    expect(screen.getByRole('link', { name: 'Log in' })).toHaveAttribute('href', '/login');
-    expect(screen.getByRole('link', { name: 'Join' })).toHaveAttribute('href', '/register');
-    expect(screen.queryByRole('button', { name: /sign out/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('shows the name and a working Sign out to signed-in users', async () => {
-    mocked.meApi.mockResolvedValue({ user: member, csrfToken: 'c' });
+  it('shows the name and a working Sign out to a signed-in admin', async () => {
+    mocked.meApi.mockResolvedValue({ user: admin, csrfToken: 'c' });
     mocked.logoutApi.mockResolvedValue();
     const user = userEvent.setup();
     const store = createStore();
@@ -281,18 +268,18 @@ describe('header actions per authentication state', () => {
 });
 
 describe('theme and account', () => {
-  it('uses the saved account preference instead of the device preference after login', async () => {
+  it('uses the saved account preference instead of the device preference after sign-in', async () => {
     window.localStorage.setItem('samaj.theme', 'light'); // this device was on Light
-    mocked.loginApi.mockResolvedValue({ user: { ...member, themePreference: 'dark' }, csrfToken: 'c' });
+    mocked.adminLoginApi.mockResolvedValue({ user: { ...admin, themePreference: 'dark' }, csrfToken: 'c' });
     const store = createStore();
-    await store.dispatch(login({ email: 'asha@example.test', password: 'x' }));
+    await store.dispatch(adminLogin({ email: 'asha@example.test', password: 'x' }));
     expect(store.getState().theme.preference).toBe('dark');
     expect(window.localStorage.getItem('samaj.theme')).toBe('dark');
   });
 
   it('falls back to following the system when the account has no explicit choice', async () => {
     window.__prefersDark = true;
-    mocked.meApi.mockResolvedValue({ user: { ...member, themePreference: 'system' }, csrfToken: 'c' });
+    mocked.meApi.mockResolvedValue({ user: { ...admin, themePreference: 'system' }, csrfToken: 'c' });
     const store = createStore();
     await store.dispatch(bootstrapAuth());
     expect(store.getState().theme.preference).toBe('system');
@@ -306,7 +293,7 @@ describe('theme and account', () => {
     expect(mocked.updateThemeApi).not.toHaveBeenCalled();
     expect(visitor.getState().theme.preference).toBe('dark');
 
-    mocked.meApi.mockResolvedValue({ user: member, csrfToken: 'c' });
+    mocked.meApi.mockResolvedValue({ user: admin, csrfToken: 'c' });
     const signedIn = createStore();
     await signedIn.dispatch(bootstrapAuth());
     await signedIn.dispatch(changeTheme('light'));
@@ -314,7 +301,7 @@ describe('theme and account', () => {
   });
 
   it('keeps the local choice when saving to the account fails', async () => {
-    mocked.meApi.mockResolvedValue({ user: member, csrfToken: 'c' });
+    mocked.meApi.mockResolvedValue({ user: admin, csrfToken: 'c' });
     mocked.updateThemeApi.mockRejectedValue(new Error('offline'));
     const store = createStore();
     await store.dispatch(bootstrapAuth());
@@ -367,5 +354,6 @@ describe('password reset page', () => {
     expect(mocked.resetPasswordApi).toHaveBeenCalledWith(
       expect.objectContaining({ token: 'abcdefghijklmnopqrstuvwxyz0123456789' }),
     );
+    expect(screen.getByRole('link', { name: /go to sign in/i })).toHaveAttribute('href', '/admin/login');
   });
 });

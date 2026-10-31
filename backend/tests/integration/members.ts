@@ -1,20 +1,15 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import AuditLog from '../../src/models/AuditLog';
 import MemberProfile from '../../src/models/MemberProfile';
-import OrganizationSettings from '../../src/models/OrganizationSettings';
-import User from '../../src/models/User';
-import Session from '../../src/models/Session';
-import { AccountStatus, Roles } from '../../src/config/constants';
+import { Roles } from '../../src/config/constants';
 import {
-  ORIGIN,
-  PASSWORD,
+  OPS_ADMIN_PERMISSIONS,
+  READ_ONLY_ADMIN_PERMISSIONS,
   anon,
   connectTestDb,
   disconnectTestDb,
   makeProfile,
-  makeUser,
   resetDb,
-  signIn,
   signInAs,
 } from '../helpers';
 
@@ -24,27 +19,28 @@ beforeEach(resetDb);
 
 const PRIVATE_KEYS = ['phone', 'email', 'familySize', 'kul', 'userId', 'passwordHash', 'membershipStatus', 'visibility'];
 
-describe('member directory privacy', () => {
-  it('shows visitors only entries their owner made public, and only active ones', async () => {
+describe('public member directory', () => {
+  it('shows only public, active entries; hidden and legacy "members" entries stay with the office', async () => {
     await makeProfile({ displayName: 'Public Pat', visibility: 'public' });
-    await makeProfile({ displayName: 'Members Only', visibility: 'members' });
     await makeProfile({ displayName: 'Hidden Hari', visibility: 'hidden' });
-    await makeProfile({ displayName: 'Pending Priya', visibility: 'public', membershipStatus: 'pending' });
     await makeProfile({ displayName: 'Lapsed Lal', visibility: 'public', membershipStatus: 'inactive' });
+    // Old data may still say "members"; it must be treated as hidden.
+    const legacy = await makeProfile({ displayName: 'Legacy Members' });
+    await MemberProfile.collection.updateOne({ _id: legacy._id as never }, { $set: { visibility: 'members' } });
 
     const res = await anon().get('/api/members');
     expect(res.status).toBe(200);
     expect(res.body.data.members.map((m: { name: string }) => m.name)).toEqual(['Public Pat']);
     expect(res.body.data.totalCount).toBe(1);
+    expect((await anon().get(`/api/members/${legacy._id}`)).status).toBe(404);
   });
 
-  it('gives signed-in members the members-level entries too, but never hidden ones', async () => {
+  it('gives a signed-in admin the same public view (there is no member-level visibility)', async () => {
     await makeProfile({ displayName: 'Public Pat', visibility: 'public' });
-    await makeProfile({ displayName: 'Members Only', visibility: 'members' });
     await makeProfile({ displayName: 'Hidden Hari', visibility: 'hidden' });
-    const { client } = await signInAs(Roles.MEMBER);
-    const res = await client.get('/api/members?sort=name');
-    expect(res.body.data.members.map((m: { name: string }) => m.name)).toEqual(['Members Only', 'Public Pat']);
+    const { client } = await signInAs(Roles.SUPER_ADMIN);
+    const res = await client.get('/api/members');
+    expect(res.body.data.members.map((m: { name: string }) => m.name)).toEqual(['Public Pat']);
   });
 
   it('never includes private or internal fields in a directory response', async () => {
@@ -71,29 +67,22 @@ describe('member directory privacy', () => {
     expect(JSON.stringify(res.body)).not.toMatch(/98250|familySize/);
   });
 
-  it('returns 404, not 403, for an entry the visitor may not see (no existence leak)', async () => {
-    const members = await makeProfile({ visibility: 'members' });
+  it('returns 404, not 403, for a hidden entry (no existence leak)', async () => {
     const hidden = await makeProfile({ visibility: 'hidden' });
-    expect((await anon().get(`/api/members/${members._id}`)).status).toBe(404);
     expect((await anon().get(`/api/members/${hidden._id}`)).status).toBe(404);
-    const { client } = await signInAs(Roles.MEMBER);
-    expect((await client.get(`/api/members/${members._id}`)).status).toBe(200);
-    expect((await client.get(`/api/members/${hidden._id}`)).status).toBe(404);
-  });
-
-  it('can be switched to members-only by the organisation settings', async () => {
-    await OrganizationSettings.create({ key: 'main', directoryPublic: false });
-    await makeProfile({ visibility: 'public' });
-    const visitor = await anon().get('/api/members');
-    expect(visitor.status).toBe(401);
-    const { client } = await signInAs(Roles.MEMBER);
-    expect((await client.get('/api/members')).status).toBe(200);
   });
 
   it('does not list anonymised entries', async () => {
     await makeProfile({ displayName: 'Gone', visibility: 'public' });
     await MemberProfile.updateMany({}, { $set: { anonymizedAt: new Date() } });
     expect((await anon().get('/api/members')).body.data.totalCount).toBe(0);
+  });
+
+  it('has no own-profile or member-registration endpoints', async () => {
+    const { client } = await signInAs(Roles.SUPER_ADMIN);
+    expect((await client.get('/api/members/me')).status).toBe(400); // "me" is just a malformed id now
+    expect((await client.patch('/api/members/me').send({ city: 'x' })).status).toBe(404);
+    expect((await client.get('/api/members/me/registrations')).status).toBe(404);
   });
 });
 
@@ -153,260 +142,131 @@ describe('directory search, filters and paging', () => {
   });
 });
 
-describe('registration → approval → directory', () => {
-  it('creates a pending profile at registration, and the member appears only after approval', async () => {
-    await anon()
-      .post('/api/auth/register')
-      .set('Origin', ORIGIN)
-      .send({
-        name: 'Nita Patel',
-        email: 'nita@example.test',
-        phone: '+91 98250 55555',
-        password: PASSWORD,
-        confirmPassword: PASSWORD,
-        acknowledge: true,
-      });
-    const user = await User.findOne({ email: 'nita@example.test' }).lean();
-    const profile = await MemberProfile.findOne({ userId: user!._id }).lean();
-    expect(profile?.membershipStatus).toBe('pending');
-    expect(profile?.visibility).toBe('members');
+describe('admin directory management', () => {
+  const MEMBER_PERMS = ['members.read', 'members.create', 'members.update'];
 
-    const { client: admin } = await signInAs(Roles.ADMIN);
-    await MemberProfile.updateOne({ _id: profile!._id }, { $set: { visibility: 'public' } });
-    expect((await anon().get('/api/members')).body.data.totalCount).toBe(0);
-
-    await admin.post(`/api/users/${user!._id}/approve`);
-    const after = await anon().get('/api/members');
-    expect(after.body.data.members.map((m: { name: string }) => m.name)).toEqual(['Nita Patel']);
-
-    await admin.post(`/api/users/${user!._id}/suspend`).send({});
-    expect((await anon().get('/api/members')).body.data.totalCount).toBe(0);
-    await admin.post(`/api/users/${user!._id}/reactivate`);
-    expect((await anon().get('/api/members')).body.data.totalCount).toBe(1);
-  });
-
-  it('does not list a rejected registration', async () => {
-    const user = await makeUser({ status: AccountStatus.PENDING });
-    await makeProfile({ userId: user._id, displayName: user.name, visibility: 'public', membershipStatus: 'pending' });
-    const { client: admin } = await signInAs(Roles.ADMIN);
-    await admin.post(`/api/users/${user._id}/reject`).send({ reason: 'unknown' });
-    expect((await anon().get('/api/members')).body.data.totalCount).toBe(0);
-  });
-});
-
-describe('own profile', () => {
-  const setup = async () => {
-    const user = await makeUser({ phone: '+91 98250 00003' });
-    const profile = await makeProfile({ userId: user._id, displayName: user.name, familySize: 3, kul: 'Kul 9', visibility: 'members' });
-    const client = await signIn(user.email);
-    return { user, profile, client };
-  };
-
-  it('shows the owner their private details', async () => {
-    const { client, user } = await setup();
-    const res = await client.get('/api/members/me');
-    expect(res.status).toBe(200);
-    expect(res.body.data.profile).toMatchObject({ familySize: 3, kul: 'Kul 9', phone: '+91 98250 00003', visibility: 'members' });
-    expect(res.body.data.profile.name).toBe(user.name);
-  });
-
-  it('lets members edit their own allowed fields and directory visibility', async () => {
-    const { client, profile, user } = await setup();
-    const res = await client.patch('/api/members/me').send({
-      village: 'Kalol',
-      city: 'Edison, NJ',
-      country: 'United States',
-      occupation: 'Pharmacist',
-      bio: 'Hello',
-      familySize: 4,
-      phone: '+1 201 555 0100',
-      visibility: 'public',
-    });
-    expect(res.status).toBe(200);
-    const stored = await MemberProfile.findById(profile._id).lean();
-    expect(stored).toMatchObject({ village: 'Kalol', country: 'United States', visibility: 'public', familySize: 4 });
-    expect((await User.findById(user._id).lean())?.phone).toBe('+1 201 555 0100');
-    expect(await AuditLog.countDocuments({ action: 'member.visibility_changed' })).toBe(1);
-  });
-
-  it('ignores fields members may not change (name, status, links, roles)', async () => {
-    const { client, profile, user } = await setup();
-    const res = await client.patch('/api/members/me').send({
-      city: 'Surat',
-      displayName: 'Hacked Name',
-      membershipStatus: 'inactive',
-      userId: 'someone-else',
-      highlighted: true,
-      role: 'superadmin',
-      status: 'suspended',
-    });
-    expect(res.status).toBe(200);
-    const stored = await MemberProfile.findById(profile._id).lean();
-    expect(stored?.city).toBe('Surat');
-    expect(stored?.displayName).toBe(user.name);
-    expect(stored?.membershipStatus).toBe('active');
-    expect(stored?.userId).toBe(user._id);
-    expect(stored?.highlighted).toBe(false);
-    expect((await User.findById(user._id).lean())).toMatchObject({ role: 'member', status: 'active' });
-  });
-
-  it('rejects invalid values', async () => {
-    const { client } = await setup();
-    expect((await client.patch('/api/members/me').send({ visibility: 'everyone' })).status).toBe(400);
-    expect((await client.patch('/api/members/me').send({ familySize: 500 })).status).toBe(400);
-    expect((await client.patch('/api/members/me').send({ bio: '<script>x</script>' })).status).toBe(400);
-    expect((await client.patch('/api/members/me').send({ phone: 'abc' })).status).toBe(400);
-  });
-
-  it('requires sign-in and the CSRF token', async () => {
-    const { client } = await setup();
-    expect((await anon().get('/api/members/me')).status).toBe(401);
-    expect((await anon().patch('/api/members/me').set('Origin', ORIGIN).send({ city: 'x' })).status).toBe(401);
-    const noCsrf = await client.agent.patch('/api/members/me').set('Origin', ORIGIN).send({ city: 'x' });
-    expect(noCsrf.status).toBe(403);
-  });
-
-  it('never lets one member read another member’s private data', async () => {
-    const { client } = await setup();
-    const other = await makeUser({ phone: '+91 98250 77777' });
-    const otherProfile = await makeProfile({ userId: other._id, displayName: other.name, familySize: 8, kul: 'Secret Kul', visibility: 'members' });
-    const res = await client.get(`/api/members/${otherProfile._id}`);
-    expect(res.status).toBe(200);
-    expect(JSON.stringify(res.body)).not.toMatch(/98250 77777|Secret Kul|familySize|phone|email/);
-    // /me always returns the caller's own profile, whatever the request says.
-    const me = await client.get(`/api/members/me?id=${otherProfile._id}`);
-    expect(me.body.data.profile.kul).toBe('Kul 9');
-  });
-
-  it('is not available to the admin endpoints', async () => {
-    const { client } = await setup();
-    expect((await client.get('/api/admin/members')).status).toBe(403);
-    expect((await client.get('/api/admin/members/export')).status).toBe(403);
-  });
-});
-
-describe('staff member management', () => {
-  it('lets Viewers and Admins list members but hides private fields from them', async () => {
-    const user = await makeUser({ phone: '+91 98250 00004' });
-    await makeProfile({ userId: user._id, displayName: user.name, familySize: 6, kul: 'Kul 1', phone: undefined });
+  it('lets admins with members.read list entries but hides private fields from them', async () => {
+    await makeProfile({ displayName: 'Entry One', phone: '+91 98250 00004', familySize: 6, kul: 'Kul 1' });
     await makeProfile({ displayName: 'Office Entry', phone: '+91 98250 00005', familySize: 2 });
 
-    for (const role of [Roles.VIEWER, Roles.ADMIN]) {
-      const { client } = await signInAs(role);
-      const res = await client.get('/api/admin/members');
-      expect(res.status).toBe(200);
-      expect(res.body.data.totalCount).toBe(2);
-      expect(JSON.stringify(res.body)).not.toMatch(/98250|familySize|Kul 1/);
-    }
+    const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
+    const res = await client.get('/api/admin/members');
+    expect(res.status).toBe(200);
+    expect(res.body.data.totalCount).toBe(2);
+    expect(JSON.stringify(res.body)).not.toMatch(/98250|familySize|Kul 1/);
 
-    const { client: sa } = await signInAs(Roles.SUPER_ADMIN);
-    const full = await sa.get('/api/admin/members');
+    const { client: priv } = await signInAs(Roles.ADMIN, { permissions: ['members.read', 'members.read.private'] });
+    const full = await priv.get('/api/admin/members');
     expect(JSON.stringify(full.body)).toMatch(/98250 00004/);
     expect(JSON.stringify(full.body)).toMatch(/98250 00005/);
-    expect(JSON.stringify(full.body)).not.toMatch(/passwordHash/);
   });
 
-  it('filters by status, visibility and whether the entry has an account', async () => {
-    const user = await makeUser();
-    await makeProfile({ userId: user._id, displayName: 'Has Account', membershipStatus: 'pending', visibility: 'members' });
-    await makeProfile({ displayName: 'No Account', visibility: 'hidden' });
-    const { client } = await signInAs(Roles.ADMIN);
-    expect((await client.get('/api/admin/members?membershipStatus=pending')).body.data.members[0].name).toBe('Has Account');
-    expect((await client.get('/api/admin/members?hasAccount=false')).body.data.members[0].name).toBe('No Account');
-    expect((await client.get('/api/admin/members?visibility=hidden')).body.data.totalCount).toBe(1);
-    expect((await client.get('/api/admin/members?search=account')).body.data.totalCount).toBe(2);
+  it('exposes no account fields in the admin list', async () => {
+    await makeProfile({ displayName: 'Plain Entry' });
+    const { client } = await signInAs(Roles.SUPER_ADMIN);
+    const entry = (await client.get('/api/admin/members')).body.data.members[0];
+    for (const key of ['userId', 'hasAccount', 'accountStatus']) expect(entry).not.toHaveProperty(key);
+    expect(entry).toMatchObject({ visibility: 'public', membershipStatus: 'active' });
   });
 
-  it('lets Admins add office entries, but not private details', async () => {
-    const { client } = await signInAs(Roles.ADMIN);
-    const ok = await client.post('/api/admin/members').send({ displayName: 'New Entry', village: 'Kadi', city: 'Surat', visibility: 'members' });
+  it('filters by membership, visibility (legacy "members" counts as office only) and search', async () => {
+    await makeProfile({ displayName: 'Active Public', visibility: 'public' });
+    await makeProfile({ displayName: 'Inactive One', membershipStatus: 'inactive', visibility: 'hidden' });
+    const legacy = await makeProfile({ displayName: 'Legacy Entry' });
+    await MemberProfile.collection.updateOne({ _id: legacy._id as never }, { $set: { visibility: 'members' } });
+    const { client } = await signInAs(Roles.ADMIN, { permissions: MEMBER_PERMS });
+
+    expect((await client.get('/api/admin/members?membershipStatus=inactive')).body.data.members[0].name).toBe('Inactive One');
+    expect((await client.get('/api/admin/members?visibility=public')).body.data.totalCount).toBe(1);
+    const hidden = await client.get('/api/admin/members?visibility=hidden');
+    expect(hidden.body.data.totalCount).toBe(2);
+    expect(hidden.body.data.members.every((m: { visibility: string }) => m.visibility === 'hidden')).toBe(true);
+    expect((await client.get('/api/admin/members?search=entry')).body.data.totalCount).toBe(1);
+    expect((await client.get('/api/admin/members?visibility=members')).status).toBe(400);
+    expect((await client.get('/api/admin/members?accountStatus=pending')).status).toBe(200); // unknown filters are simply ignored
+    expect((await client.get('/api/admin/members?membershipStatus=pending')).status).toBe(400);
+  });
+
+  it('lets admins add entries, but not private details without the private permission', async () => {
+    const { client } = await signInAs(Roles.ADMIN, { permissions: MEMBER_PERMS });
+    const ok = await client.post('/api/admin/members').send({ displayName: 'New Entry', village: 'Kadi', city: 'Surat', visibility: 'public' });
     expect(ok.status).toBe(201);
-    expect(ok.body.data.member.hasAccount).toBe(false);
+    expect(ok.body.data.member).toMatchObject({ visibility: 'public' });
+
+    const defaulted = await client.post('/api/admin/members').send({ displayName: 'Default Entry' });
+    expect(defaulted.body.data.member).toMatchObject({ visibility: 'hidden', membershipStatus: 'active' });
 
     const withPhone = await client.post('/api/admin/members').send({ displayName: 'Phone Entry', phone: '+91 98250 00006' });
     expect(withPhone.status).toBe(403);
     expect(await MemberProfile.countDocuments({ displayName: 'Phone Entry' })).toBe(0);
+    expect((await client.post('/api/admin/members').send({ displayName: 'Bad Vis', visibility: 'members' })).status).toBe(400);
   });
 
-  it('lets a Super Admin record private details', async () => {
+  it('lets the Super Admin record private details', async () => {
     const { client } = await signInAs(Roles.SUPER_ADMIN);
     const res = await client.post('/api/admin/members').send({ displayName: 'Full Entry', phone: '+91 98250 00007', familySize: 3, kul: 'Kul 4' });
     expect(res.status).toBe(201);
     expect(res.body.data.member).toMatchObject({ phone: '+91 98250 00007', familySize: 3, kul: 'Kul 4' });
   });
 
-  it('cannot create an entry linked to an account or with an arbitrary id', async () => {
-    const victim = await makeUser();
-    const { client } = await signInAs(Roles.ADMIN);
-    const res = await client.post('/api/admin/members').send({ displayName: 'Sneaky', userId: victim._id, _id: 'x', isDeleted: true });
+  it('ignores ids, deletion flags and account links sent by the client', async () => {
+    const { client } = await signInAs(Roles.ADMIN, { permissions: MEMBER_PERMS });
+    const res = await client.post('/api/admin/members').send({ displayName: 'Sneaky', userId: 'some-user', _id: 'x', isDeleted: true });
     expect(res.status).toBe(201);
     const stored = await MemberProfile.findOne({ displayName: 'Sneaky' }).lean();
-    expect(stored?.userId).toBeNull();
     expect(stored?.isDeleted).toBe(false);
+    expect(stored?._id).not.toBe('x');
+    expect(stored).not.toHaveProperty('userId');
   });
 
-  it('updates an entry; a name change on an account holder also updates the account', async () => {
-    const user = await makeUser({ name: 'Old Name' });
-    const profile = await makeProfile({ userId: user._id, displayName: 'Old Name' });
-    const { client } = await signInAs(Roles.ADMIN);
-    const res = await client.patch(`/api/admin/members/${profile._id}`).send({ displayName: 'New Name', village: 'Sidhpur', highlighted: true });
+  it('updates an entry, and needs the private permission for private fields', async () => {
+    const profile = await makeProfile({ displayName: 'Old Name' });
+    const { client } = await signInAs(Roles.ADMIN, { permissions: MEMBER_PERMS });
+    const res = await client.patch(`/api/admin/members/${profile._id}`).send({ displayName: 'New Name', village: 'Sidhpur', highlighted: true, visibility: 'public' });
     expect(res.status).toBe(200);
-    expect((await User.findById(user._id).lean())?.name).toBe('New Name');
-    expect(await MemberProfile.findById(profile._id).lean()).toMatchObject({ displayName: 'New Name', village: 'Sidhpur', highlighted: true });
+    expect(await MemberProfile.findById(profile._id).lean()).toMatchObject({ displayName: 'New Name', village: 'Sidhpur', highlighted: true, visibility: 'public' });
+
+    expect((await client.patch(`/api/admin/members/${profile._id}`).send({ phone: '+91 98250 00008' })).status).toBe(403);
+    expect((await client.patch(`/api/admin/members/${profile._id}`).send({ familySize: 3 })).status).toBe(403);
+    expect((await client.patch(`/api/admin/members/${profile._id}`).send({ membershipStatus: 'inactive' })).status).toBe(200);
+    expect((await client.patch('/api/admin/members/11111111-1111-4111-8111-111111111111').send({ village: 'X' })).status).toBe(404);
   });
 
-  it('keeps private edits and account-status edits out of reach of ordinary updates', async () => {
-    const user = await makeUser();
-    const withAccount = await makeProfile({ userId: user._id });
-    const officeEntry = await makeProfile();
-    const { client: admin } = await signInAs(Roles.ADMIN);
-    expect((await admin.patch(`/api/admin/members/${officeEntry._id}`).send({ phone: '+91 98250 00008' })).status).toBe(403);
-    expect((await admin.patch(`/api/admin/members/${officeEntry._id}`).send({ familySize: 3 })).status).toBe(403);
-    expect((await admin.patch(`/api/admin/members/${withAccount._id}`).send({ membershipStatus: 'inactive' })).status).toBe(409);
-    expect((await admin.patch(`/api/admin/members/${officeEntry._id}`).send({ membershipStatus: 'inactive' })).status).toBe(200);
-  });
-
-  it('forbids Editors and Viewers from changing members', async () => {
+  it('forbids admins without the permission from changing members', async () => {
     const entry = await makeProfile();
-    for (const role of [Roles.EDITOR, Roles.VIEWER]) {
-      const { client } = await signInAs(role);
+    for (const permissions of [[], READ_ONLY_ADMIN_PERMISSIONS]) {
+      const { client } = await signInAs(Roles.ADMIN, { permissions });
       expect((await client.patch(`/api/admin/members/${entry._id}`).send({ village: 'X' })).status).toBe(403);
       expect((await client.post('/api/admin/members').send({ displayName: 'Nope Nope' })).status).toBe(403);
+      expect((await client.post(`/api/admin/members/${entry._id}/anonymize`)).status).toBe(403);
     }
     expect((await MemberProfile.findById(entry._id).lean())?.village).toBe('Unjha');
   });
 
-  it('anonymises a member for Super Admin only, and signs them out', async () => {
-    const user = await makeUser({ phone: '+91 98250 00009' });
-    const profile = await makeProfile({ userId: user._id, displayName: user.name, bio: 'Bio', village: 'Kadi', phone: undefined });
-    const memberClient = await signIn(user.email);
+  it('has no approve, suspend, reactivate or create-account actions on entries', async () => {
+    const entry = await makeProfile();
+    const { client } = await signInAs(Roles.SUPER_ADMIN);
+    for (const action of ['create-account', 'approve', 'suspend', 'reactivate']) {
+      expect((await client.post(`/api/admin/members/${entry._id}/${action}`).send({ email: 'a@example.test' })).status, action).toBe(404);
+    }
+  });
 
-    const { client: admin } = await signInAs(Roles.ADMIN);
-    expect((await admin.post(`/api/admin/members/${profile._id}/anonymize`)).status).toBe(403);
+  it('anonymises an entry only with members.anonymize', async () => {
+    const profile = await makeProfile({ displayName: 'Real Person', bio: 'Bio', village: 'Kadi', visibility: 'public', highlighted: true });
 
-    const { client: sa } = await signInAs(Roles.SUPER_ADMIN);
-    expect((await sa.post(`/api/admin/members/${profile._id}/anonymize`)).status).toBe(200);
+    const { client: plain } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
+    expect((await plain.post(`/api/admin/members/${profile._id}/anonymize`)).status).toBe(403);
+
+    const { client: granted } = await signInAs(Roles.ADMIN, { permissions: ['members.anonymize'] });
+    expect((await granted.post(`/api/admin/members/${profile._id}/anonymize`)).status).toBe(200);
 
     const stored = await MemberProfile.findById(profile._id).lean();
-    expect(stored).toMatchObject({ displayName: 'Former member', visibility: 'hidden', membershipStatus: 'inactive' });
+    expect(stored).toMatchObject({ displayName: 'Former member', visibility: 'hidden', membershipStatus: 'inactive', highlighted: false });
     expect(stored?.bio).toBeUndefined();
     expect(stored?.village).toBeUndefined();
     expect(stored?.anonymizedAt).toBeTruthy();
-
-    const account = await User.findById(user._id).select('+passwordHash').lean();
-    expect(account).toMatchObject({ name: 'Former member', isDeleted: true, status: 'suspended' });
-    expect(account?.email).toMatch(/^removed\+/);
-    expect(account?.passwordHash).toBeNull();
-    expect(await Session.countDocuments({ userId: user._id })).toBe(0);
-    expect((await memberClient.get('/api/auth/me')).status).toBe(401);
     expect(await AuditLog.countDocuments({ action: 'member.anonymized' })).toBe(1);
-  });
-
-  it('does not anonymise a staff account', async () => {
-    const staff = await makeUser({ role: Roles.EDITOR });
-    const profile = await makeProfile({ userId: staff._id });
-    const { client: sa } = await signInAs(Roles.SUPER_ADMIN);
-    expect((await sa.post(`/api/admin/members/${profile._id}/anonymize`)).status).toBe(409);
+    expect((await anon().get('/api/members')).body.data.totalCount).toBe(0);
   });
 });
 
@@ -416,18 +276,18 @@ describe('member export', () => {
     await makeProfile({ displayName: 'Normal Person', village: 'Kadi' });
   };
 
-  it('is refused to roles without members.export, including Admin by default', async () => {
+  it('is refused without members.export, and to visitors', async () => {
     await seed();
-    for (const role of [Roles.VIEWER, Roles.EDITOR, Roles.ADMIN, Roles.MEMBER]) {
-      const { client } = await signInAs(role);
+    for (const permissions of [[], OPS_ADMIN_PERMISSIONS, READ_ONLY_ADMIN_PERMISSIONS]) {
+      const { client } = await signInAs(Roles.ADMIN, { permissions });
       expect((await client.get('/api/admin/members/export')).status).toBe(403);
     }
     expect((await anon().get('/api/admin/members/export')).status).toBe(401);
   });
 
-  it('is available when members.export is granted individually, without private columns', async () => {
+  it('is available with members.export, without private columns', async () => {
     await seed();
-    const { client } = await signInAs(Roles.ADMIN, { extraPermissions: ['members.export'] });
+    const { client } = await signInAs(Roles.ADMIN, { permissions: ['members.export'] });
     const res = await client.get('/api/admin/members/export');
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toMatch(/text\/csv/);
@@ -437,7 +297,7 @@ describe('member export', () => {
     expect(res.text).not.toMatch(/98250|Phone|Family size/);
   });
 
-  it('includes private columns for Super Admin, neutralises spreadsheet formulas and is audited', async () => {
+  it('includes private columns for the Super Admin, neutralises spreadsheet formulas and is audited', async () => {
     await seed();
     const { client } = await signInAs(Roles.SUPER_ADMIN);
     const res = await client.get('/api/admin/members/export?village=Unjha');

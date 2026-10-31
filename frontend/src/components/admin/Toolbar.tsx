@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { SearchInput } from '../ui/FormFields';
+import { SearchInput } from '../ui/SearchInput';
 
 /** Search box, filters and the primary action of a list page, in one wrapping row. */
 export function Toolbar({
