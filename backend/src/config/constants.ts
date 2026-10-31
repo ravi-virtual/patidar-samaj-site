@@ -55,6 +55,9 @@ export const config = {
     windowMs: toInt(process.env.RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),
     max: toInt(process.env.RATE_LIMIT_MAX, 300),
     authMax: toInt(process.env.AUTH_RATE_LIMIT_MAX, 10),
+    // Each limiter is only active when its variable is set.
+    enabled: Boolean(process.env.RATE_LIMIT_MAX),
+    authEnabled: Boolean(process.env.AUTH_RATE_LIMIT_MAX),
   },
   auth: {
     // Argon2id. Production uses the OWASP-recommended minimum (19 MiB, t=2, p=1);
