@@ -21,8 +21,8 @@ interface SessionPayload {
   csrfToken: string;
 }
 
-export const meApi = async (): Promise<SessionPayload> => {
-  const { data } = await api.get<{ data: SessionPayload }>('/auth/me');
+export const getUserByIdApi = async (id: string): Promise<SessionPayload> => {
+  const { data } = await api.get<{ data: SessionPayload }>(`/auth/${id}`);
   return data.data;
 };
 
@@ -35,8 +35,8 @@ export const logoutApi = async (): Promise<void> => {
   await api.post('/auth/logout');
 };
 
-export const updateThemeApi = async (themePreference: ThemePreference): Promise<void> => {
-  await api.patch('/auth/me/theme', { themePreference });
+export const updateUserThemeByIdApi = async (id: string, themePreference: ThemePreference): Promise<void> => {
+  await api.patch(`/auth/${id}/theme`, { themePreference });
 };
 
 export const forgotPasswordApi = async (email: string): Promise<string> => {

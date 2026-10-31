@@ -133,6 +133,9 @@ export const signInAs = async (role: Role, extra: Parameters<typeof makeUser>[0]
 
 export const anon = () => request(app);
 
+/** A well-formed user id for requests that must be refused before any account is looked up. */
+export const ANON_ID = '00000000-0000-4000-8000-000000000000';
+
 let profileCounter = 0;
 /** A directory entry (a plain record; there are no member accounts). */
 export const makeProfile = async (

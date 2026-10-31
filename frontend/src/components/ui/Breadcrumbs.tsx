@@ -1,6 +1,7 @@
 import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
+import { t } from '../../i18n';
 
 export interface Crumb {
   label: string;
@@ -11,7 +12,7 @@ export interface Crumb {
 /** Trail such as "Admin > Admins > Create admin". Earlier levels link back; the last is the current page. */
 export function Breadcrumbs({ crumbs }: { crumbs: Crumb[] }) {
   return (
-    <nav aria-label="Breadcrumb" className="min-w-0">
+    <nav aria-label={t('Breadcrumb')} className="min-w-0">
       <ol className="m-0 flex list-none items-center gap-1.5 p-0">
         {crumbs.map((c, i) => {
           const last = i === crumbs.length - 1;

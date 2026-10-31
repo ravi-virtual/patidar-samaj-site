@@ -9,6 +9,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { formatLongDate, formatShortDate, formatTimeRange } from '../lib/format';
 import { useFetch } from '../lib/useFetch';
 import { usePageTitle } from '../lib/usePageTitle';
+import { t } from '../i18n';
 
 export default function EventDetailPage() {
   const { id = '' } = useParams();
@@ -19,9 +20,9 @@ export default function EventDetailPage() {
   if (error?.toLowerCase().includes('not found')) {
     return (
       <EmptyState
-        title="Event not found"
-        description="It may have been removed or is not published."
-        action={<Link to="/events">Back to events</Link>}
+        title={t('Event not found')}
+        description={t('It may have been removed or is not published.')}
+        action={<Link to="/events">{t('Back to events')}</Link>}
       />
     );
   }
@@ -39,11 +40,13 @@ export default function EventDetailPage() {
                   alt=""
                   className="h-[clamp(200px,28vw,320px)] w-full rounded-xl border border-border"
                 />
-                <p className="mt-5 font-mono text-xs uppercase text-accent">{e.category}</p>
+                <p className="mt-5 font-mono text-xs uppercase text-accent">{t(e.category)}</p>
                 <h1 className="mb-2.5 mt-1 text-[32px] font-semibold leading-tight tracking-tight">{e.title}</h1>
                 {e.status === 'cancelled' && (
                   <Alert tone="danger">
-                    This event was cancelled{e.cancellationReason ? `: ${e.cancellationReason}` : '.'}
+                    {e.cancellationReason
+                      ? t('This event was cancelled: {reason}', { reason: e.cancellationReason })
+                      : t('This event was cancelled.')}
                   </Alert>
                 )}
                 {e.description && (
@@ -54,15 +57,15 @@ export default function EventDetailPage() {
               <Card className="lg:sticky lg:top-20">
                 <dl className="m-0 space-y-3">
                   <div>
-                    <dt className="text-xs text-text-muted">Date</dt>
+                    <dt className="text-xs text-text-muted">{t('Date')}</dt>
                     <dd className="m-0 font-medium">{formatLongDate(e.startsAt)}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-text-muted">Time</dt>
+                    <dt className="text-xs text-text-muted">{t('Time')}</dt>
                     <dd className="m-0 font-medium">{formatTimeRange(e.startsAt, e.endsAt)}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-text-muted">Venue</dt>
+                    <dt className="text-xs text-text-muted">{t('Venue')}</dt>
                     <dd className="m-0 font-medium">{e.venue}</dd>
                   </div>
                 </dl>
@@ -72,7 +75,7 @@ export default function EventDetailPage() {
             {others.length > 0 && (
               <section aria-labelledby="more-h">
                 <h2 id="more-h" className="mb-2.5 text-base font-semibold">
-                  More upcoming
+                  {t('More upcoming')}
                 </h2>
                 <ul className="m-0 grid list-none gap-2.5 p-0 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
                   {others.map((o) => (
@@ -87,7 +90,7 @@ export default function EventDetailPage() {
               </section>
             )}
             <p>
-              <Link to="/events">← All events</Link>
+              <Link to="/events">{t('← All events')}</Link>
             </p>
           </div>
         );

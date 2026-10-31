@@ -9,6 +9,7 @@ import {
   ALL_ADMIN_PERMISSIONS,
   ORIGIN,
   PASSWORD,
+  ANON_ID,
   anon,
   connectTestDb,
   disconnectTestDb,
@@ -34,7 +35,7 @@ describe('who can reach the account endpoints', () => {
       anon().delete(`/api/users/${UNKNOWN_ID}`).set('Origin', ORIGIN),
       anon().post(`/api/users/${UNKNOWN_ID}/suspend`).set('Origin', ORIGIN),
       anon().post(`/api/users/${UNKNOWN_ID}/password-reset`).set('Origin', ORIGIN),
-      anon().get('/api/auth/me'),
+      anon().get(`/api/auth/${ANON_ID}`),
       anon().get('/api/auth/sessions'),
     ];
     for (const res of await Promise.all(calls)) expect(res.status).toBe(401);
@@ -140,7 +141,7 @@ describe('an admin can never manage any account, even with tampered data', () =>
       { $set: { permissions: ALL_PERMISSIONS.filter((p) => p !== 'users.reset_password') } },
     );
     const client = await signIn(forged.email);
-    const me = await client.get('/api/auth/me');
+    const me = await client.get(`/api/auth/${client.userId}`);
     expect(me.body.data.user.permissions).not.toContain('users.manage');
     expect(me.body.data.user.permissions).not.toContain('sessions.revoke');
     expect((await client.get('/api/users')).status).toBe(403);
@@ -177,7 +178,7 @@ describe('Super Admin manages admins', () => {
     expect(audit?.metadata).toMatchObject({ permissions: ['events.read', 'events.publish'] });
 
     const nisha = await signIn('nisha@example.test', 'Welcome-Chosen-2026');
-    const me = await nisha.get('/api/auth/me');
+    const me = await nisha.get(`/api/auth/${nisha.userId}`);
     expect(me.body.data.user.permissions.sort()).toEqual(['events.publish', 'events.read']);
   });
 
@@ -221,7 +222,7 @@ describe('Super Admin manages admins', () => {
 
     expect((await adminClient.get('/api/admin/members')).status).toBe(200);
     expect((await adminClient.get('/api/admin/events')).status).toBe(403);
-    expect((await adminClient.get('/api/auth/me')).body.data.user.permissions).toEqual(['members.read']);
+    expect((await adminClient.get(`/api/auth/${adminClient.userId}`)).body.data.user.permissions).toEqual(['members.read']);
 
     const audit = await AuditLog.findOne({ action: 'user.admin_updated' }).lean();
     expect(audit?.targetId).toBe(admin._id);
@@ -266,7 +267,7 @@ describe('Super Admin manages admins', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.user.status).toBe('suspended');
     expect(await Session.countDocuments({ userId: admin._id })).toBe(0);
-    expect((await adminClient.get('/api/auth/me')).status).toBe(401);
+    expect((await adminClient.get(`/api/auth/${adminClient.userId}`)).status).toBe(401);
     expect((await sa.post(`/api/users/${admin._id}/suspend`).send({})).status).toBe(409);
 
     const blocked = await anon().post('/api/auth/admin-login').set('Origin', ORIGIN).send({ email: admin.email, password: PASSWORD });
@@ -286,7 +287,7 @@ describe('Super Admin manages admins', () => {
     const res = await sa.post(`/api/users/${admin._id}/password-reset`).send({ password: 'Fresh-Start-2026' });
     expect(res.status).toBe(200);
     expect(JSON.stringify(res.body)).not.toContain('Fresh-Start-2026');
-    expect((await adminClient.get('/api/auth/me')).status).toBe(401); // old sessions revoked
+    expect((await adminClient.get(`/api/auth/${adminClient.userId}`)).status).toBe(401); // old sessions revoked
     expect((await signIn(admin.email, 'Fresh-Start-2026')).userId).toBe(admin._id);
     expect((await AuditLog.findOne({ action: 'user.password_reset' }).lean())?.targetId).toBe(admin._id);
   });
@@ -322,8 +323,8 @@ describe('Super Admin manages admins', () => {
     const { client: sa } = await signInAs(Roles.SUPER_ADMIN);
     const res = await sa.post(`/api/users/${admin._id}/revoke-sessions`);
     expect(res.body.data.revoked).toBe(2);
-    expect((await phone.get('/api/auth/me')).status).toBe(401);
-    expect((await laptop.get('/api/auth/me')).status).toBe(401);
+    expect((await phone.get(`/api/auth/${phone.userId}`)).status).toBe(401);
+    expect((await laptop.get(`/api/auth/${laptop.userId}`)).status).toBe(401);
   });
 
   it('returns 404 for unknown users and 400 for malformed ids', async () => {
@@ -351,8 +352,8 @@ describe('deleting an admin (soft delete)', () => {
     expect(stored?.isDeleted).toBe(true); // soft delete: the record stays
     expect(await Session.countDocuments({ userId: admin._id })).toBe(0);
     expect(await PasswordResetToken.countDocuments({ userId: admin._id, usedAt: null })).toBe(0);
-    expect((await phone.get('/api/auth/me')).status).toBe(401);
-    expect((await laptop.get('/api/auth/me')).status).toBe(401);
+    expect((await phone.get(`/api/auth/${phone.userId}`)).status).toBe(401);
+    expect((await laptop.get(`/api/auth/${laptop.userId}`)).status).toBe(401);
 
     const list = await sa.get('/api/users');
     expect(list.body.data.totalCount).toBe(0);

@@ -8,6 +8,7 @@ import { describeAction, formatDateTime } from '../../lib/format';
 import { roleLabel } from '../../lib/labels';
 import { useFetch } from '../../lib/useFetch';
 import { useAppSelector } from '../../store/hooks';
+import { t } from '../../i18n';
 
 interface Tile {
   key: keyof DashboardStats;
@@ -24,23 +25,23 @@ const tiles: Tile[] = [
 ];
 
 function Body({ stats }: { stats: DashboardStats }) {
-  const shown = tiles.filter((t) => stats[t.key] !== undefined);
+  const shown = tiles.filter((tile) => stats[tile.key] !== undefined);
   return (
     <div className="space-y-4">
       {shown.length > 0 && (
         <ul className="m-0 grid list-none gap-3 p-0 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
-          {shown.map((t) => (
-            <li key={t.key}>
+          {shown.map((tile) => (
+            <li key={tile.key}>
               <Card className="h-full px-[18px] py-4">
-                <p className="text-[13px] text-text-muted">{t.label}</p>
-                <p className="text-3xl font-semibold tabular-nums tracking-tight">{String(stats[t.key])}</p>
+                <p className="text-[13px] text-text-muted">{t(tile.label)}</p>
+                <p className="text-3xl font-semibold tabular-nums tracking-tight">{String(stats[tile.key])}</p>
                 <p className="text-xs text-text-muted">
-                  {t.to ? (
-                    <Link to={t.to} className="text-text-muted underline-offset-2 hover:text-accent">
-                      {t.note}
+                  {tile.to ? (
+                    <Link to={tile.to} className="text-text-muted underline-offset-2 hover:text-accent">
+                      {t(tile.note)}
                     </Link>
                   ) : (
-                    t.note
+                    t(tile.note)
                   )}
                 </p>
               </Card>
@@ -50,9 +51,9 @@ function Body({ stats }: { stats: DashboardStats }) {
       )}
       {stats.recentActivity && (
         <Card>
-          <h2 className="mb-2 text-[15px] font-semibold">Recent activity</h2>
+          <h2 className="mb-2 text-[15px] font-semibold">{t('Recent activity')}</h2>
           {stats.recentActivity.length === 0 ? (
-            <p className="text-sm text-text-muted">Nothing yet.</p>
+            <p className="text-sm text-text-muted">{t('Nothing yet.')}</p>
           ) : (
             <ul className="m-0 list-none p-0">
               {stats.recentActivity.map((a, i) => (
@@ -79,7 +80,7 @@ export default function AdminDashboardPage() {
   const { data, initialLoading, error, retry } = useFetch('admin-dashboard', getDashboardApi);
   return (
     <>
-      <PageHeader title="Dashboard" description={`Signed in as ${roleLabel(user.role)}. Figures show only what your permissions allow.`} />
+      <PageHeader title={t('Dashboard')} description={t('Signed in as {role}. Figures show only what your permissions allow.', { role: roleLabel(user.role) })} />
       <Async data={data} loading={initialLoading} error={error} onRetry={retry} skeleton={<Skeleton className="h-40" />}>
         {(stats) => <Body stats={stats} />}
       </Async>

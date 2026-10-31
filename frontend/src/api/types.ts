@@ -2,7 +2,7 @@
 // from an allowlist, so anything not listed here is never sent to the browser.
 
 /** The public website tabs an administrator can switch off. */
-export type PublicTabKey = 'about' | 'history' | 'committee' | 'faq' | 'links' | 'directory' | 'events' | 'news' | 'contact';
+export type PublicTabKey = 'about' | 'committee' | 'faq' | 'links' | 'directory' | 'events' | 'news' | 'contact';
 export type PublicTabs = Record<PublicTabKey, boolean>;
 
 export interface PublicSettings {
@@ -134,7 +134,6 @@ export interface SearchResults {
   events: SearchHit[];
   announcements: SearchHit[];
   faqs: SearchHit[];
-  history: SearchHit[];
   links: SearchHit[];
   members: SearchHit[];
 }

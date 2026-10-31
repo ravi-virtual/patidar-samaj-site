@@ -1,5 +1,6 @@
 import axios, { AxiosError } from 'axios';
 import { getCsrfToken } from './csrf';
+import { getLanguage, t } from '../i18n';
 
 /**
  * Single Axios instance for the whole app (mern-stack-project skill: all API calls live in src/api).
@@ -16,6 +17,7 @@ export const api = axios.create({
 const UNSAFE = new Set(['post', 'put', 'patch', 'delete']);
 
 api.interceptors.request.use((config) => {
+  config.headers.set('Accept-Language', getLanguage());
   const token = getCsrfToken();
   if (token && UNSAFE.has((config.method ?? 'get').toLowerCase())) {
     config.headers.set('X-CSRF-Token', token);
@@ -32,7 +34,9 @@ export const setSessionLostHandler = (handler: UnauthorizedHandler | null): void
 };
 
 const SESSION_CODES = new Set(['SESSION_EXPIRED', 'INVALID_SESSION', 'ACCOUNT_NOT_ACTIVE']);
-const PUBLIC_AUTH_PATHS = ['/auth/admin-login', '/auth/me', '/auth/forgot-password', '/auth/reset-password'];
+const PUBLIC_AUTH_PATHS = ['/auth/admin-login', '/auth/forgot-password', '/auth/reset-password'];
+// GET /auth/:id is the session bootstrap, so a dead session there just means "signed out".
+const isBootstrapUrl = (url: string): boolean => /^\/auth\/[0-9a-f-]{36}$/i.test(url);
 
 api.interceptors.response.use(
   (response) => response,
@@ -40,7 +44,7 @@ api.interceptors.response.use(
     if (axios.isAxiosError<ApiErrorBody>(error)) {
       const code = error.response?.data?.error?.code;
       const url = error.config?.url ?? '';
-      if (code && SESSION_CODES.has(code) && !PUBLIC_AUTH_PATHS.some((p) => url.startsWith(p))) {
+      if (code && SESSION_CODES.has(code) && !PUBLIC_AUTH_PATHS.some((p) => url.startsWith(p)) && !isBootstrapUrl(url)) {
         onSessionLost?.();
       }
     }
@@ -62,10 +66,10 @@ export interface ApiErrorBody {
 export const getErrorMessage = (err: unknown, fallback = 'Something went wrong'): string => {
   if (axios.isAxiosError<ApiErrorBody>(err)) {
     const e = err as AxiosError<ApiErrorBody>;
-    if (!e.response) return 'Cannot reach the server. Check your connection and try again.';
-    return e.response.data?.message ?? fallback;
+    if (!e.response) return t('Cannot reach the server. Check your connection and try again.');
+    return e.response.data?.message ?? t(fallback);
   }
-  return fallback;
+  return t(fallback);
 };
 
 export const getErrorCode = (err: unknown): string | undefined =>

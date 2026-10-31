@@ -2,6 +2,7 @@ import { listMediaApi } from '../../api/adminApi';
 import { useFetch } from '../../lib/useFetch';
 import { SelectField } from '../ui/FormFields';
 import type { Ref, SelectHTMLAttributes } from 'react';
+import { t } from '../../i18n';
 
 interface MediaPickerProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label: string;
@@ -21,10 +22,16 @@ export function MediaPicker({ label, kind, error, ref, ...rest }: MediaPickerPro
       label={label}
       ref={ref}
       error={error ?? loadError}
-      hint={data && data.media.length === 0 ? `No ${kind}s uploaded yet. Add one in the Media library.` : undefined}
+      hint={
+        data && data.media.length === 0
+          ? kind === 'image'
+            ? t('No images uploaded yet. Add one in the Media library.')
+            : t('No documents uploaded yet. Add one in the Media library.')
+          : undefined
+      }
       {...rest}
     >
-      <option value="">None</option>
+      <option value="">{t('None')}</option>
       {data?.media.map((m) => (
         <option key={m.id} value={m.id}>
           {m.name}

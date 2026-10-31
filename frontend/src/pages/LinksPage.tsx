@@ -5,15 +5,20 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useFetch } from '../lib/useFetch';
+import { t } from '../i18n';
 
 export default function LinksPage() {
   const { data, initialLoading, error, retry } = useFetch('links', getLinksApi);
   return (
     <>
-      <PageHeader eyebrow="Links" title="Important links" description="Forms, documents and services the community uses." />
+      <PageHeader
+        eyebrow={t('Links')}
+        title={t('Important links')}
+        description={t('Forms, documents and services the community uses.')}
+      />
       <Async data={data} loading={initialLoading} error={error} onRetry={retry} skeleton={<Skeleton className="h-48" />}>
         {(links) => {
-          if (links.length === 0) return <EmptyState title="No links yet" />;
+          if (links.length === 0) return <EmptyState title={t('No links yet')} />;
           const categories = [...new Set(links.map((l) => l.category))];
           return (
             <div className="space-y-6">

@@ -9,7 +9,6 @@ import type {
   Faq,
   HomeData,
   ImportantLink,
-  Milestone,
   PublicSettings,
   SearchResults,
 } from './types';
@@ -41,11 +40,6 @@ export const getFaqsApi = async (): Promise<Faq[]> => {
 
 export const getLinksApi = async (): Promise<ImportantLink[]> => {
   const { data } = await api.get<Envelope<{ items: ImportantLink[] }>>('/content/links');
-  return data.data.items;
-};
-
-export const getMilestonesApi = async (): Promise<Milestone[]> => {
-  const { data } = await api.get<Envelope<{ items: Milestone[] }>>('/content/milestones');
   return data.data.items;
 };
 

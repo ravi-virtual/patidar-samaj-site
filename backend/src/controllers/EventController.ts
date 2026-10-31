@@ -6,6 +6,7 @@ import { ApiResponse, sendError } from '../utils/apiResponse';
 import { escapeRegex } from '../utils/escapeRegex';
 import { pageParams } from '../utils/pagination';
 import { toPublicEvent } from '../utils/eventView';
+import { searchFieldsFor } from '../utils/localize';
 
 const VISIBLE = [EventStatus.PUBLISHED, EventStatus.CANCELLED];
 
@@ -40,7 +41,7 @@ export const listEvents = async (req: Request, res: Response, next: NextFunction
     if (q.category) filter.category = q.category;
     if (q.search) {
       const rx = new RegExp(escapeRegex(q.search), 'i');
-      filter.$or = [{ title: rx }, { description: rx }, { venue: rx }];
+      filter.$or = searchFieldsFor(['title', 'description', 'venue'], req.lang).map((f) => ({ [f]: rx }));
     }
 
     const { limit, skip } = pageParams(q, 12);
@@ -54,7 +55,7 @@ export const listEvents = async (req: Request, res: Response, next: NextFunction
     ]);
 
     return new ApiResponse(ResponseCodes.OK, 'Events fetched successfully', {
-      events: events.map(toPublicEvent),
+      events: events.map((e) => toPublicEvent(e, req.lang)),
       totalCount,
     }).send(res);
   } catch (err) {
@@ -75,7 +76,7 @@ export const getEvent = async (req: Request, res: Response, next: NextFunction) 
     const event = await Event.findOne({ _id: req.params.id, isDeleted: false, status: { $in: VISIBLE } }).lean();
     if (!event) return notFound(res);
     return new ApiResponse(ResponseCodes.OK, 'Event fetched successfully', {
-      event: toPublicEvent(event),
+      event: toPublicEvent(event, req.lang),
     }).send(res);
   } catch (err) {
     return next(err);

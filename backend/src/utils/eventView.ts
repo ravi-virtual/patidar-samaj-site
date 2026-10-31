@@ -1,24 +1,37 @@
 import { EventStatus } from '../config/constants';
 import type { IEvent } from '../models/Event';
+import type { Language } from '../i18n/translate';
+import { localizeFields } from './localize';
 
-/** What visitors see: timing and details only. Authorship and internal fields are not included. */
-export const toPublicEvent = (event: IEvent) => ({
+/** Event text that has a Gujarati twin (`titleGu`...). */
+export const EVENT_TEXT_FIELDS = ['title', 'description', 'venue', 'cancellationReason'] as const;
+
+/** Timing and details in both languages (the `*Gu` twins included). Authorship and internal fields are not included. */
+const bilingualEvent = (event: IEvent) => ({
   id: event._id,
   title: event.title,
+  titleGu: event.titleGu ?? null,
   category: event.category,
   description: event.description ?? null,
+  descriptionGu: event.descriptionGu ?? null,
   startsAt: event.startsAt,
   endsAt: event.endsAt ?? null,
   venue: event.venue,
+  venueGu: event.venueGu ?? null,
   status: event.status === EventStatus.CANCELLED ? 'cancelled' : 'published',
   cancellationReason: event.status === EventStatus.CANCELLED ? (event.cancellationReason ?? null) : null,
+  cancellationReasonGu: event.status === EventStatus.CANCELLED ? (event.cancellationReasonGu ?? null) : null,
   featured: event.featured,
   imageMediaId: event.imageMediaId ?? null,
 });
 
-/** Staff view: everything in the public view plus the real status and audit fields. */
+/** What visitors see, in their language: the Gujarati text when there is some, English otherwise. Never has `*Gu` keys. */
+export const toPublicEvent = (event: IEvent, lang: Language = 'en') =>
+  localizeFields(bilingualEvent(event), EVENT_TEXT_FIELDS, lang);
+
+/** Staff view: both languages side by side (never localized) plus the real status and audit fields. */
 export const toAdminEvent = (event: IEvent) => ({
-  ...toPublicEvent(event),
+  ...bilingualEvent(event),
   status: event.status,
   publishedAt: event.publishedAt ?? null,
   cancelledAt: event.cancelledAt ?? null,

@@ -21,6 +21,7 @@ import { useDebounced } from '../../lib/useDebounced';
 import { useFetch } from '../../lib/useFetch';
 import { useAppDispatch } from '../../store/hooks';
 import { showToast } from '../../store/slices/toastSlice';
+import { t } from '../../i18n';
 
 const PAGE_SIZE = 20;
 
@@ -53,14 +54,14 @@ export default function AdminMembersPage() {
     try {
       await downloadCsv('/admin/members/export', filters, 'members.csv');
     } catch (err) {
-      dispatch(showToast(getErrorMessage(err, 'Could not export'), 'error'));
+      dispatch(showToast(getErrorMessage(err, t('Could not export')), 'error'));
     }
   };
 
   const showPhone = can('members.read.private');
   const columns: Column<StaffMember>[] = [
     {
-      header: 'Member',
+      header: t('Member'),
       cell: (m) => (
         <div className="flex items-center gap-2.5">
           <Avatar name={m.name} size="sm" />
@@ -68,21 +69,21 @@ export default function AdminMembersPage() {
         </div>
       ),
     },
-    { header: 'Village', cell: (m) => m.village ?? '—' },
-    { header: 'Location', cell: (m) => place(m.city, m.country) || '—' },
-    ...(showPhone ? [{ header: 'Phone', className: 'whitespace-nowrap font-mono text-[13px]', cell: (m: StaffMember) => m.phone ?? '—' }] : []),
-    { header: 'Membership', cell: (m) => <StatusBadge status={m.membershipStatus} /> },
-    { header: 'Visible to', cell: (m) => <Badge>{visibilityLabel[m.visibility] ?? visibilityLabel.hidden}</Badge> },
+    { header: t('Village'), cell: (m) => m.village ?? '—' },
+    { header: t('Location'), cell: (m) => place(m.city, m.country) || '—' },
+    ...(showPhone ? [{ header: t('Phone'), className: 'whitespace-nowrap font-mono text-[13px]', cell: (m: StaffMember) => m.phone ?? '—' }] : []),
+    { header: t('Membership'), cell: (m) => <StatusBadge status={m.membershipStatus} /> },
+    { header: t('Visible to'), cell: (m) => <Badge>{t(visibilityLabel[m.visibility] ?? visibilityLabel.hidden)}</Badge> },
     {
-      header: 'Actions',
+      header: t('Actions'),
       srOnlyHeader: true,
       className: 'text-right',
       cell: (m) => (
         <RowMenu
           name={m.name}
           actions={[
-            { label: 'Edit', kind: 'edit', show: can('members.update') && !m.anonymizedAt, onSelect: () => setEditing(m) },
-            { label: 'Anonymise…', icon: UserX, danger: true, show: can('members.anonymize') && !m.anonymizedAt, onSelect: () => setAnonymizing(m) },
+            { label: t('Edit'), kind: 'edit', show: can('members.update') && !m.anonymizedAt, onSelect: () => setEditing(m) },
+            { label: t('Anonymise…'), icon: UserX, danger: true, show: can('members.anonymize') && !m.anonymizedAt, onSelect: () => setAnonymizing(m) },
           ]}
         />
       ),
@@ -91,57 +92,57 @@ export default function AdminMembersPage() {
 
   return (
     <>
-      <PageHeader title="Members" description="The community directory. Entries are added and kept up to date by the office; members do not sign in." />
+      <PageHeader title={t('Members')} description={t('The community directory. Entries are added and kept up to date by the office; members do not sign in.')} />
       <Toolbar
         search={search}
         onSearch={reset(setSearch)}
-        searchLabel="Search members"
+        searchLabel={t('Search members')}
         actions={
           <>
             {can('members.export') && (
               <Button variant="secondary" onClick={() => void exportCsv()}>
                 <Download aria-hidden="true" className="h-4 w-4" />
-                Export CSV
+                {t('Export CSV')}
               </Button>
             )}
             {can('members.create') && (
               <Button onClick={() => setEditing('new')}>
                 <Plus aria-hidden="true" className="h-4 w-4" />
-                Add member
+                {t('Add member')}
               </Button>
             )}
           </>
         }
       >
-        <FilterSelect label="Membership" value={membershipStatus} onChange={reset(setMembershipStatus)} options={[{ value: '', label: 'Any membership' }, { value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]} />
-        <FilterSelect label="Visibility" value={visibility} onChange={reset(setVisibility)} options={[{ value: '', label: 'Any visibility' }, { value: 'hidden', label: 'Office only' }, { value: 'public', label: 'Everyone' }]} />
+        <FilterSelect label={t('Membership')} value={membershipStatus} onChange={reset(setMembershipStatus)} options={[{ value: '', label: t('Any membership') }, { value: 'active', label: t('Active') }, { value: 'inactive', label: t('Inactive') }]} />
+        <FilterSelect label={t('Visibility')} value={visibility} onChange={reset(setVisibility)} options={[{ value: '', label: t('Any visibility') }, { value: 'hidden', label: t('Office only') }, { value: 'public', label: t('Everyone') }]} />
       </Toolbar>
 
       <DataTable
-        caption="Members"
+        caption={t('Members')}
         columns={columns}
         rows={list.data?.members}
         rowKey={(m) => m.id}
         loading={list.loading}
         error={list.error}
         onRetry={list.retry}
-        empty={<EmptyState title="No members found" description="Try different filters, or add a directory entry." />}
+        empty={<EmptyState title={t('No members found')} description={t('Try different filters, or add a directory entry.')} />}
       />
       {list.data && <Pagination page={page} pageSize={PAGE_SIZE} totalCount={list.data.totalCount} onChange={setPage} />}
 
       <MemberFormDrawer open={editing !== null} member={editing === 'new' ? null : editing} onClose={() => setEditing(null)} onSaved={list.retry} />
       <ConfirmDialog
         open={anonymizing !== null}
-        title="Anonymise this member?"
-        confirmLabel="Anonymise"
+        title={t('Anonymise this member?')}
+        confirmLabel={t('Anonymise')}
         tone="danger"
         busy={busy}
         onConfirm={() => {
-          if (anonymizing) void run(() => anonymizeMemberApi(anonymizing.id), 'Member anonymised.').then((ok) => ok && setAnonymizing(null));
+          if (anonymizing) void run(() => anonymizeMemberApi(anonymizing.id), t('Member anonymised.')).then((ok) => ok && setAnonymizing(null));
         }}
         onCancel={() => setAnonymizing(null)}
       >
-        {anonymizing ? `${anonymizing.name}'s name and personal details are removed for good. This cannot be undone.` : ''}
+        {anonymizing ? t("{name}'s name and personal details are removed for good. This cannot be undone.", { name: anonymizing.name }) : ''}
       </ConfirmDialog>
     </>
   );

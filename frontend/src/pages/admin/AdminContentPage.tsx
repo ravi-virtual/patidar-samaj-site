@@ -27,6 +27,7 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { formatDateTime } from '../../lib/format';
 import { useFetch } from '../../lib/useFetch';
+import { t } from '../../i18n';
 
 function BlocksPanel() {
   const can = useCan();
@@ -41,18 +42,18 @@ function BlocksPanel() {
         const rows = blocks.map((def) => ({ def, block: byKey.get(def.key) }));
         const columns: Column<{ def: BlockDef; block: AdminBlock | undefined }>[] = [
           {
-            header: 'Text block',
+            header: t('Text block'),
             cell: ({ def }) => (
               <div>
-                <p className="font-medium text-text">{def.label}</p>
-                <p className="text-xs text-text-muted">{def.where}</p>
+                <p className="font-medium text-text">{t(def.label)}</p>
+                <p className="text-xs text-text-muted">{t(def.where)}</p>
               </div>
             ),
           },
-          { header: 'Status', cell: ({ block }) => <StatusBadge status={block && block.status !== 'empty' ? block.status : 'draft'} /> },
-          { header: 'Written', className: 'text-text-muted', cell: ({ block }) => (block && block.status !== 'empty' ? `Updated ${formatDateTime(block.updatedAt ?? '')}` : 'Not written yet') },
+          { header: t('Status'), cell: ({ block }) => <StatusBadge status={block && block.status !== 'empty' ? block.status : 'draft'} /> },
+          { header: t('Written'), className: 'text-text-muted', cell: ({ block }) => (block && block.status !== 'empty' ? t('Updated {date}', { date: formatDateTime(block.updatedAt ?? '') }) : t('Not written yet')) },
           {
-            header: 'Actions',
+            header: t('Actions'),
             srOnlyHeader: true,
             className: 'text-right',
             cell: ({ def, block }) => {
@@ -63,9 +64,9 @@ function BlocksPanel() {
                 <RowMenu
                   name={def.label}
                   actions={[
-                    { label: 'Edit', kind: 'edit', show: editable, onSelect: () => setEditing(def) },
-                    { label: 'Publish', show: can('content.publish') && Boolean(written) && block?.status !== 'published', onSelect: () => void run(() => blockActionApi(def.key, 'publish'), 'Published.') },
-                    { label: 'Unpublish', show: can('content.publish') && block?.status === 'published', onSelect: () => void run(() => blockActionApi(def.key, 'unpublish'), 'Moved back to draft.') },
+                    { label: t('Edit'), kind: 'edit', show: editable, onSelect: () => setEditing(def) },
+                    { label: t('Publish'), show: can('content.publish') && Boolean(written) && block?.status !== 'published', onSelect: () => void run(() => blockActionApi(def.key, 'publish'), t('Published.')) },
+                    { label: t('Unpublish'), show: can('content.publish') && block?.status === 'published', onSelect: () => void run(() => blockActionApi(def.key, 'unpublish'), t('Moved back to draft.')) },
                   ]}
                 />
               );
@@ -74,7 +75,7 @@ function BlocksPanel() {
         ];
         return (
           <>
-            <DataTable caption="Page text blocks" columns={columns} rows={rows} rowKey={(r) => r.def.key} minWidth={640} />
+            <DataTable caption={t('Page text blocks')} columns={columns} rows={rows} rowKey={(r) => r.def.key} minWidth={640} />
             <BlockDrawer def={editing} block={editing ? byKey.get(editing.key) : undefined} allBlocks={data} onClose={() => setEditing(null)} onSaved={list.retry} />
           </>
         );
@@ -99,12 +100,12 @@ function ResourcePanel({ def }: { def: ResourceDef }) {
     const ids = rows.map((r) => r.id);
     const [moved] = ids.splice(index, 1);
     ids.splice(index + by, 0, moved!);
-    void run(() => reorderContentApi(def.key, ids), 'Order saved.');
+    void run(() => reorderContentApi(def.key, ids), t('Order saved.'));
   };
 
   const columns: Column<ContentRow>[] = [
     {
-      header: def.singular[0]!.toUpperCase() + def.singular.slice(1),
+      header: t(def.singular[0]!.toUpperCase() + def.singular.slice(1)),
       cell: (r) => (
         <div className="max-w-md">
           <p className="truncate font-medium text-text">{def.title(r)}</p>
@@ -112,9 +113,9 @@ function ResourcePanel({ def }: { def: ResourceDef }) {
         </div>
       ),
     },
-    { header: 'Status', cell: (r) => <StatusBadge status={r.status} /> },
+    { header: t('Status'), cell: (r) => <StatusBadge status={r.status} /> },
     {
-      header: 'Actions',
+      header: t('Actions'),
       srOnlyHeader: true,
       className: 'text-right',
       cell: (r) => {
@@ -123,13 +124,13 @@ function ResourcePanel({ def }: { def: ResourceDef }) {
           <RowMenu
             name={def.title(r)}
             actions={[
-              { label: 'Edit', kind: 'edit', show: editable(r), onSelect: () => setEditing(r) },
-              { label: 'Publish', show: publisher && r.status !== 'published', onSelect: () => void run(() => contentActionApi(def.key, r.id, 'publish'), 'Published.') },
-              { label: 'Unpublish', show: publisher && r.status === 'published', onSelect: () => void run(() => contentActionApi(def.key, r.id, 'unpublish'), 'Moved back to draft.') },
-              { label: 'Archive', show: publisher && r.status === 'published', onSelect: () => void run(() => contentActionApi(def.key, r.id, 'archive'), 'Archived.') },
-              { label: 'Move up', show: publisher && index > 0, onSelect: () => move(index, -1) },
-              { label: 'Move down', show: publisher && rows !== undefined && index < rows.length - 1, onSelect: () => move(index, 1) },
-              { label: 'Delete', kind: 'delete', danger: true, show: publisher, onSelect: () => setDeleting(r) },
+              { label: t('Edit'), kind: 'edit', show: editable(r), onSelect: () => setEditing(r) },
+              { label: t('Publish'), show: publisher && r.status !== 'published', onSelect: () => void run(() => contentActionApi(def.key, r.id, 'publish'), t('Published.')) },
+              { label: t('Unpublish'), show: publisher && r.status === 'published', onSelect: () => void run(() => contentActionApi(def.key, r.id, 'unpublish'), t('Moved back to draft.')) },
+              { label: t('Archive'), show: publisher && r.status === 'published', onSelect: () => void run(() => contentActionApi(def.key, r.id, 'archive'), t('Archived.')) },
+              { label: t('Move up'), show: publisher && index > 0, onSelect: () => move(index, -1) },
+              { label: t('Move down'), show: publisher && rows !== undefined && index < rows.length - 1, onSelect: () => move(index, 1) },
+              { label: t('Delete'), kind: 'delete', danger: true, show: publisher, onSelect: () => setDeleting(r) },
             ]}
           />
         );
@@ -143,12 +144,12 @@ function ResourcePanel({ def }: { def: ResourceDef }) {
         <div className="mb-4 flex justify-end">
           <Button onClick={() => setEditing('new')}>
             <Plus aria-hidden="true" className="h-4 w-4" />
-            New {def.singular}
+            {t('New {item}', { item: t(def.singular) })}
           </Button>
         </div>
       )}
       <DataTable
-        caption={def.plural}
+        caption={t(def.plural)}
         columns={columns}
         rows={rows}
         rowKey={(r) => r.id}
@@ -156,21 +157,21 @@ function ResourcePanel({ def }: { def: ResourceDef }) {
         error={list.error}
         onRetry={list.retry}
         minWidth={560}
-        empty={<EmptyState title={`No ${def.plural.toLowerCase()} yet`} description="Create the first one. It stays a draft until you publish it." />}
+        empty={<EmptyState title={t('No {items} yet', { items: t(def.plural).toLowerCase() })} description={t('Create the first one. It stays a draft until you publish it.')} />}
       />
       <ContentFormDrawer def={def} open={editing !== null} row={editing === 'new' ? null : editing} onClose={() => setEditing(null)} onSaved={list.retry} />
       <ConfirmDialog
         open={deleting !== null}
-        title={`Delete this ${def.singular}?`}
-        confirmLabel="Delete"
+        title={t('Delete this {item}?', { item: t(def.singular) })}
+        confirmLabel={t('Delete')}
         tone="danger"
         busy={busy}
         onConfirm={() => {
-          if (deleting) void run(() => deleteContentApi(def.key, deleting.id), 'Deleted.').then((ok) => ok && setDeleting(null));
+          if (deleting) void run(() => deleteContentApi(def.key, deleting.id), t('Deleted.')).then((ok) => ok && setDeleting(null));
         }}
         onCancel={() => setDeleting(null)}
       >
-        {deleting ? `“${def.title(deleting)}” will be removed from the site.` : ''}
+        {deleting ? t('“{title}” will be removed from the site.', { title: def.title(deleting) }) : ''}
       </ConfirmDialog>
     </>
   );
@@ -181,14 +182,14 @@ export default function AdminContentPage() {
   const def = resources.find((r) => r.key === tab);
   return (
     <>
-      <PageHeader title="Site content" description="Edit what visitors read. Nothing appears on the site until it is published." />
-      <div className="mb-5 flex flex-wrap gap-1.5" role="group" aria-label="Kind of content">
+      <PageHeader title={t('Site content')} description={t('Edit what visitors read. Nothing appears on the site until it is published.')} />
+      <div className="mb-5 flex flex-wrap gap-1.5" role="group" aria-label={t('Kind of content')}>
         <Chip active={tab === 'blocks'} onClick={() => setTab('blocks')}>
-          Page text
+          {t('Page text')}
         </Chip>
         {resources.map((r) => (
           <Chip key={r.key} active={tab === r.key} onClick={() => setTab(r.key)}>
-            {r.plural}
+            {t(r.plural)}
           </Chip>
         ))}
       </div>

@@ -32,10 +32,18 @@ const safeUrl = body('url')
   .withMessage('Enter a full web address starting with http:// or https://');
 
 const resourceRules = (creating: boolean): Record<string, ValidationChain[]> => ({
-  faqs: [plain('question', 5, 200, creating), plain('answer', 1, 2000, creating)],
+  // The *Gu fields are the optional Gujarati twins of the English text, with the same limits.
+  faqs: [
+    plain('question', 5, 200, creating),
+    plain('answer', 1, 2000, creating),
+    plain('questionGu', 0, 200, false),
+    plain('answerGu', 0, 2000, false),
+  ],
   links: [
     plain('label', 3, 120, creating),
     plain('description', 0, 200, false),
+    plain('labelGu', 0, 120, false),
+    plain('descriptionGu', 0, 200, false),
     safeUrl,
     mediaId('fileMediaId'),
     body('category').optional().isIn([...LinkCategories]).withMessage('Unknown category'),
@@ -45,6 +53,10 @@ const resourceRules = (creating: boolean): Record<string, ValidationChain[]> => 
     plain('title', 3, 150, creating),
     plain('text', 1, 1500, creating),
     plain('sourceRef', 0, 200, false),
+    plain('periodLabelGu', 0, 40, false),
+    plain('titleGu', 0, 150, false),
+    plain('textGu', 0, 1500, false),
+    plain('sourceRefGu', 0, 200, false),
     mediaId('imageMediaId'),
   ],
   'committee-terms': [
@@ -64,6 +76,9 @@ const resourceRules = (creating: boolean): Record<string, ValidationChain[]> => 
     plain('name', 2, 100, creating),
     plain('position', 1, 80, creating),
     plain('bio', 0, 800, false),
+    plain('nameGu', 0, 100, false),
+    plain('positionGu', 0, 80, false),
+    plain('bioGu', 0, 800, false),
     mediaId('imageMediaId'),
   ],
 });
@@ -120,11 +135,16 @@ export const blockBodyRules = [
   param('key').isIn([...ContentKeys]).withMessage('Unknown content block'),
   plain('title', 0, 150, false),
   plain('body', 0, 6000, false),
+  plain('titleGu', 0, 150, false),
+  plain('bodyGu', 0, 6000, false),
   body('items').optional().isArray({ max: 20 }).withMessage('At most 20 items'),
   body('items.*.title').optional().isString().trim().isLength({ max: 120 }).matches(/^[^<>]*$/),
   body('items.*.text').optional().isString().trim().isLength({ max: 600 }).matches(/^[^<>]*$/),
   body('items.*.value').optional().isString().trim().isLength({ max: 40 }).matches(/^[^<>]*$/),
   body('items.*.label').optional().isString().trim().isLength({ max: 120 }).matches(/^[^<>]*$/),
+  body('items.*.titleGu').optional().isString().trim().isLength({ max: 120 }).matches(/^[^<>]*$/),
+  body('items.*.textGu').optional().isString().trim().isLength({ max: 600 }).matches(/^[^<>]*$/),
+  body('items.*.labelGu').optional().isString().trim().isLength({ max: 120 }).matches(/^[^<>]*$/),
   body('items.*.imageMediaId').optional({ values: 'null' }).isUUID(),
   validateRequest,
 ];

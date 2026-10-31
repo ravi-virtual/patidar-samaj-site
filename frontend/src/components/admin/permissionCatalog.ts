@@ -1,3 +1,5 @@
+import { t } from '../../i18n';
+
 /**
  * Human text and grouping for the permissions the Super Admin can tick for an admin. An admin has no
  * default permissions: exactly the ticked list applies. Keep this in step with
@@ -49,7 +51,7 @@ export const permissionInfo: Record<string, PermissionInfo> = {
 /** Every permission the picker offers, in display order. */
 export const SELECTABLE_PERMISSION_KEYS = Object.keys(permissionInfo);
 
-export const permissionLabel = (key: string): string => permissionInfo[key]?.label ?? key;
+export const permissionLabel = (key: string): string => t(permissionInfo[key]?.label ?? key);
 
 const groups: { id: string; label: string; match: (key: string) => boolean }[] = [
   { id: 'general', label: 'General', match: (k) => k.startsWith('dashboard.') },

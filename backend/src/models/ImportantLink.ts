@@ -7,6 +7,9 @@ export interface IImportantLink extends PublishableFields {
   _id: string;
   label: string;
   description?: string;
+  /** Gujarati twins of label and description. Optional: empty means show the English text. */
+  labelGu?: string;
+  descriptionGu?: string;
   /** An external http(s) address. Mutually exclusive with fileMediaId in practice (validated). */
   url?: string;
   /** An uploaded PDF served by this site. */
@@ -21,6 +24,8 @@ const importantLinkSchema = new Schema<IImportantLink>(
     _id: { type: String, default: () => uuidv4() },
     label: { type: String, required: true, trim: true, minlength: 3, maxlength: 120 },
     description: { type: String, trim: true, maxlength: 200 },
+    labelGu: { type: String, trim: true, maxlength: 120 },
+    descriptionGu: { type: String, trim: true, maxlength: 200 },
     url: { type: String, trim: true, maxlength: 500 },
     fileMediaId: { type: String },
     category: { type: String, enum: [...LinkCategories], default: 'Other' },

@@ -1,5 +1,5 @@
 // The CSRF token lives only in memory (never localStorage / sessionStorage / cookies readable by
-// scripts). A page reload loses it, and the app fetches a fresh one from GET /api/auth/me.
+// scripts). A page reload loses it, and the app fetches a fresh one from GET /api/auth/:id.
 let csrfToken: string | null = null;
 
 export const setCsrfToken = (token: string | null): void => {

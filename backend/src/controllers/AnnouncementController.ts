@@ -6,6 +6,7 @@ import { ApiResponse, sendError } from '../utils/apiResponse';
 import { escapeRegex } from '../utils/escapeRegex';
 import { pageParams } from '../utils/pagination';
 import { toPublicAnnouncement, visibleNowFilter } from '../utils/announcementView';
+import { searchFieldsFor } from '../utils/localize';
 
 const notFound = (res: Response) =>
   sendError(res, { statusCode: ResponseCodes.NOT_FOUND, message: 'Announcement not found', code: ErrorCodes.NOT_FOUND });
@@ -36,7 +37,7 @@ export const listAnnouncements = async (req: Request, res: Response, next: NextF
     if (q.category) filter.category = q.category;
     if (q.search) {
       const rx = new RegExp(escapeRegex(q.search), 'i');
-      and.push({ $or: [{ title: rx }, { summary: rx }, { body: rx }] });
+      and.push({ $or: searchFieldsFor(['title', 'summary', 'body'], req.lang).map((f) => ({ [f]: rx })) });
     }
     if (and.length) filter.$and = and;
 
@@ -51,7 +52,7 @@ export const listAnnouncements = async (req: Request, res: Response, next: NextF
     ]);
 
     return new ApiResponse(ResponseCodes.OK, 'Announcements fetched successfully', {
-      announcements: items.map((a) => toPublicAnnouncement(a, false)),
+      announcements: items.map((a) => toPublicAnnouncement(a, false, req.lang)),
       totalCount,
     }).send(res);
   } catch (err) {
@@ -80,7 +81,7 @@ export const getAnnouncement = async (req: Request, res: Response, next: NextFun
     }).lean();
     if (!item) return notFound(res);
     return new ApiResponse(ResponseCodes.OK, 'Announcement fetched successfully', {
-      announcement: toPublicAnnouncement(item, true),
+      announcement: toPublicAnnouncement(item, true, req.lang),
     }).send(res);
   } catch (err) {
     return next(err);

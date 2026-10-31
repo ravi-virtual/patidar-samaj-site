@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Button } from '../ui/Button';
 import { Modal } from './Modal';
+import { t } from '../../i18n';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -34,7 +35,7 @@ export function ConfirmDialog({
       footer={
         <>
           <Button variant="secondary" onClick={onCancel} disabled={busy}>
-            Cancel
+            {t('Cancel')}
           </Button>
           <Button variant={tone === 'danger' ? 'danger' : 'primary'} onClick={onConfirm} loading={busy}>
             {confirmLabel}

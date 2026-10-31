@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Menu, Search, X, type LucideIcon } from 'lucide-react';
+import { LanguageToggle } from '../ui/LanguageToggle';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import { t } from '../../i18n';
+import { HEADER_ICON_BUTTON } from '../ui/headerButton';
 
 export interface NavItem {
   to: string;
@@ -45,8 +48,8 @@ function SidebarContent({ brandName, brandTagline, navLabel, navSections, sideba
           PS
         </span>
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-text">{brandName}</p>
-          <p className="truncate text-xs text-text-muted">{brandTagline}</p>
+          <p className="truncate text-sm font-semibold text-text">{t(brandName)}</p>
+          <p className="truncate text-xs text-text-muted">{t(brandTagline)}</p>
         </div>
       </div>
 
@@ -57,17 +60,17 @@ function SidebarContent({ brandName, brandTagline, navLabel, navSections, sideba
           className="flex h-10 w-full items-center gap-2.5 rounded-md border border-border-strong bg-surface px-3 text-sm text-text-subtle hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-[var(--focus-ring)]"
         >
           <Search aria-hidden="true" className="h-4 w-4" />
-          Search
+          {t('Search')}
           <kbd className="ml-auto rounded border border-border px-1.5 py-0.5 font-mono text-[11px] text-text-subtle">Ctrl K</kbd>
         </button>
       )}
 
-      <nav aria-label={navLabel} className="flex-1 space-y-4">
+      <nav aria-label={t(navLabel)} className="flex-1 space-y-4">
         {navSections.map((section, i) => (
           <div key={section.heading ?? i}>
             {section.heading && (
               <p className="px-2.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-text-subtle">
-                {section.heading}
+                {t(section.heading)}
               </p>
             )}
             <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
@@ -85,7 +88,7 @@ function SidebarContent({ brandName, brandTagline, navLabel, navSections, sideba
                     }
                   >
                     <Icon aria-hidden="true" className="h-4 w-4" />
-                    {label}
+                    {t(label)}
                   </NavLink>
                 </li>
               ))}
@@ -139,7 +142,7 @@ export function AppShell({ headerActions, breadcrumb, footer, overlays, onSearch
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-foreground"
       >
-        Skip to main content
+        {t('Skip to main content')}
       </a>
 
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 border-r border-border bg-surface lg:block">
@@ -147,10 +150,10 @@ export function AppShell({ headerActions, breadcrumb, footer, overlays, onSearch
       </aside>
 
       {drawerOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
+        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label={t('Menu')}>
           <button
             type="button"
-            aria-label="Close menu"
+            aria-label={t('Close menu')}
             tabIndex={-1}
             className="absolute inset-0 bg-[var(--overlay)]"
             onClick={() => setDrawerOpen(false)}
@@ -159,7 +162,7 @@ export function AppShell({ headerActions, breadcrumb, footer, overlays, onSearch
             <button
               ref={closeButton}
               type="button"
-              aria-label="Close menu"
+              aria-label={t('Close menu')}
               className="absolute right-3 top-3 z-10 rounded-md p-1.5 text-text-muted hover:bg-surface-muted"
               onClick={() => {
                 setDrawerOpen(false);
@@ -180,18 +183,19 @@ export function AppShell({ headerActions, breadcrumb, footer, overlays, onSearch
             <button
               type="button"
               onClick={onSearch}
-              aria-label="Search"
-              className="flex h-10 w-10 items-center justify-center rounded-md border border-border-strong bg-surface text-text-muted hover:bg-surface-muted hover:text-text"
+              aria-label={t('Search')}
+              className={HEADER_ICON_BUTTON}
             >
               <Search aria-hidden="true" className="h-4 w-4" />
             </button>
           )}
+          <LanguageToggle />
           <ThemeToggle />
           {headerActions}
           <button
             ref={menuButton}
             type="button"
-            aria-label="Open menu"
+            aria-label={t('Open menu')}
             aria-expanded={drawerOpen}
             className="rounded-md p-1.5 text-text-secondary hover:bg-surface-muted lg:hidden"
             onClick={() => setDrawerOpen(true)}

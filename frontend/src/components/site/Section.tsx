@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '../ui/Card';
+import { t } from '../../i18n';
 
 /** A titled card, optionally with a "view all" link. Used for the home page and dashboards. */
 export function Section({
@@ -19,10 +20,10 @@ export function Section({
   return (
     <Card className={className}>
       <div className="mb-2.5 flex items-baseline justify-between gap-3">
-        <h2 className="text-[15px] font-semibold">{title}</h2>
+        <h2 className="text-[15px] font-semibold">{t(title)}</h2>
         {to && (
           <Link to={to} className="text-[13px] text-accent hover:text-accent-strong">
-            {linkLabel ?? 'View all'}
+            {t(linkLabel ?? 'View all')}
           </Link>
         )}
       </div>

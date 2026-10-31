@@ -4,7 +4,6 @@ import CommitteeTerm from '../../src/models/CommitteeTerm';
 import ContactMessage from '../../src/models/ContactMessage';
 import ContentBlock from '../../src/models/ContentBlock';
 import Faq from '../../src/models/Faq';
-import HistoryMilestone from '../../src/models/HistoryMilestone';
 import ImportantLink from '../../src/models/ImportantLink';
 import OrganizationSettings from '../../src/models/OrganizationSettings';
 import { PublicTabs, resolvePublicTabs, type PublicTab } from '../../src/config/publicTabs';
@@ -86,17 +85,15 @@ describe('gated public endpoints', () => {
     }
   });
 
-  it('answer 404 for faq, links, history and committee lists, each on its own tab', async () => {
+  it('answer 404 for faq, links and committee lists, each on its own tab', async () => {
     await Faq.create({ question: 'What is the fee?', answer: 'There is no fee.', status: 'published' });
     await ImportantLink.create({ label: 'Form', url: 'https://example.org', category: 'Forms', status: 'published' });
-    await HistoryMilestone.create({ periodLabel: '1950', title: 'Founded', text: 'Started.', status: 'published' });
     const term = await CommitteeTerm.create({ label: '2025-2027', startYear: 2025, endYear: 2027, isCurrent: true, status: 'published' });
     await CommitteeMember.create({ termId: term._id, name: 'Ashok Patel', position: 'President', status: 'published' });
 
     const cases: [PublicTab, string[]][] = [
       ['faq', ['/api/content/faqs']],
       ['links', ['/api/content/links']],
-      ['history', ['/api/content/milestones']],
       ['committee', ['/api/content/committee', '/api/content/committee-terms', '/api/content/committee-members']],
     ];
     for (const [tab, urls] of cases) {
@@ -109,9 +106,9 @@ describe('gated public endpoints', () => {
     }
   });
 
-  it('keep serving text blocks (about and history copy is hidden by the website only)', async () => {
+  it('keep serving text blocks (about copy is hidden by the website only)', async () => {
     await ContentBlock.create({ key: 'about.intro', title: 'About us', body: 'Text.', status: 'published' });
-    await turnOff('about', 'history');
+    await turnOff('about');
     const res = await anon().get('/api/content/blocks');
     expect(res.status).toBe(200);
     expect(res.body.data.blocks['about.intro']).toBeDefined();
@@ -148,7 +145,6 @@ describe('home and search while tabs are off', () => {
     await makeProfile({ displayName: 'Garba Patel', highlighted: true });
     await Faq.create({ question: 'Garba entry fee?', answer: 'Free.', status: 'published' });
     await ImportantLink.create({ label: 'Garba pass', url: 'https://example.org', category: 'Forms', status: 'published' });
-    await HistoryMilestone.create({ periodLabel: '1950', title: 'Garba begins', text: 'Started.', status: 'published' });
   };
 
   it('home carries every section while all tabs are on', async () => {
@@ -184,10 +180,10 @@ describe('home and search while tabs are off', () => {
   it('search leaves out results from each switched-off tab', async () => {
     await seed();
     const all = (await anon().get('/api/search?q=garba')).body.data.results;
-    for (const group of ['events', 'announcements', 'members', 'faqs', 'links', 'history']) expect(all[group], group).toHaveLength(1);
+    for (const group of ['events', 'announcements', 'members', 'faqs', 'links']) expect(all[group], group).toHaveLength(1);
 
     const groups: [PublicTab, string][] = [
-      ['events', 'events'], ['news', 'announcements'], ['directory', 'members'], ['faq', 'faqs'], ['links', 'links'], ['history', 'history'],
+      ['events', 'events'], ['news', 'announcements'], ['directory', 'members'], ['faq', 'faqs'], ['links', 'links'],
     ];
     for (const [tab, group] of groups) {
       await OrganizationSettings.deleteMany({});

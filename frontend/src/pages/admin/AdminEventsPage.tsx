@@ -23,6 +23,7 @@ import { Pagination } from '../../components/ui/Pagination';
 import { formatDateTime } from '../../lib/format';
 import { useDebounced } from '../../lib/useDebounced';
 import { useFetch } from '../../lib/useFetch';
+import { t } from '../../i18n';
 
 const PAGE_SIZE = 20;
 
@@ -48,6 +49,7 @@ export default function AdminEventsPage() {
   const [editing, setEditing] = useState<AdminEvent | null | 'new'>(null);
   const [pending, setPending] = useState<Pending | null>(null);
   const [reason, setReason] = useState('');
+  const [reasonGu, setReasonGu] = useState('');
 
   const reset = (setter: (v: string) => void) => (v: string) => {
     setter(v);
@@ -59,32 +61,32 @@ export default function AdminEventsPage() {
 
   const columns: Column<AdminEvent>[] = [
     {
-      header: 'Event',
+      header: t('Event'),
       cell: (e) => (
         <div className="max-w-xs">
           <p className="truncate font-medium text-text">{e.title}</p>
           <p className="truncate text-xs text-text-muted">
-            {e.category} · {e.venue}
+            {t(e.category)} · {e.venue}
           </p>
         </div>
       ),
     },
-    { header: 'Starts', className: 'whitespace-nowrap font-mono text-[13px]', cell: (e) => formatDateTime(e.startsAt) },
-    { header: 'Status', cell: (e) => <StatusBadge status={e.status} /> },
+    { header: t('Starts'), className: 'whitespace-nowrap font-mono text-[13px]', cell: (e) => formatDateTime(e.startsAt) },
+    { header: t('Status'), cell: (e) => <StatusBadge status={e.status} /> },
     {
-      header: 'Actions',
+      header: t('Actions'),
       srOnlyHeader: true,
       className: 'text-right',
       cell: (e) => (
         <RowMenu
           name={e.title}
           actions={[
-            { label: 'Edit', kind: 'edit', show: canEdit(e), onSelect: () => setEditing(e) },
-            { label: 'Publish', show: can('events.publish') && (e.status === 'draft' || e.status === 'archived'), onSelect: () => void run(() => eventActionApi(e.id, 'publish'), 'Event published.') },
-            { label: 'Unpublish', show: can('events.publish') && e.status === 'published', onSelect: () => void run(() => eventActionApi(e.id, 'unpublish'), 'Event moved back to draft.') },
-            { label: 'Cancel event', show: can('events.publish') && e.status === 'published', onSelect: () => (setReason(''), setPending({ kind: 'cancel', event: e })) },
-            { label: 'Archive', show: can('events.publish') && e.status !== 'archived', onSelect: () => setPending({ kind: 'archive', event: e }) },
-            { label: 'Delete', kind: 'delete', danger: true, show: can('events.delete'), onSelect: () => setPending({ kind: 'delete', event: e }) },
+            { label: t('Edit'), kind: 'edit', show: canEdit(e), onSelect: () => setEditing(e) },
+            { label: t('Publish'), show: can('events.publish') && (e.status === 'draft' || e.status === 'archived'), onSelect: () => void run(() => eventActionApi(e.id, 'publish'), t('Event published.')) },
+            { label: t('Unpublish'), show: can('events.publish') && e.status === 'published', onSelect: () => void run(() => eventActionApi(e.id, 'unpublish'), t('Event moved back to draft.')) },
+            { label: t('Cancel event'), show: can('events.publish') && e.status === 'published', onSelect: () => (setReason(''), setReasonGu(''), setPending({ kind: 'cancel', event: e })) },
+            { label: t('Archive'), show: can('events.publish') && e.status !== 'archived', onSelect: () => setPending({ kind: 'archive', event: e }) },
+            { label: t('Delete'), kind: 'delete', danger: true, show: can('events.delete'), onSelect: () => setPending({ kind: 'delete', event: e }) },
           ]}
         />
       ),
@@ -100,42 +102,42 @@ export default function AdminEventsPage() {
           ? deleteEventApi(event.id)
           : kind === 'archive'
             ? eventActionApi(event.id, 'archive')
-            : eventActionApi(event.id, 'cancel', { reason: reason.trim() || undefined }),
-      kind === 'delete' ? 'Event deleted.' : kind === 'archive' ? 'Event archived.' : 'Event cancelled.',
+            : eventActionApi(event.id, 'cancel', { reason: reason.trim() || undefined, reasonGu: reasonGu.trim() || undefined }),
+      kind === 'delete' ? t('Event deleted.') : kind === 'archive' ? t('Event archived.') : t('Event cancelled.'),
     );
     if (ok) setPending(null);
   };
 
   return (
     <>
-      <PageHeader title="Events" description="Create and publish events with their date, time and venue." />
+      <PageHeader title={t('Events')} description={t('Create and publish events with their date, time and venue.')} />
       <Toolbar
         search={search}
         onSearch={reset(setSearch)}
-        searchLabel="Search events"
+        searchLabel={t('Search events')}
         actions={
           can('events.create') && (
             <Button onClick={() => setEditing('new')}>
               <Plus aria-hidden="true" className="h-4 w-4" />
-              New event
+              {t('New event')}
             </Button>
           )
         }
       >
-        <FilterSelect label="Status" value={status} onChange={reset(setStatus)} options={[{ value: '', label: 'All statuses' }, ...['draft', 'published', 'cancelled', 'archived'].map((s) => ({ value: s, label: s[0]!.toUpperCase() + s.slice(1) }))]} />
-        <FilterSelect label="When" value={when} onChange={reset(setWhen)} options={[{ value: 'all', label: 'Any date' }, { value: 'upcoming', label: 'Upcoming' }, { value: 'past', label: 'Past' }]} />
-        <FilterSelect label="Category" value={category} onChange={reset(setCategory)} options={[{ value: '', label: 'All categories' }, ...EVENT_CATEGORIES.map((c) => ({ value: c, label: c }))]} />
+        <FilterSelect label={t('Status')} value={status} onChange={reset(setStatus)} options={[{ value: '', label: t('All statuses') }, ...['draft', 'published', 'cancelled', 'archived'].map((s) => ({ value: s, label: t(s[0]!.toUpperCase() + s.slice(1)) }))]} />
+        <FilterSelect label={t('When')} value={when} onChange={reset(setWhen)} options={[{ value: 'all', label: t('Any date') }, { value: 'upcoming', label: t('Upcoming') }, { value: 'past', label: t('Past') }]} />
+        <FilterSelect label={t('Category')} value={category} onChange={reset(setCategory)} options={[{ value: '', label: t('All categories') }, ...EVENT_CATEGORIES.map((c) => ({ value: c, label: t(c) }))]} />
       </Toolbar>
 
       <DataTable
-        caption="Events"
+        caption={t('Events')}
         columns={columns}
         rows={list.data?.events}
         rowKey={(e) => e.id}
         loading={list.loading}
         error={list.error}
         onRetry={list.retry}
-        empty={<EmptyState title="No events found" description="Try different filters, or create the first event." />}
+        empty={<EmptyState title={t('No events found')} description={t('Try different filters, or create the first event.')} />}
       />
       {list.data && <Pagination page={page} pageSize={PAGE_SIZE} totalCount={list.data.totalCount} onChange={setPage} />}
 
@@ -148,19 +150,20 @@ export default function AdminEventsPage() {
 
       <ConfirmDialog
         open={pending !== null}
-        title={pending?.kind === 'delete' ? 'Delete this event?' : pending?.kind === 'cancel' ? 'Cancel this event?' : 'Archive this event?'}
-        confirmLabel={pending?.kind === 'delete' ? 'Delete' : pending?.kind === 'cancel' ? 'Cancel event' : 'Archive'}
+        title={pending?.kind === 'delete' ? t('Delete this event?') : pending?.kind === 'cancel' ? t('Cancel this event?') : t('Archive this event?')}
+        confirmLabel={pending?.kind === 'delete' ? t('Delete') : pending?.kind === 'cancel' ? t('Cancel event') : t('Archive')}
         tone={pending?.kind === 'archive' ? 'primary' : 'danger'}
         busy={busy}
         onConfirm={() => void confirm()}
         onCancel={() => setPending(null)}
       >
-        {pending?.kind === 'delete' && `“${pending.event.title}” will be removed.`}
-        {pending?.kind === 'archive' && `“${pending.event.title}” will no longer appear on the public site.`}
+        {pending?.kind === 'delete' && t('“{title}” will be removed.', { title: pending.event.title })}
+        {pending?.kind === 'archive' && t('“{title}” will no longer appear on the public site.', { title: pending.event.title })}
         {pending?.kind === 'cancel' && (
           <div className="space-y-3">
-            <p>Visitors will see that “{pending.event.title}” was cancelled.</p>
-            <TextAreaField label="Reason (shown on the event page)" rows={3} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
+            <p>{t('Visitors will see that “{title}” was cancelled.', { title: pending.event.title })}</p>
+            <TextAreaField label={t('Reason (shown on the event page)')} rows={3} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
+            <TextAreaField label={t('Reason in Gujarati (optional)')} lang="gu" rows={3} maxLength={500} value={reasonGu} onChange={(e) => setReasonGu(e.target.value)} />
           </div>
         )}
       </ConfirmDialog>

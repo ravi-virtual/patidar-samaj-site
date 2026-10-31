@@ -13,6 +13,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { place } from '../lib/format';
 import { useDebounced } from '../lib/useDebounced';
 import { useFetch } from '../lib/useFetch';
+import { t } from '../i18n';
 
 const PAGE_SIZE = 20;
 
@@ -36,18 +37,20 @@ export default function DirectoryPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Directory"
-        title="Community directory"
+        eyebrow={t('Directory')}
+        title={t('Community directory')}
         description={
           list.data
-            ? `${list.data.totalCount} ${list.data.totalCount === 1 ? 'family' : 'families'} listed. Contact details are never shown here.`
-            : 'Find families by name, village or city.'
+            ? list.data.totalCount === 1
+              ? t('1 family listed. Contact details are never shown here.')
+              : t('{count} families listed. Contact details are never shown here.', { count: list.data.totalCount })
+            : t('Find families by name, village or city.')
         }
         actions={
           <div className="w-full sm:w-72">
             <SearchInput
-              label="Search the directory"
-              placeholder="Search name, city, village…"
+              label={t('Search the directory')}
+              placeholder={t('Search name, city, village…')}
               value={search}
               onChange={(v) => {
                 setSearch(v);
@@ -59,9 +62,9 @@ export default function DirectoryPage() {
       />
 
       {filters.data && filters.data.villages.length > 0 && (
-        <div className="mb-3.5 flex flex-wrap gap-1.5" role="group" aria-label="Filter by village">
+        <div className="mb-3.5 flex flex-wrap gap-1.5" role="group" aria-label={t('Filter by village')}>
           <Chip active={village === ''} onClick={() => (setVillage(''), setPage(1))}>
-            All villages
+            {t('All villages')}
           </Chip>
           {filters.data.villages.map((v) => (
             <Chip key={v} active={village === v} onClick={() => (setVillage(v), setPage(1))}>
@@ -77,8 +80,8 @@ export default function DirectoryPage() {
         <Skeleton className="h-80" />
       ) : list.data.members.length === 0 ? (
         <EmptyState
-          title="No families found"
-          description={term ? `Nothing matches “${term}”.` : 'No directory entries are visible yet.'}
+          title={t('No families found')}
+          description={term ? t('Nothing matches “{term}”.', { term }) : t('No directory entries are visible yet.')}
           action={
             (term || village) && (
               <button
@@ -86,7 +89,7 @@ export default function DirectoryPage() {
                 onClick={reset}
                 className="rounded-md border border-border bg-surface px-3 py-1.5 text-sm font-medium hover:bg-surface-muted"
               >
-                Clear filters
+                {t('Clear filters')}
               </button>
             )
           }
@@ -94,14 +97,14 @@ export default function DirectoryPage() {
       ) : (
         <Card padded={false} className={`overflow-x-auto ${list.loading ? 'opacity-60' : ''}`}>
           <table className="w-full min-w-[640px] border-collapse text-left">
-            <caption className="sr-only">Community directory</caption>
+            <caption className="sr-only">{t('Community directory')}</caption>
             <thead>
               <tr className="border-b border-border text-xs text-text-muted">
-                <th scope="col" className="px-4 py-2.5 font-medium">Name</th>
-                <th scope="col" className="px-4 py-2.5 font-medium">Village</th>
-                <th scope="col" className="px-4 py-2.5 font-medium">Location</th>
-                <th scope="col" className="px-4 py-2.5 font-medium">Occupation</th>
-                <th scope="col" className="px-4 py-2.5 font-medium">Since</th>
+                <th scope="col" className="px-4 py-2.5 font-medium">{t('Name')}</th>
+                <th scope="col" className="px-4 py-2.5 font-medium">{t('Village')}</th>
+                <th scope="col" className="px-4 py-2.5 font-medium">{t('Location')}</th>
+                <th scope="col" className="px-4 py-2.5 font-medium">{t('Occupation')}</th>
+                <th scope="col" className="px-4 py-2.5 font-medium">{t('Since')}</th>
               </tr>
             </thead>
             <tbody>

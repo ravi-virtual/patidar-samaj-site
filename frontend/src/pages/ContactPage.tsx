@@ -12,30 +12,33 @@ import { SelectField, TextAreaField } from '../components/ui/FormFields';
 import { PageHeader } from '../components/ui/PageHeader';
 import { TextField } from '../components/ui/TextField';
 import { useAppSelector } from '../store/hooks';
+import { t } from '../i18n';
 
-const schema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(2, 'Name must be at least 2 characters')
-    .max(100)
-    .refine((v) => !/[<>]/.test(v), 'Name contains invalid characters'),
-  email: z.string().trim().min(1, 'Email is required').max(254).pipe(z.email('Enter a valid email address')),
-  topic: z.enum(CONTACT_TOPICS),
-  message: z
-    .string()
-    .trim()
-    .min(10, 'Please write at least 10 characters')
-    .max(4000, 'Message must be at most 4000 characters')
-    .refine((v) => !/[<>]/.test(v), 'Message must not contain < or >'),
-  website: z.string().max(500),
-});
-type ContactForm = z.infer<typeof schema>;
+// Built on demand so the messages follow the current language.
+const makeSchema = () =>
+  z.object({
+    name: z
+      .string()
+      .trim()
+      .min(2, t('Name must be at least 2 characters'))
+      .max(100)
+      .refine((v) => !/[<>]/.test(v), t('Name contains invalid characters')),
+    email: z.string().trim().min(1, t('Email is required')).max(254).pipe(z.email(t('Enter a valid email address'))),
+    topic: z.enum(CONTACT_TOPICS),
+    message: z
+      .string()
+      .trim()
+      .min(10, t('Please write at least 10 characters'))
+      .max(4000, t('Message must be at most 4000 characters'))
+      .refine((v) => !/[<>]/.test(v), t('Message must not contain < or >')),
+    website: z.string().max(500),
+  });
+type ContactForm = z.infer<ReturnType<typeof makeSchema>>;
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
     <Card className="p-4">
-      <dt className="text-xs text-text-muted">{label}</dt>
+      <dt className="text-xs text-text-muted">{t(label)}</dt>
       <dd className="m-0 mt-0.5 font-medium">{children}</dd>
     </Card>
   );
@@ -53,7 +56,7 @@ export default function ContactPage() {
     setError,
     formState: { errors, isSubmitting },
   } = useForm<ContactForm>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(makeSchema()),
     defaultValues: { name: '', email: '', topic: CONTACT_TOPICS[0], message: '', website: '' },
   });
 
@@ -69,7 +72,7 @@ export default function ContactPage() {
           placed = true;
         }
       }
-      if (!placed) setFormError(getErrorMessage(err, 'Your message could not be sent. Please try again.'));
+      if (!placed) setFormError(getErrorMessage(err, t('Your message could not be sent. Please try again.')));
     }
   };
 
@@ -77,12 +80,16 @@ export default function ContactPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Contact" title="Contact the Samaj office" description="Questions about membership, events or booking the Bhavan." />
+      <PageHeader
+        eyebrow={t('Contact')}
+        title={t('Contact the Samaj office')}
+        description={t('Questions about membership, events or booking the Bhavan.')}
+      />
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Card className="p-6">
           {sent ? (
             <div className="space-y-3 py-2" role="status">
-              <h2 className="text-lg font-semibold">Message received</h2>
+              <h2 className="text-lg font-semibold">{t('Message received')}</h2>
               <p className="text-text-secondary">{sent}</p>
               <Button
                 variant="secondary"
@@ -91,7 +98,7 @@ export default function ContactPage() {
                   reset({ name: '', email: '', topic: CONTACT_TOPICS[0], message: '', website: '' });
                 }}
               >
-                Send another message
+                {t('Send another message')}
               </Button>
             </div>
           ) : (
@@ -101,39 +108,39 @@ export default function ContactPage() {
                   <Alert tone="danger">{formError}</Alert>
                 </div>
               )}
-              <TextField label="Name" autoComplete="name" required error={errors.name?.message} {...register('name')} />
+              <TextField label={t('Name')} autoComplete="name" required error={errors.name?.message} {...register('name')} />
               <TextField
-                label="Email"
+                label={t('Email')}
                 type="email"
                 autoComplete="email"
                 inputMode="email"
                 required
-                hint="We reply to this address."
+                hint={t('We reply to this address.')}
                 error={errors.email?.message}
                 {...register('email')}
               />
               <div className="sm:col-span-2">
-                <SelectField label="Topic" error={errors.topic?.message} {...register('topic')}>
-                  {CONTACT_TOPICS.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
+                <SelectField label={t('Topic')} error={errors.topic?.message} {...register('topic')}>
+                  {CONTACT_TOPICS.map((topic) => (
+                    <option key={topic} value={topic}>
+                      {t(topic)}
                     </option>
                   ))}
                 </SelectField>
               </div>
               <div className="sm:col-span-2">
-                <TextAreaField label="Message" rows={6} required error={errors.message?.message} {...register('message')} />
+                <TextAreaField label={t('Message')} rows={6} required error={errors.message?.message} {...register('message')} />
               </div>
               {/* Honeypot for bots. Hidden from sight and from assistive technology; humans never fill it. */}
               <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
                 <label>
-                  Website
+                  {t('Website')}
                   <input type="text" tabIndex={-1} autoComplete="off" {...register('website')} />
                 </label>
               </div>
               <div className="sm:col-span-2">
                 <Button type="submit" loading={isSubmitting}>
-                  {isSubmitting ? 'Sending…' : 'Send message'}
+                  {isSubmitting ? t('Sending…') : t('Send message')}
                 </Button>
               </div>
             </form>

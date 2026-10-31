@@ -31,6 +31,11 @@ type EventInput = {
   title?: string;
   description?: string | null;
   venue?: string;
+  /** Gujarati twins of the text above (empty or missing means "show the English text"). */
+  titleGu?: string | null;
+  descriptionGu?: string | null;
+  venueGu?: string | null;
+  cancellationReasonGu?: string | null;
   category?: string;
   startsAt?: Date;
   endsAt?: Date | null;
@@ -65,7 +70,7 @@ export const listAdminEvents = async (req: Request, res: Response, next: NextFun
     if (q.when === 'past') filter.startsAt = { $lt: now };
     if (q.search) {
       const rx = new RegExp(escapeRegex(q.search), 'i');
-      filter.$or = [{ title: rx }, { venue: rx }];
+      filter.$or = [{ title: rx }, { venue: rx }, { titleGu: rx }, { venueGu: rx }];
     }
 
     const { limit, skip } = pageParams(q, 20);
@@ -247,17 +252,17 @@ export const unpublishEvent = (req: Request, res: Response, next: NextFunction) 
  * @param {Response} res
  * @param {NextFunction} next
  * @description Cancels a published event. It stays visible marked as cancelled
- * with the reason, if one was given.
+ * with the reason (`reason`, and its Gujarati twin `reasonGu`), if one was given.
  * @author Ravi Patel
  */
 export const cancelEvent = async (req: Request, res: Response, next: NextFunction) => {
-  const { reason } = matchedData<{ reason?: string }>(req, { locations: ['body'] });
+  const { reason, reasonGu } = matchedData<{ reason?: string; reasonGu?: string }>(req, { locations: ['body'] });
   return transition(req, res, next, {
     from: [EventStatus.PUBLISHED],
     to: EventStatus.CANCELLED,
     action: 'event.cancelled',
     message: 'Event cancelled',
-    extra: { cancelledAt: new Date(), cancellationReason: reason },
+    extra: { cancelledAt: new Date(), cancellationReason: reason, cancellationReasonGu: reasonGu },
   });
 };
 

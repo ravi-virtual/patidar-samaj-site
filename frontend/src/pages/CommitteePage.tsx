@@ -6,6 +6,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useFetch } from '../lib/useFetch';
+import { t } from '../i18n';
 
 export default function CommitteePage() {
   // undefined = "the current term", chosen by the server.
@@ -17,9 +18,9 @@ export default function CommitteePage() {
   return (
     <>
       <PageHeader
-        eyebrow="Committee"
-        title={data?.term ? `Committee ${data.term.label}` : 'Committee'}
-        description="The volunteers who run the Samaj for the current term."
+        eyebrow={t('Committee')}
+        title={data?.term ? t('Committee {term}', { term: data.term.label }) : t('Committee')}
+        description={t('The volunteers who run the Samaj for the current term.')}
       />
       <Async
         data={data}
@@ -30,31 +31,33 @@ export default function CommitteePage() {
       >
         {(d) =>
           !d.term ? (
-            <EmptyState title="Committee not published yet" description="Check back once the new term is announced." />
+            <EmptyState
+              title={t('Committee not published yet')}
+              description={t('Check back once the new term is announced.')}
+            />
           ) : (
             <div className="space-y-5">
               {d.terms.length > 1 && (
-                <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Committee term">
-                  {d.terms.map((t) => (
+                <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t('Committee term')}>
+                  {d.terms.map((tm) => (
                     <button
-                      key={t.id}
+                      key={tm.id}
                       type="button"
-                      aria-pressed={t.id === d.term?.id}
-                      onClick={() => setTermId(t.id)}
+                      aria-pressed={tm.id === d.term?.id}
+                      onClick={() => setTermId(tm.id)}
                       className={`rounded-md border px-2.5 py-1 text-[13px] font-medium ${
-                        t.id === d.term?.id
+                        tm.id === d.term?.id
                           ? 'border-primary bg-primary text-primary-foreground'
                           : 'border-border bg-surface text-text-secondary hover:bg-surface-muted'
                       }`}
                     >
-                      {t.label}
-                      {t.isCurrent && ' · current'}
+                      {tm.isCurrent ? t('{label} · current', { label: tm.label }) : tm.label}
                     </button>
                   ))}
                 </div>
               )}
               {d.members.length === 0 ? (
-                <EmptyState title="No members listed for this term" />
+                <EmptyState title={t('No members listed for this term')} />
               ) : (
                 <ul className="m-0 grid list-none gap-3.5 p-0 [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
                   {d.members.map((m) => (

@@ -13,6 +13,7 @@ import { TextField } from '../../components/ui/TextField';
 import { useFetch } from '../../lib/useFetch';
 import { useAppDispatch } from '../../store/hooks';
 import { showToast } from '../../store/slices/toastSlice';
+import { t } from '../../i18n';
 
 function EditForm({ user }: { user: AdminUser }) {
   const navigate = useNavigate();
@@ -22,17 +23,17 @@ function EditForm({ user }: { user: AdminUser }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const nameProblem = name.trim().length < 2 ? 'Name must be at least 2 characters' : /[<>]/.test(name) ? 'Contains invalid characters' : undefined;
+  const nameProblem = name.trim().length < 2 ? t('Name must be at least 2 characters') : /[<>]/.test(name) ? t('Contains invalid characters') : undefined;
 
   const save = async () => {
     setBusy(true);
     setError(null);
     try {
       await updateAdminApi(user.id, { name: name.trim(), permissions });
-      dispatch(showToast(`${name.trim()} updated. Changes apply on their next request.`));
+      dispatch(showToast(t('{name} updated. Changes apply on their next request.', { name: name.trim() })));
       navigate('/admin/users');
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not save the changes'));
+      setError(getErrorMessage(err, t('Could not save the changes')));
     } finally {
       setBusy(false);
     }
@@ -50,25 +51,25 @@ function EditForm({ user }: { user: AdminUser }) {
       {error && <Alert tone="danger">{error}</Alert>}
       <section aria-labelledby="account-heading" className="space-y-4 rounded-lg border border-border bg-surface p-4 sm:p-5">
         <h2 id="account-heading" className="text-base font-semibold text-text">
-          Account
+          {t('Account')}
         </h2>
         <div className="grid gap-4 md:grid-cols-2">
-          <TextField label="Full name" required value={name} onChange={(e) => setName(e.target.value)} error={nameProblem} />
-          <TextField label="Email" value={user.email} readOnly disabled hint="The email address cannot be changed." />
+          <TextField label={t('Full name')} required value={name} onChange={(e) => setName(e.target.value)} error={nameProblem} />
+          <TextField label={t('Email')} value={user.email} readOnly disabled hint={t('The email address cannot be changed.')} />
         </div>
       </section>
       <section aria-labelledby="perm-heading" className="rounded-lg border border-border bg-surface p-4 sm:p-5">
         <h2 id="perm-heading" className="sr-only">
-          Permissions
+          {t('Permissions')}
         </h2>
         <PermissionPicker layout="page" value={permissions} onChange={setPermissions} />
       </section>
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button type="button" variant="secondary" onClick={() => navigate('/admin/users')} disabled={busy}>
-          Cancel
+          {t('Cancel')}
         </Button>
         <Button type="submit" loading={busy} disabled={Boolean(nameProblem)}>
-          Save changes
+          {t('Save changes')}
         </Button>
       </div>
     </form>
@@ -86,15 +87,15 @@ export default function AdminUserEditPage() {
   return (
     <>
       <PageHeader
-        title="Edit admin"
-        description="Change the name and exactly what this admin can do."
+        title={t('Edit admin')}
+        description={t('Change the name and exactly what this admin can do.')}
         actions={
           <Link
             to="/admin/users"
             className="inline-flex h-10 items-center gap-2 rounded-md border border-border-strong px-3.5 text-sm font-medium text-text hover:bg-surface-muted"
           >
             <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-            Back to admins
+            {t('Back to admins')}
           </Link>
         }
       />

@@ -11,7 +11,6 @@ const router = Router();
 const resourceTab: Record<string, PublicTab> = {
   faqs: 'faq',
   links: 'links',
-  milestones: 'history',
   'committee-terms': 'committee',
   'committee-members': 'committee',
 };

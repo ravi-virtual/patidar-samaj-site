@@ -1,9 +1,25 @@
+import { getLanguage, t, type Language } from '../i18n';
+
 // All dates are shown in India Standard Time: the community's events happen there, and one fixed
 // zone means every member sees the same time no matter where their device is set.
 const ZONE = 'Asia/Kolkata';
-const LOCALE = 'en-IN';
 
-const fmt = (options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(LOCALE, { timeZone: ZONE, ...options });
+const LOCALES: Record<Language, string> = { en: 'en-IN', gu: 'gu-IN' };
+
+// One formatter per (language, options) pair, created on first use so a language switch just works.
+const cache = new Map<string, Intl.DateTimeFormat>();
+const fmt = (options: Intl.DateTimeFormatOptions) => ({
+  format: (date: Date): string => {
+    const locale = LOCALES[getLanguage()];
+    const key = `${locale}|${JSON.stringify(options)}`;
+    let formatter = cache.get(key);
+    if (!formatter) {
+      formatter = new Intl.DateTimeFormat(locale, { timeZone: ZONE, ...options });
+      cache.set(key, formatter);
+    }
+    return formatter.format(date);
+  },
+});
 
 const shortDate = fmt({ day: 'numeric', month: 'short' });
 const longDate = fmt({ weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -118,7 +134,7 @@ const ACTION_LABELS: Record<string, string> = {
 /** Plain-language name for an audit action. Unknown actions fall back to a readable form of the code. */
 export const describeAction = (action: string): string => {
   const known = ACTION_LABELS[action];
-  if (known) return known;
+  if (known) return t(known);
   const parts = action.split('.');
   // content.<type>.<verb> and similar generated names
   const text = (parts.length > 2 ? [parts[parts.length - 1], parts[1]] : parts).join(' ').replace(/[_]/g, ' ');

@@ -8,17 +8,18 @@ import {
   loginRules,
   resetPasswordRules,
   themeRules,
+  userIdRules,
 } from '../validators/authValidator';
 import {
   adminLogin,
   changePassword,
   forgotPassword,
-  getMe,
+  getUserById,
   listSessions,
   logout,
   resetPassword,
   revokeSession,
-  updateTheme,
+  updateUserThemeById,
 } from '../controllers/AuthController';
 
 const router = Router();
@@ -29,11 +30,12 @@ router.post('/forgot-password', authRateLimiter, forgotPasswordRules, forgotPass
 router.post('/reset-password', authRateLimiter, resetPasswordRules, resetPassword);
 
 // Signed-in users. hasToken also enforces the CSRF token on POST/PATCH/DELETE.
-router.get('/me', hasToken, isAuthenticated, getMe);
 router.post('/logout', hasToken, isAuthenticated, logout);
-router.patch('/me/theme', hasToken, isAuthenticated, themeRules, updateTheme);
 router.post('/change-password', hasToken, isAuthenticated, changePasswordRules, changePassword);
 router.get('/sessions', hasToken, isAuthenticated, listSessions);
 router.delete('/sessions/:id', hasToken, isAuthenticated, revokeSession);
+// A user can only read or change their own record; declared last so fixed paths above win.
+router.get('/:id', hasToken, isAuthenticated, userIdRules, getUserById);
+router.patch('/:id/theme', hasToken, isAuthenticated, themeRules, updateUserThemeById);
 
 export default router;

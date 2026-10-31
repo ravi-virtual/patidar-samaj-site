@@ -2,6 +2,7 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { getSettingsApi } from '../../api/siteApi';
 import { getErrorMessage } from '../../api/axiosInstance';
 import type { PublicSettings } from '../../api/types';
+import { t } from '../../i18n';
 
 interface SiteState {
   settings: PublicSettings | null;
@@ -18,7 +19,7 @@ export const fetchSiteSettings = createAsyncThunk<PublicSettings, void, { reject
     try {
       return await getSettingsApi();
     } catch (err) {
-      return rejectWithValue(getErrorMessage(err, 'Could not load site details'));
+      return rejectWithValue(getErrorMessage(err, t('Could not load site details')));
     }
   },
 );
@@ -45,7 +46,7 @@ const siteSlice = createSlice({
       })
       .addCase(fetchSiteSettings.rejected, (state, action) => {
         state.status = 'failed';
-        state.error = action.payload ?? 'Could not load site details';
+        state.error = action.payload ?? t('Could not load site details');
       });
   },
 });

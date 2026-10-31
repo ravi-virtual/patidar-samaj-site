@@ -13,6 +13,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { formatMediumDate } from '../lib/format';
 import { useDebounced } from '../lib/useDebounced';
 import { useFetch } from '../lib/useFetch';
+import { t } from '../i18n';
 
 const PAGE_SIZE = 10;
 
@@ -33,11 +34,15 @@ export default function NewsPage() {
 
   return (
     <>
-      <PageHeader eyebrow="News" title="Announcements" description="Notices and news from the Samaj office." />
+      <PageHeader
+        eyebrow={t('News')}
+        title={t('Announcements')}
+        description={t('Notices and news from the Samaj office.')}
+      />
       <div className="flex flex-wrap items-start gap-6">
-        <nav aria-label="Category" className="flex w-full flex-wrap gap-1 md:w-44 md:flex-col md:gap-0.5">
+        <nav aria-label={t('Category')} className="flex w-full flex-wrap gap-1 md:w-44 md:flex-col md:gap-0.5">
           <p className="hidden px-2.5 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-subtle md:block">
-            Category
+            {t('Category')}
           </p>
           {['', ...ANNOUNCEMENT_CATEGORIES].map((c) => (
             <button
@@ -49,15 +54,15 @@ export default function NewsPage() {
                 category === c ? 'bg-surface-muted text-text' : 'text-text-muted hover:bg-surface-muted hover:text-text'
               }`}
             >
-              {c || 'All'}
+              {t(c || 'All')}
             </button>
           ))}
         </nav>
 
         <div className="min-w-0 flex-1 basis-96 space-y-3">
           <SearchInput
-            label="Search announcements"
-            placeholder="Search announcements…"
+            label={t('Search announcements')}
+            placeholder={t('Search announcements…')}
             value={search}
             onChange={(v) => {
               setSearch(v);
@@ -69,7 +74,10 @@ export default function NewsPage() {
           ) : !data ? (
             <Skeleton className="h-72" />
           ) : data.announcements.length === 0 ? (
-            <EmptyState title="No announcements found" description={term || category ? 'Try a different search or category.' : undefined} />
+            <EmptyState
+              title={t('No announcements found')}
+              description={term || category ? t('Try a different search or category.') : undefined}
+            />
           ) : (
             <ul className={`m-0 flex list-none flex-col gap-2.5 p-0 ${loading ? 'opacity-60' : ''}`}>
               {data.announcements.map((a) => (
@@ -79,9 +87,9 @@ export default function NewsPage() {
                       <time dateTime={a.publishedAt} className="font-mono">
                         {formatMediumDate(a.publishedAt)}
                       </time>
-                      <Badge>{a.category}</Badge>
-                      {a.pinned && <Badge tone="accent">Pinned</Badge>}
-                      {a.archived && <Badge tone="warning">Archived</Badge>}
+                      <Badge>{t(a.category)}</Badge>
+                      {a.pinned && <Badge tone="accent">{t('Pinned')}</Badge>}
+                      {a.archived && <Badge tone="warning">{t('Archived')}</Badge>}
                     </div>
                     <h2 className="mb-1 mt-1.5 text-[17px] font-semibold">
                       <Link to={`/news/${a.id}`} className="text-text hover:text-accent">

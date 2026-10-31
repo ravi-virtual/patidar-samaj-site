@@ -1,4 +1,5 @@
 import { useAppSelector } from '../../store/hooks';
+import { t } from '../../i18n';
 
 /** Footer for every public page. Contact details come from the organisation settings. */
 export function SiteFooter() {
@@ -9,7 +10,7 @@ export function SiteFooter() {
     <footer className="border-t border-border px-4 py-4 text-[13px] text-text-muted sm:px-6">
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-1">
         <p>
-          © {year} {settings?.shortName ?? 'Kadva Patidar Samaj'}
+          © {year} {settings?.shortName ?? t('Kadva Patidar Samaj')}
           {settings?.footerNote ? ` · ${settings.footerNote}` : ''}
         </p>
         {(contact?.email || contact?.phone) && (

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
-  BookOpen,
   CalendarDays,
   CircleHelp,
   Home,
@@ -23,6 +22,7 @@ import { usePageTitle } from '../../lib/usePageTitle';
 import { isTabOn } from '../../lib/publicTabs';
 import type { PublicTabKey } from '../../api/types';
 import { Breadcrumbs, type Crumb } from '../ui/Breadcrumbs';
+import { t } from '../../i18n';
 
 type PublicNavItem = NavSection['items'][number] & { tab?: PublicTabKey };
 
@@ -33,7 +33,6 @@ const publicSections: (Omit<NavSection, 'items'> & { items: PublicNavItem[] })[]
     items: [
       { to: '/', label: 'Home', icon: Home, end: true },
       { to: '/about', label: 'About', icon: Info, tab: 'about' },
-      { to: '/history', label: 'History', icon: BookOpen, tab: 'history' },
       { to: '/committee', label: 'Committee', icon: Landmark, tab: 'committee' },
       { to: '/members', label: 'Directory', icon: UsersRound, tab: 'directory' },
       { to: '/events', label: 'Events', icon: CalendarDays, tab: 'events' },
@@ -64,21 +63,21 @@ const titles: { prefix: string; label: string; icon?: LucideIcon }[] = [
   { prefix: '/reset-password', label: 'Reset password' },
 ];
 
-const breadcrumbFor = (pathname: string) => titles.find((t) => pathname.startsWith(t.prefix))?.label ?? 'Home';
+const breadcrumbFor = (pathname: string) => t(titles.find((x) => pathname.startsWith(x.prefix))?.label ?? 'Home');
 
 /** "Home > Events" and, on a detail page, "Home > Events > Details". */
 const crumbsFor = (pathname: string): Crumb[] => {
-  const t = titles.find((x) => pathname.startsWith(x.prefix));
-  if (!t) return [{ label: 'Home' }];
-  const isDetail = pathname.replace(/\/+$/, '') !== t.prefix;
+  const title = titles.find((x) => pathname.startsWith(x.prefix));
+  if (!title) return [{ label: t('Home') }];
+  const isDetail = pathname.replace(/\/+$/, '') !== title.prefix;
   return isDetail
-    ? [{ label: 'Home', to: '/' }, { label: t.label, to: t.prefix }, { label: 'Details' }]
-    : [{ label: 'Home', to: '/' }, { label: t.label }];
+    ? [{ label: t('Home'), to: '/' }, { label: t(title.label), to: title.prefix }, { label: t('Details') }]
+    : [{ label: t('Home'), to: '/' }, { label: t(title.label) }];
 };
 
 export function PublicLayout() {
   const location = useLocation();
-  const siteName = useAppSelector((s) => s.site.settings?.shortName) ?? 'Kadva Patidar Samaj';
+  const siteName = useAppSelector((s) => s.site.settings?.shortName) ?? t('Kadva Patidar Samaj');
   const [searchOpen, setSearchOpen] = useState(false);
   usePageTitle(breadcrumbFor(location.pathname), siteName);
 
@@ -96,14 +95,20 @@ export function PublicLayout() {
 
   const settings = useAppSelector((s) => s.site.settings);
   const visibleSections = publicSections
-    .map((section) => ({ ...section, items: section.items.filter((item) => !item.tab || isTabOn(settings, item.tab)) }))
+    .map((section) => ({
+      ...section,
+      heading: section.heading ? t(section.heading) : undefined,
+      items: section.items
+        .filter((item) => !item.tab || isTabOn(settings, item.tab))
+        .map((item) => ({ ...item, label: t(item.label) })),
+    }))
     .filter((section) => section.items.length > 0);
 
   return (
     <AppShell
       brandName={siteName}
-      brandTagline="Uttar Gujarat · Jay Umiya Maa"
-      navLabel="Main"
+      brandTagline={t('Uttar Gujarat · Jay Umiya Maa')}
+      navLabel={t('Main')}
       navSections={visibleSections}
       onSearch={() => setSearchOpen(true)}
       breadcrumb={<Breadcrumbs crumbs={crumbsFor(location.pathname)} />}

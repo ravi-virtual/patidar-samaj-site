@@ -3,6 +3,7 @@ import { Card } from '../ui/Card';
 import { EmptyState } from '../ui/EmptyState';
 import { ErrorState } from '../ui/ErrorState';
 import { Skeleton } from '../ui/Skeleton';
+import { t } from '../../i18n';
 
 export interface Column<T> {
   header: string;
@@ -42,7 +43,7 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   if (error && !rows) return <ErrorState message={error} onRetry={onRetry} />;
   if (!rows) return <Skeleton className="h-72" />;
-  if (rows.length === 0) return <>{empty ?? <EmptyState title="Nothing here yet" />}</>;
+  if (rows.length === 0) return <>{empty ?? <EmptyState title={t('Nothing here yet')} />}</>;
 
   return (
     <Card padded={false} className={`overflow-x-auto ${loading ? 'opacity-60' : ''}`}>

@@ -4,7 +4,6 @@ import {
   Bell,
   CalendarDays,
   FileText,
-  Globe,
   History,
   Image,
   Inbox,
@@ -20,6 +19,7 @@ import { SidebarAccount } from './SidebarAccount';
 import { Toaster } from '../overlays/Toaster';
 import { useAppSelector } from '../../store/hooks';
 import { usePageTitle } from '../../lib/usePageTitle';
+import { t } from '../../i18n';
 
 interface AdminItem {
   to: string;
@@ -44,23 +44,23 @@ const items: AdminItem[] = [
 ];
 
 const labelFor = (pathname: string) =>
-  [...items].reverse().find((i) => (i.end ? pathname === i.to : pathname.startsWith(i.to)))?.label ?? 'Admin';
+  t([...items].reverse().find((i) => (i.end ? pathname === i.to : pathname.startsWith(i.to)))?.label ?? 'Admin');
 
 const subPageLabel = (pathname: string): string | undefined => {
   const path = pathname.replace(/\/+$/, '');
-  if (path === '/admin/users/new') return 'Create admin';
-  if (/^\/admin\/users\/[^/]+\/edit$/.test(path)) return 'Edit admin';
+  if (path === '/admin/users/new') return t('Create admin');
+  if (/^\/admin\/users\/[^/]+\/edit$/.test(path)) return t('Edit admin');
   return undefined;
 };
 
 /** "Admin > Section" and, on a sub-page, "Admin > Section > Create admin". */
 const crumbsFor = (pathname: string): Crumb[] => {
   const section = items.find((i) => !i.end && pathname.startsWith(i.to));
-  if (!section) return [{ label: 'Admin', to: '/admin' }, { label: labelFor(pathname) }];
+  if (!section) return [{ label: t('Admin'), to: '/admin' }, { label: labelFor(pathname) }];
   const sub = subPageLabel(pathname);
   return sub
-    ? [{ label: 'Admin', to: '/admin' }, { label: section.label, to: section.to }, { label: sub }]
-    : [{ label: 'Admin', to: '/admin' }, { label: section.label }];
+    ? [{ label: t('Admin'), to: '/admin' }, { label: t(section.label), to: section.to }, { label: sub }]
+    : [{ label: t('Admin'), to: '/admin' }, { label: t(section.label) }];
 };
 
 /** Admin panel frame. The menu only lists what the signed-in staff member may open. */
@@ -69,23 +69,17 @@ export function AdminLayout() {
   const user = useAppSelector((s) => s.auth.user);
   const permissions = user?.permissions ?? [];
   const crumbs = crumbsFor(location.pathname);
-  usePageTitle(`${crumbs[crumbs.length - 1]!.label} · Admin`);
+  usePageTitle(`${crumbs[crumbs.length - 1]!.label} · ${t('Admin')}`);
 
   const sections: NavSection[] = [
-    { heading: 'Administration', items: items.filter((i) => i.anyOf.some((p) => permissions.includes(p))) },
-    {
-      heading: 'Site',
-      items: [
-        { to: '/', label: 'View public site', icon: Globe, end: true },
-      ],
-    },
+    { heading: t('Administration'), items: items.filter((i) => i.anyOf.some((p) => permissions.includes(p))) },
   ];
 
   return (
     <AppShell
-      brandName="Samaj Admin"
-      brandTagline="Portal management"
-      navLabel="Admin"
+      brandName={t('Samaj Admin')}
+      brandTagline={t('Portal management')}
+      navLabel={t('Admin')}
       navSections={sections}
       sidebarFooter={<SidebarAccount />}
       breadcrumb={<Breadcrumbs crumbs={crumbs} />}

@@ -49,9 +49,15 @@ export interface AdminSettings {
   invocation: string;
   tagline: string;
   logoUrl?: string | null;
-  contact: { email: string; phone: string; address: string; officeHours: string };
+  contact: { email: string; phone: string; address: string; officeHours: string; addressGu?: string; officeHoursGu?: string };
   socialLinks: { label: string; url: string }[];
   footerNote: string;
+  // Gujarati versions (optional; empty means the English text is shown).
+  nameGu?: string;
+  shortNameGu?: string;
+  invocationGu?: string;
+  taglineGu?: string;
+  footerNoteGu?: string;
   publicTabs: PublicTabs;
   themeDefault: 'system' | 'light' | 'dark';
 }
@@ -83,15 +89,22 @@ export interface AdminEvent {
   featured: boolean;
   imageMediaId: string | null;
   cancellationReason: string | null;
+  titleGu?: string;
+  descriptionGu?: string;
+  venueGu?: string;
+  cancellationReasonGu?: string;
   publishedAt: string | null;
   updatedAt: string;
 }
 
 export interface EventInput {
   title?: string;
+  titleGu?: string;
   category?: string;
   description?: string;
+  descriptionGu?: string;
   venue?: string;
+  venueGu?: string;
   startsAt?: string;
   endsAt?: string | null;
   featured?: boolean;
@@ -118,7 +131,7 @@ export const updateEventApi = async (id: string, body: EventInput): Promise<Admi
 export const eventActionApi = async (
   id: string,
   action: 'publish' | 'unpublish' | 'archive' | 'cancel',
-  body?: { reason?: string },
+  body?: { reason?: string; reasonGu?: string },
 ): Promise<AdminEvent> => {
   const { data } = await api.post<Envelope<{ event: AdminEvent }>>(`/admin/events/${id}/${action}`, body ?? {});
   return data.data.event;
@@ -159,12 +172,18 @@ export interface AdminAnnouncement {
   publishedAt: string | null;
   scheduled: boolean;
   updatedAt: string;
+  titleGu?: string;
+  summaryGu?: string;
+  bodyGu?: string;
 }
 
 export interface AnnouncementInput {
   title?: string;
+  titleGu?: string;
   summary?: string;
+  summaryGu?: string;
   body?: string;
+  bodyGu?: string;
   category?: string;
   featured?: boolean;
   publishAt?: string | null;
@@ -371,9 +390,13 @@ export interface ContentRow {
   // faqs
   question?: string | null;
   answer?: string | null;
+  questionGu?: string | null;
+  answerGu?: string | null;
   // links
   label?: string | null;
   description?: string | null;
+  labelGu?: string | null;
+  descriptionGu?: string | null;
   url?: string | null;
   fileMediaId?: string | null;
   category?: string | null;
@@ -383,6 +406,10 @@ export interface ContentRow {
   text?: string | null;
   imageMediaId?: string | null;
   sourceRef?: string | null;
+  periodLabelGu?: string | null;
+  titleGu?: string | null;
+  textGu?: string | null;
+  sourceRefGu?: string | null;
   // committee terms
   startYear?: number | null;
   endYear?: number | null;
@@ -392,6 +419,9 @@ export interface ContentRow {
   name?: string | null;
   position?: string | null;
   bio?: string | null;
+  nameGu?: string | null;
+  positionGu?: string | null;
+  bioGu?: string | null;
 }
 
 export const listContentApi = async (resource: ContentResource, params?: Params) => {
@@ -425,12 +455,26 @@ export const deleteContentApi = async (resource: ContentResource, id: string): P
   await api.delete(`/admin/content/${resource}/${id}`);
 };
 
+/** One row of a block. The `*Gu` keys are the optional Gujarati versions of title, text and label. */
+export interface AdminBlockItem {
+  title: string | null;
+  text: string | null;
+  value: string | null;
+  label: string | null;
+  imageMediaId: string | null;
+  titleGu?: string | null;
+  textGu?: string | null;
+  labelGu?: string | null;
+}
+
 export interface AdminBlock {
   key: string;
   status: PublishStatus | 'empty';
   title?: string | null;
   body?: string | null;
-  items?: { title: string | null; text: string | null; value: string | null; label: string | null; imageMediaId: string | null }[];
+  titleGu?: string | null;
+  bodyGu?: string | null;
+  items?: AdminBlockItem[];
   updatedAt?: string;
 }
 
@@ -441,7 +485,7 @@ export const listBlocksAdminApi = async (): Promise<AdminBlock[]> => {
 
 export const saveBlockApi = async (
   key: string,
-  body: { title?: string; body?: string; items?: Record<string, string>[] },
+  body: { title?: string; titleGu?: string; body?: string; bodyGu?: string; items?: Record<string, string>[] },
 ): Promise<AdminBlock> => {
   const { data } = await api.put<Envelope<{ block: AdminBlock }>>(`/admin/content/blocks/${key}`, body);
   return data.data.block;

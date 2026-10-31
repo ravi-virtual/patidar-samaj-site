@@ -1,6 +1,6 @@
 // The public website tabs an administrator can switch off (Admin > Settings > Public site tabs).
 // A tab that is missing from the stored settings counts as on, so older data keeps working.
-export const PublicTabs = ['about', 'history', 'committee', 'faq', 'links', 'directory', 'events', 'news', 'contact'] as const;
+export const PublicTabs = ['about', 'committee', 'faq', 'links', 'directory', 'events', 'news', 'contact'] as const;
 
 export type PublicTab = (typeof PublicTabs)[number];
 export type PublicTabsState = Record<PublicTab, boolean>;

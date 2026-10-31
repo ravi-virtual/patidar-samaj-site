@@ -12,6 +12,7 @@ import { Pagination } from '../components/ui/Pagination';
 import { useDebounced } from '../lib/useDebounced';
 import { useFetch } from '../lib/useFetch';
 import { useAppSelector } from '../store/hooks';
+import { t } from '../i18n';
 
 const PAGE_SIZE = 12;
 
@@ -36,16 +37,16 @@ export default function EventsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Events"
-        title="Events"
-        description={data ? `${data.totalCount} shown` : 'Festivals, family gatherings and community service.'}
+        eyebrow={t('Events')}
+        title={t('Events')}
+        description={data ? t('{count} shown', { count: data.totalCount }) : t('Festivals, family gatherings and community service.')}
         actions={
           <Segmented
-            label="Show"
+            label={t('Show')}
             value={when}
             options={[
-              { value: 'upcoming', label: 'Upcoming' },
-              { value: 'past', label: 'Past' },
+              { value: 'upcoming', label: t('Upcoming') },
+              { value: 'past', label: t('Past') },
             ]}
             onChange={(v) => {
               setWhen(v);
@@ -58,8 +59,8 @@ export default function EventsPage() {
       <div className="mb-4 flex flex-wrap items-center gap-2.5">
         <div className="min-w-60 flex-1">
           <SearchInput
-            label="Search events"
-            placeholder="Search events…"
+            label={t('Search events')}
+            placeholder={t('Search events…')}
             value={search}
             onChange={(v) => {
               setSearch(v);
@@ -67,13 +68,13 @@ export default function EventsPage() {
             }}
           />
         </div>
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Category">
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('Category')}>
           <Chip active={category === ''} onClick={() => (setCategory(''), setPage(1))}>
-            All
+            {t('All')}
           </Chip>
           {EVENT_CATEGORIES.map((c) => (
             <Chip key={c} active={category === c} onClick={() => (setCategory(c), setPage(1))}>
-              {c}
+              {t(c)}
             </Chip>
           ))}
         </div>
@@ -85,8 +86,8 @@ export default function EventsPage() {
         <CardSkeletons count={6} />
       ) : data.events.length === 0 ? (
         <EmptyState
-          title={when === 'upcoming' ? 'No upcoming events found' : 'No past events found'}
-          description={term || category ? 'Try a different search or category.' : undefined}
+          title={when === 'upcoming' ? t('No upcoming events found') : t('No past events found')}
+          description={term || category ? t('Try a different search or category.') : undefined}
           action={
             (term || category) && (
               <button
@@ -94,7 +95,7 @@ export default function EventsPage() {
                 onClick={reset}
                 className="rounded-md border border-border bg-surface px-3 py-1.5 text-sm font-medium hover:bg-surface-muted"
               >
-                Reset filters
+                {t('Reset filters')}
               </button>
             )
           }

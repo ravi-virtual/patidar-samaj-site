@@ -93,7 +93,7 @@ describe('organisation settings', () => {
     const res = await anon().get('/api/public/settings');
     expect(res.body.data.settings).toMatchObject({ themeDefault: 'system', logoUrl: null });
     expect(res.body.data.settings.publicTabs).toEqual({
-      about: true, history: true, committee: true, faq: true, links: true, directory: true, events: true, news: true, contact: true,
+      about: true, committee: true, faq: true, links: true, directory: true, events: true, news: true, contact: true,
     });
     expect(JSON.stringify(res.body)).not.toMatch(/registrationOpen|directoryPublic/);
     expect(JSON.stringify(res.body)).not.toMatch(/_id|createdAt|key/);

@@ -1,5 +1,6 @@
 import { Pencil, Trash2 } from 'lucide-react';
 import { ActionMenu, type MenuAction } from './ActionMenu';
+import { t } from '../../i18n';
 
 const btn =
   'inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1';
@@ -17,12 +18,12 @@ export function RowActions({ name, onEdit, onDelete }: RowActionsProps) {
   return (
     <div className="inline-flex items-center gap-1.5">
       {onEdit && (
-        <button type="button" onClick={onEdit} aria-label={`Edit ${name}`} title="Edit" className={`${btn} text-text-secondary`}>
+        <button type="button" onClick={onEdit} aria-label={t('Edit {name}', { name })} title={t('Edit')} className={`${btn} text-text-secondary`}>
           <Pencil aria-hidden="true" className="h-4 w-4" />
         </button>
       )}
       {onDelete && (
-        <button type="button" onClick={onDelete} aria-label={`Delete ${name}`} title="Delete" className={`${btn} text-danger`}>
+        <button type="button" onClick={onDelete} aria-label={t('Delete {name}', { name })} title={t('Delete')} className={`${btn} text-danger`}>
           <Trash2 aria-hidden="true" className="h-4 w-4" />
         </button>
       )}
@@ -50,12 +51,12 @@ export function RowMenu({ name, actions }: { name: string; actions: RowMenuActio
   }
   return (
     <ActionMenu
-      label={`Actions for ${name}`}
+      label={t('Actions for {name}', { name })}
       actions={actions.map(({ kind, ...a }) =>
         kind === 'edit'
-          ? { ...a, label: 'Edit', icon: Pencil }
+          ? { ...a, label: t('Edit'), icon: Pencil }
           : kind === 'delete'
-            ? { ...a, label: 'Delete', icon: Trash2, danger: true }
+            ? { ...a, label: t('Delete'), icon: Trash2, danger: true }
             : a,
       )}
     />

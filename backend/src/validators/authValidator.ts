@@ -1,4 +1,4 @@
-import { body } from 'express-validator';
+import { body, param } from 'express-validator';
 import { ThemePreferences } from '../config/constants';
 import { validatePasswordStrength } from '../utils/password';
 import { validateRequest } from './validateRequest';
@@ -53,7 +53,10 @@ export const changePasswordRules = [
   validateRequest,
 ];
 
+export const userIdRules = [param('id').isUUID().withMessage('Invalid user id'), validateRequest];
+
 export const themeRules = [
+  param('id').isUUID().withMessage('Invalid user id'),
   body('themePreference')
     .isString()
     .isIn([...ThemePreferences])

@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { updateThemeApi } from '../../api/authApi';
+import { updateUserThemeByIdApi } from '../../api/authApi';
 import { adminLogin, bootstrapAuth } from './authSlice';
 import {
   readStoredTheme,
@@ -63,10 +63,10 @@ export const changeTheme = createAsyncThunk<void, ThemePreference>(
   'theme/change',
   async (preference, { dispatch, getState }) => {
     dispatch(setThemePreference(preference));
-    const signedIn = Boolean((getState() as { auth: { user: unknown } }).auth.user);
-    if (!signedIn) return;
+    const user = (getState() as { auth: { user: { id: string } | null } }).auth.user;
+    if (!user) return;
     try {
-      await updateThemeApi(preference);
+      await updateUserThemeByIdApi(user.id, preference);
     } catch {
       /* offline or session ended: the choice still applies on this device */
     }

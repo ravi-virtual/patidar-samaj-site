@@ -30,6 +30,12 @@ export const updateSettingsRules = [
   text('invocation', 80),
   text('tagline', 200),
   text('footerNote', 400),
+  // Gujarati twins of the organisation texts: optional, same limits. Empty means "show the English text".
+  text('nameGu', 150),
+  text('shortNameGu', 80),
+  text('invocationGu', 80),
+  text('taglineGu', 200),
+  text('footerNoteGu', 400),
   body('logoMediaId').optional({ values: 'null' }).isUUID().withMessage('logoMediaId must be a media id'),
   body('contact').optional().isObject().withMessage('contact must be an object'),
   body('contact.email')
@@ -41,6 +47,8 @@ export const updateSettingsRules = [
   text('contact.phone', 30),
   text('contact.address', 400),
   text('contact.officeHours', 200),
+  text('contact.addressGu', 400),
+  text('contact.officeHoursGu', 200),
   body('socialLinks').optional().isArray({ max: 8 }).withMessage('At most 8 social links'),
   text('socialLinks.*.label', 40),
   body('socialLinks.*.label').optional().isString().trim().isLength({ min: 1 }).withMessage('Each link needs a label'),

@@ -14,6 +14,7 @@ import { PasswordField, TextField } from '../../components/ui/TextField';
 import { generatePassword } from '../../lib/generatePassword';
 import { useAppDispatch } from '../../store/hooks';
 import { showToast } from '../../store/slices/toastSlice';
+import { t } from '../../i18n';
 
 const schema = z.object({
   name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100).refine((v) => !/[<>]/.test(v), 'Contains invalid characters'),
@@ -53,8 +54,8 @@ export default function AdminUserCreatePage() {
       const { user, email } = await createAdminApi(v);
       dispatch(
         email.delivered
-          ? showToast(`${user.name} was created and the sign-in details were emailed to ${user.email}.`)
-          : showToast(`${user.name} was created, but the email could not be sent. Share the password with them yourself.`, 'info'),
+          ? showToast(t('{name} was created and the sign-in details were emailed to {email}.', { name: user.name, email: user.email }))
+          : showToast(t('{name} was created, but the email could not be sent. Share the password with them yourself.', { name: user.name }), 'info'),
       );
       navigate('/admin/users');
     } catch (err) {
@@ -65,22 +66,22 @@ export default function AdminUserCreatePage() {
           placed = true;
         }
       }
-      if (!placed) setError('root', { message: getErrorMessage(err, 'Could not create the admin') });
+      if (!placed) setError('root', { message: getErrorMessage(err, t('Could not create the admin')) });
     }
   };
 
   return (
     <>
       <PageHeader
-        title="Add admin"
-        description="Set the sign-in details and choose exactly what this admin can do."
+        title={t('Add admin')}
+        description={t('Set the sign-in details and choose exactly what this admin can do.')}
         actions={
           <Link
             to="/admin/users"
             className="inline-flex h-10 items-center gap-2 rounded-md border border-border-strong px-3.5 text-sm font-medium text-text hover:bg-surface-muted"
           >
             <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-            Back to admins
+            {t('Back to admins')}
           </Link>
         }
       />
@@ -89,20 +90,20 @@ export default function AdminUserCreatePage() {
 
         <section aria-labelledby="account-heading" className="space-y-4 rounded-lg border border-border bg-surface p-4 sm:p-5">
           <h2 id="account-heading" className="text-base font-semibold text-text">
-            Account
+            {t('Account')}
           </h2>
           <Alert tone="info">
-            The new admin receives an email with their email address and this password, and is asked to change the password after signing in.
+            {t('The new admin receives an email with their email address and this password, and is asked to change the password after signing in.')}
           </Alert>
           <div className="grid gap-4 md:grid-cols-2">
-            <TextField label="Full name" required autoComplete="off" error={errors.name?.message} {...register('name')} />
-            <TextField label="Email" type="email" required autoComplete="off" error={errors.email?.message} {...register('email')} />
+            <TextField label={t('Full name')} required autoComplete="off" error={errors.name?.message} {...register('name')} />
+            <TextField label={t('Email')} type="email" required autoComplete="off" error={errors.email?.message} {...register('email')} />
             <div className="space-y-2 md:col-span-2 md:max-w-[calc(50%-0.5rem)]">
               <PasswordField
-                label="Password"
+                label={t('Password')}
                 required
                 autoComplete="new-password"
-                hint="At least 10 characters with a letter and a number."
+                hint={t('At least 10 characters with a letter and a number.')}
                 error={errors.password?.message}
                 {...register('password')}
               />
@@ -112,7 +113,7 @@ export default function AdminUserCreatePage() {
                 onClick={() => setValue('password', generatePassword(), { shouldValidate: true, shouldDirty: true })}
               >
                 <Wand2 aria-hidden="true" className="h-4 w-4" />
-                Generate a password
+                {t('Generate a password')}
               </Button>
             </div>
           </div>
@@ -120,17 +121,17 @@ export default function AdminUserCreatePage() {
 
         <section aria-labelledby="perm-heading" className="rounded-lg border border-border bg-surface p-4 sm:p-5">
           <h2 id="perm-heading" className="sr-only">
-            Permissions
+            {t('Permissions')}
           </h2>
           <PermissionPicker layout="page" value={permissions} onChange={(next) => setValue('permissions', next, { shouldDirty: true })} />
         </section>
 
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="secondary" onClick={() => navigate('/admin/users')} disabled={isSubmitting}>
-            Cancel
+            {t('Cancel')}
           </Button>
           <Button type="submit" loading={isSubmitting}>
-            Create admin
+            {t('Create admin')}
           </Button>
         </div>
       </form>

@@ -3,6 +3,7 @@ import { Avatar } from '../ui/Avatar';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { logout } from '../../store/slices/authSlice';
 import { roleLabel } from '../../lib/labels';
+import { t } from '../../i18n';
 
 /** Bottom of the admin sidebar: the signed-in account and a sign-out button. */
 export function SidebarAccount() {
@@ -21,8 +22,8 @@ export function SidebarAccount() {
       <button
         type="button"
         onClick={() => void dispatch(logout())}
-        aria-label="Sign out"
-        title="Sign out"
+        aria-label={t('Sign out')}
+        title={t('Sign out')}
         className="rounded-md p-1.5 text-text-muted hover:bg-surface-muted hover:text-text"
       >
         <LogOut aria-hidden="true" className="h-4 w-4" />

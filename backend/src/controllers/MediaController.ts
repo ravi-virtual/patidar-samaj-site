@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import MediaAsset from '../models/MediaAsset';
 import { ErrorCodes, ResponseCodes, StaffRoles, config } from '../config/constants';
 import { sendError } from '../utils/apiResponse';
+import { signedUrl, usesCloud } from '../utils/fileStorage';
+import { Readable } from 'node:stream';
 
 const notFound = (res: Response) =>
   sendError(res, { statusCode: ResponseCodes.NOT_FOUND, message: 'File not found', code: ErrorCodes.NOT_FOUND });
@@ -32,11 +34,33 @@ export const serveMedia = async (req: Request, res: Response, next: NextFunction
     if (!isPublic && !isStaff) return notFound(res);
     if (!SAFE_NAME.test(asset.storedName)) return notFound(res);
 
+    const asciiName = asset.originalName.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_');
+
+    if (usesCloud) {
+      const url = signedUrl(asset.storedName, asset.kind);
+      // Public files: let the browser fetch them straight from Cloudinary (no function bandwidth).
+      if (isPublic) {
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        return res.redirect(302, url);
+      }
+      // Staff-only files: stream through the API so the signed URL is never exposed.
+      const upstream = await fetch(url);
+      if (!upstream.ok || !upstream.body) return notFound(res);
+      res.status(ResponseCodes.OK);
+      res.setHeader('Content-Type', asset.mimeType);
+      res.setHeader('Content-Disposition', `inline; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(asset.originalName)}`);
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+      res.setHeader('Cache-Control', 'private, no-store');
+      res.setHeader('Vary', 'Cookie');
+      Readable.fromWeb(upstream.body as never).on('error', next).pipe(res);
+      return;
+    }
+
     const path = join(config.uploads.dir, asset.storedName);
     const info = await stat(path).catch(() => null);
     if (!info?.isFile()) return notFound(res);
 
-    const asciiName = asset.originalName.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_');
     res.status(ResponseCodes.OK);
     res.setHeader('Content-Type', asset.mimeType);
     res.setHeader('Content-Length', String(info.size));

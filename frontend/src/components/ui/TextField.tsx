@@ -1,5 +1,6 @@
 import { useId, useState, type InputHTMLAttributes, type Ref } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
+import { t } from '../../i18n';
 
 interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
@@ -36,12 +37,12 @@ export function TextField({ label, error, hint, className = '', ref, required, .
       />
       {hint && !error && (
         <p id={hintId} className="text-xs text-text-muted">
-          {hint}
+          {t(hint)}
         </p>
       )}
       {error && (
         <p id={errorId} role="alert" className="text-xs font-medium text-danger">
-          {error}
+          {t(error)}
         </p>
       )}
     </div>
@@ -74,7 +75,7 @@ export function PasswordField({ label, error, hint, ref, required, ...rest }: Om
           type="button"
           onClick={() => setVisible((v) => !v)}
           aria-pressed={visible}
-          aria-label={visible ? 'Hide password' : 'Show password'}
+          aria-label={visible ? t('Hide password') : t('Show password')}
           className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded text-text-muted hover:text-text"
         >
           {visible ? <EyeOff aria-hidden="true" className="h-4 w-4" /> : <Eye aria-hidden="true" className="h-4 w-4" />}
@@ -82,12 +83,12 @@ export function PasswordField({ label, error, hint, ref, required, ...rest }: Om
       </div>
       {hint && !error && (
         <p id={hintId} className="text-xs text-text-muted">
-          {hint}
+          {t(hint)}
         </p>
       )}
       {error && (
         <p id={errorId} role="alert" className="text-xs font-medium text-danger">
-          {error}
+          {t(error)}
         </p>
       )}
     </div>
@@ -121,7 +122,7 @@ export function CheckboxField({ label, error, ref, ...rest }: CheckboxFieldProps
       </div>
       {error && (
         <p id={errorId} role="alert" className="text-xs font-medium text-danger">
-          {error}
+          {t(error)}
         </p>
       )}
     </div>

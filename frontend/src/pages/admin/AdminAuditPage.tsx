@@ -10,6 +10,7 @@ import { describeAction, formatDateTime } from '../../lib/format';
 import { roleLabel } from '../../lib/labels';
 import { useDebounced } from '../../lib/useDebounced';
 import { useFetch } from '../../lib/useFetch';
+import { t } from '../../i18n';
 
 const PAGE_SIZE = 50;
 
@@ -47,9 +48,9 @@ export default function AdminAuditPage() {
   const list = useFetch(`audit:${actionFilter}:${outcome}:${page}`, () => listAuditApi({ action: actionFilter, outcome, page, limit: PAGE_SIZE }));
 
   const columns: Column<AuditEntry>[] = [
-    { header: 'When', className: 'whitespace-nowrap font-mono text-[13px]', cell: (e) => formatDateTime(e.createdAt) },
+    { header: t('When'), className: 'whitespace-nowrap font-mono text-[13px]', cell: (e) => formatDateTime(e.createdAt) },
     {
-      header: 'Who',
+      header: t('Who'),
       cell: (e) =>
         e.actor ? (
           <div>
@@ -57,11 +58,11 @@ export default function AdminAuditPage() {
             <p className="text-xs text-text-muted">{e.actor.role ? roleLabel(e.actor.role) : ''}</p>
           </div>
         ) : (
-          <span className="text-text-muted">Not signed in</span>
+          <span className="text-text-muted">{t('Not signed in')}</span>
         ),
     },
     {
-      header: 'What',
+      header: t('What'),
       cell: (e) => (
         <div className="max-w-md">
           <p className="font-medium text-text">{describeAction(e.action)}</p>
@@ -72,19 +73,19 @@ export default function AdminAuditPage() {
         </div>
       ),
     },
-    { header: 'Result', cell: (e) => <StatusBadge status={e.outcome} /> },
+    { header: t('Result'), cell: (e) => <StatusBadge status={e.outcome} /> },
     { header: 'IP', className: 'whitespace-nowrap font-mono text-xs', cell: (e) => e.ip ?? '—' },
   ];
 
   return (
     <>
-      <PageHeader title="Audit log" description="Who did what, and when. Entries cannot be edited or deleted; they expire after the retention period." />
-      <Toolbar search={search} onSearch={(v) => (setSearch(v), setPage(1))} searchLabel="Action starts with, e.g. auth.login">
-        <FilterSelect label="Area" value={action} onChange={(v) => (setAction(v), setPage(1))} options={areas} />
-        <FilterSelect label="Result" value={outcome} onChange={(v) => (setOutcome(v), setPage(1))} options={[{ value: '', label: 'Success or failure' }, { value: 'success', label: 'Success' }, { value: 'failure', label: 'Failure' }]} />
+      <PageHeader title={t('Audit log')} description={t('Who did what, and when. Entries cannot be edited or deleted; they expire after the retention period.')} />
+      <Toolbar search={search} onSearch={(v) => (setSearch(v), setPage(1))} searchLabel={t('Action starts with, e.g. auth.login')}>
+        <FilterSelect label={t('Area')} value={action} onChange={(v) => (setAction(v), setPage(1))} options={areas.map((a) => ({ ...a, label: t(a.label) }))} />
+        <FilterSelect label={t('Result')} value={outcome} onChange={(v) => (setOutcome(v), setPage(1))} options={[{ value: '', label: t('Success or failure') }, { value: 'success', label: t('Success') }, { value: 'failure', label: t('Failure') }]} />
       </Toolbar>
       <DataTable
-        caption="Audit log"
+        caption={t('Audit log')}
         columns={columns}
         rows={list.data?.entries}
         rowKey={(e) => e.id}
@@ -92,7 +93,7 @@ export default function AdminAuditPage() {
         error={list.error}
         onRetry={list.retry}
         minWidth={760}
-        empty={<EmptyState title="No entries" description="Nothing matches these filters." />}
+        empty={<EmptyState title={t('No entries')} description={t('Nothing matches these filters.')} />}
       />
       {list.data && <Pagination page={page} pageSize={PAGE_SIZE} totalCount={list.data.totalCount} onChange={setPage} />}
     </>

@@ -6,6 +6,7 @@ import {
   type ContactMessage,
   type ContactStatus,
 } from '../../api/adminApi';
+import { t } from '../../i18n';
 import { formatDateTime } from '../../lib/format';
 import { useFetch } from '../../lib/useFetch';
 import { useAppSelector } from '../../store/hooks';
@@ -57,27 +58,27 @@ function Body({ id, onChanged }: { id: string; onChanged: () => void }) {
       <div className="grid gap-3 sm:grid-cols-2">
         {can('contacts.resolve') && (
           <SelectField
-            label="Status"
+            label={t('Status')}
             value={m.status}
             disabled={busy}
-            onChange={(e) => void run(() => updateContactApi(m.id, { status: e.target.value as ContactStatus }), 'Status updated.')}
+            onChange={(e) => void run(() => updateContactApi(m.id, { status: e.target.value as ContactStatus }), t('Status updated.'))}
           >
-            <option value="new">New</option>
-            <option value="in_progress">In progress</option>
-            <option value="resolved">Resolved</option>
+            <option value="new">{t('New')}</option>
+            <option value="in_progress">{t('In progress')}</option>
+            <option value="resolved">{t('Resolved')}</option>
           </SelectField>
         )}
         {can('contacts.assign') && (
           <div className="space-y-1.5">
-            <p className="text-[13px] font-medium">Assigned to</p>
-            <p className="text-sm text-text-secondary">{mine ? 'You' : m.assignedTo ? 'Another staff member' : 'Nobody'}</p>
+            <p className="text-[13px] font-medium">{t('Assigned to')}</p>
+            <p className="text-sm text-text-secondary">{mine ? t('You') : m.assignedTo ? t('Another staff member') : t('Nobody')}</p>
             <Button
               variant="secondary"
               size="sm"
               disabled={busy}
-              onClick={() => void run(() => updateContactApi(m.id, { assignedTo: mine ? null : me.id }), mine ? 'Unassigned.' : 'Assigned to you.')}
+              onClick={() => void run(() => updateContactApi(m.id, { assignedTo: mine ? null : me.id }), mine ? t('Unassigned.') : t('Assigned to you.'))}
             >
-              {mine ? 'Unassign' : 'Assign to me'}
+              {mine ? t('Unassign') : t('Assign to me')}
             </Button>
           </div>
         )}
@@ -85,22 +86,22 @@ function Body({ id, onChanged }: { id: string; onChanged: () => void }) {
 
       <section aria-labelledby="notes-h">
         <h3 id="notes-h" className="mb-2 text-[13px] font-semibold">
-          Internal notes
+          {t('Internal notes')}
         </h3>
-        <p className="mb-2 text-xs text-text-muted">Notes are never shown to the sender.</p>
+        <p className="mb-2 text-xs text-text-muted">{t('Notes are never shown to the sender.')}</p>
         {m.notes && m.notes.length > 0 ? (
           <ul className="m-0 mb-3 list-none space-y-2 p-0">
             {m.notes.map((n, i) => (
               <li key={i} className="rounded-lg bg-surface-muted p-3 text-sm">
                 <p className="whitespace-pre-wrap">{n.text}</p>
                 <p className="mt-1 text-xs text-text-muted">
-                  {n.authorId === me.id ? 'You' : 'Staff member'} · {formatDateTime(n.createdAt)}
+                  {n.authorId === me.id ? t('You') : t('Staff member')} · {formatDateTime(n.createdAt)}
                 </p>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="mb-3 text-sm text-text-muted">No notes yet.</p>
+          <p className="mb-3 text-sm text-text-muted">{t('No notes yet.')}</p>
         )}
         {can('contacts.resolve') && (
           <form
@@ -108,12 +109,12 @@ function Body({ id, onChanged }: { id: string; onChanged: () => void }) {
             onSubmit={(e) => {
               e.preventDefault();
               if (!note.trim()) return;
-              void run(() => addContactNoteApi(m.id, note.trim()), 'Note added.').then((ok) => ok && setNote(''));
+              void run(() => addContactNoteApi(m.id, note.trim()), t('Note added.')).then((ok) => ok && setNote(''));
             }}
           >
-            <TextAreaField label="Add a note" rows={3} maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} />
+            <TextAreaField label={t('Add a note')} rows={3} maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} />
             <Button type="submit" size="sm" loading={busy} disabled={!note.trim()}>
-              Add note
+              {t('Add note')}
             </Button>
           </form>
         )}
@@ -125,7 +126,7 @@ function Body({ id, onChanged }: { id: string; onChanged: () => void }) {
 /** One inbox message with its status, assignment and internal notes. */
 export function ContactDrawer({ id, onClose, onChanged }: { id: string | null; onClose: () => void; onChanged: () => void }) {
   return (
-    <Modal open={id !== null} onClose={onClose} title="Message" variant="drawer">
+    <Modal open={id !== null} onClose={onClose} title={t('Message')} variant="drawer">
       {id && <Body key={id} id={id} onChanged={onChanged} />}
     </Modal>
   );

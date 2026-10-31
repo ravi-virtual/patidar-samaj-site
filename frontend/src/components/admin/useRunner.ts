@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { getErrorMessage } from '../../api/axiosInstance';
 import { useAppDispatch } from '../../store/hooks';
 import { showToast } from '../../store/slices/toastSlice';
+import { t } from '../../i18n';
 
 /**
  * Runs one admin action (publish, delete, …) with a busy flag and consistent feedback: a success
@@ -19,7 +20,7 @@ export function useRunner(onSuccess?: () => void) {
       onSuccess?.();
       return true;
     } catch (err) {
-      dispatch(showToast(getErrorMessage(err, 'That did not work. Please try again.'), 'error'));
+      dispatch(showToast(getErrorMessage(err, t('That did not work. Please try again.')), 'error'));
       return false;
     } finally {
       setBusy(false);

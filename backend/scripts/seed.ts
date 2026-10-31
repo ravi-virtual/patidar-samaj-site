@@ -35,19 +35,51 @@ const inDays = (n: number, hour = 18) => {
 const counts = { created: 0, existing: 0 };
 const note = (created: boolean) => (created ? counts.created++ : counts.existing++);
 
-/** Creates the document only if nothing matches `where`. Returns the document either way. */
+/** Gujarati sample text, keyed by field name (dotted for nested fields, e.g. `items.0.labelGu`). */
+type Gu = Record<string, string>;
+
+type Updatable = { updateOne: (filter: object, update: object) => Promise<unknown> };
+
+/**
+ * Fills in Gujarati fields that are still empty on a record that already exists, so a database
+ * seeded before the portal went bilingual gains its Gujarati sample text. Text an admin has
+ * already entered is never overwritten.
+ */
+async function fillGu(model: Updatable, where: object, gu: Gu) {
+  for (const [field, value] of Object.entries(gu)) {
+    await model.updateOne(
+      { ...where, $or: [{ [field]: { $exists: false } }, { [field]: null }, { [field]: '' }] },
+      { $set: { [field]: value } },
+    );
+  }
+}
+
+/** Gujarati text for a new record: flat keys only. Dotted keys (items.0.labelGu) are applied after create by fillGu. */
+const guForCreate = (gu: Gu): Gu => Object.fromEntries(Object.entries(gu).filter(([k]) => !k.includes('.')));
+
+/**
+ * Creates the document only if nothing matches `where`. Returns the document either way. Empty
+ * Gujarati fields (`gu`) are filled in on a new or an existing document, never overwritten.
+ */
 async function ensure<T extends { _id: string }>(
-  model: { findOne: (f: object) => { lean: () => Promise<unknown> }; create: (d: object) => Promise<{ toObject: () => unknown }> },
+  model: {
+    findOne: (f: object) => { lean: () => Promise<unknown> };
+    create: (d: object) => Promise<{ toObject: () => unknown }>;
+  } & Updatable,
   where: object,
   data: object,
+  gu: Gu = {},
 ): Promise<T> {
   const found = (await model.findOne(where).lean()) as T | null;
   if (found) {
     note(false);
+    await fillGu(model, where, gu);
     return found;
   }
   note(true);
-  return (await model.create({ ...where, ...data })).toObject() as T;
+  const created = (await model.create({ ...where, ...data })).toObject() as T;
+  await fillGu(model, where, gu);
+  return created;
 }
 
 const devPassword = () => `Dev-${randomBytes(6).toString('base64url')}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -139,49 +171,113 @@ async function seedMembers() {
 
 async function seedContent(adminId: string) {
   const published = { status: 'published', publishedAt: new Date(), createdBy: adminId, updatedBy: adminId };
-  const block = (key: ContentKey, data: object) => ensure(ContentBlock, { key }, { ...published, ...data });
+  // Every sample record carries its Gujarati text (the *Gu fields) next to the English text.
+  const block = (key: ContentKey, data: object, gu: Gu) => ensure(ContentBlock, { key }, { ...published, ...data, ...guForCreate(gu) }, gu);
 
-  await block('home.welcome', { title: 'Welcome to the Samaj portal', body: 'One place for Kadva Patidar families to find each other, plan festivals and stay informed. (Sample text.)' });
-  await block('home.stats', { items: [{ value: '1,000', label: 'Families (sample)' }, { value: '2,500', label: 'Members (sample)' }, { value: '10', label: 'Villages in the directory' }] });
-  await block('about.intro', { title: 'About the Samaj', body: 'Sample introduction: a volunteer-run community of Kadva Patidar families with roots in North Gujarat.' });
-  await block('about.mission', { title: 'Mission', body: 'Sample mission: keep families connected across villages and generations.' });
-  await block('about.vision', { title: 'Vision', body: 'Sample vision: one directory, one community, wherever we live.' });
-  await block('about.volunteers', { title: 'Run by volunteers', body: 'Sample text about the elected committee and volunteers who organise festivals and keep the directory current.' });
-  await block('about.values', { items: [{ title: 'Seva', text: 'Service without expectation.' }, { title: 'Sanskar', text: 'Passing on language, festivals and values.' }, { title: 'Sangathan', text: 'Unity across villages and continents.' }] });
-  await block('about.achievements', { items: [{ value: '100+', label: 'Scholarships awarded (sample)' }, { value: '300', label: 'Students supported (sample)' }] });
-  await block('about.activities', { items: [{ title: 'Yuva Mandal', text: 'Youth wing: cricket league and mentoring circles.' }, { title: 'Mahila Mandal', text: 'Monthly meet-ups and festival stalls.' }, { title: 'Education Fund', text: 'Scholarships for students from member families.' }] });
-  await block('history.intro', { title: 'From legend to today', body: 'Sample introduction to the community’s history. Replace with sourced text before going live.' });
+  await block('home.welcome', { title: 'Welcome to the Samaj portal', body: 'One place for Kadva Patidar families to find each other, plan festivals and stay informed. (Sample text.)' }, {
+    titleGu: 'સમાજ પોર્ટલમાં આપનું સ્વાગત છે',
+    bodyGu: 'કડવા પાટીદાર પરિવારો એકબીજાને શોધી શકે, તહેવારોનું આયોજન કરી શકે અને માહિતગાર રહી શકે તે માટેનું એક જ સ્થળ. (નમૂના લખાણ.)',
+  });
+  await block('home.stats', { items: [{ value: '1,000', label: 'Families (sample)' }, { value: '2,500', label: 'Members (sample)' }, { value: '10', label: 'Villages in the directory' }] }, {
+    'items.0.labelGu': 'પરિવારો (નમૂનો)',
+    'items.1.labelGu': 'સભ્યો (નમૂનો)',
+    'items.2.labelGu': 'ડિરેક્ટરીમાં ગામો',
+  });
+  await block('about.intro', { title: 'About the Samaj', body: 'Sample introduction: a volunteer-run community of Kadva Patidar families with roots in North Gujarat.' }, {
+    titleGu: 'સમાજ વિશે',
+    bodyGu: 'નમૂના પરિચય: ઉત્તર ગુજરાતમાં મૂળ ધરાવતા કડવા પાટીદાર પરિવારોનો સ્વયંસેવકો દ્વારા ચાલતો સમુદાય.',
+  });
+  await block('about.mission', { title: 'Mission', body: 'Sample mission: keep families connected across villages and generations.' }, {
+    titleGu: 'ધ્યેય',
+    bodyGu: 'નમૂના ધ્યેય: ગામો અને પેઢીઓ વચ્ચે પરિવારોને જોડાયેલા રાખવા.',
+  });
+  await block('about.vision', { title: 'Vision', body: 'Sample vision: one directory, one community, wherever we live.' }, {
+    titleGu: 'દૃષ્ટિ',
+    bodyGu: 'નમૂના દૃષ્ટિ: એક ડિરેક્ટરી, એક સમાજ, આપણે જ્યાં પણ રહીએ.',
+  });
+  await block('about.volunteers', { title: 'Run by volunteers', body: 'Sample text about the elected committee and volunteers who organise festivals and keep the directory current.' }, {
+    titleGu: 'સ્વયંસેવકો દ્વારા સંચાલિત',
+    bodyGu: 'નમૂના લખાણ: ચૂંટાયેલી કમિટી અને સ્વયંસેવકો વિશે, જેઓ તહેવારોનું આયોજન કરે છે અને ડિરેક્ટરી અદ્યતન રાખે છે.',
+  });
+  await block('about.values', { items: [{ title: 'Seva', text: 'Service without expectation.' }, { title: 'Sanskar', text: 'Passing on language, festivals and values.' }, { title: 'Sangathan', text: 'Unity across villages and continents.' }] }, {
+    'items.0.titleGu': 'સેવા',
+    'items.0.textGu': 'અપેક્ષા વિનાની સેવા.',
+    'items.1.titleGu': 'સંસ્કાર',
+    'items.1.textGu': 'ભાષા, તહેવારો અને મૂલ્યોનું સંવર્ધન.',
+    'items.2.titleGu': 'સંગઠન',
+    'items.2.textGu': 'ગામો અને ખંડો વચ્ચે એકતા.',
+  });
+  await block('about.achievements', { items: [{ value: '100+', label: 'Scholarships awarded (sample)' }, { value: '300', label: 'Students supported (sample)' }] }, {
+    'items.0.labelGu': 'આપેલી શિષ્યવૃત્તિઓ (નમૂનો)',
+    'items.1.labelGu': 'સહાય મેળવનાર વિદ્યાર્થીઓ (નમૂનો)',
+  });
+  await block('about.activities', { items: [{ title: 'Yuva Mandal', text: 'Youth wing: cricket league and mentoring circles.' }, { title: 'Mahila Mandal', text: 'Monthly meet-ups and festival stalls.' }, { title: 'Education Fund', text: 'Scholarships for students from member families.' }] }, {
+    'items.0.titleGu': 'યુવા મંડળ',
+    'items.0.textGu': 'યુવા પાંખ: ક્રિકેટ લીગ અને માર્ગદર્શન વર્તુળો.',
+    'items.1.titleGu': 'મહિલા મંડળ',
+    'items.1.textGu': 'માસિક મિલન અને તહેવારોના સ્ટોલ.',
+    'items.2.titleGu': 'શિક્ષણ ફંડ',
+    'items.2.textGu': 'સભ્ય પરિવારોના વિદ્યાર્થીઓ માટે શિષ્યવૃત્તિ.',
+  });
+  await block('history.intro', { title: 'From legend to today', body: 'Sample introduction to the community’s history. Replace with sourced text before going live.' }, {
+    titleGu: 'દંતકથાથી આજ સુધી',
+    bodyGu: 'સમાજના ઇતિહાસનો નમૂના પરિચય. લાઇવ કરતાં પહેલાં સંદર્ભયુક્ત લખાણથી બદલો.',
+  });
 
-  const milestones: [string, string, string, string][] = [
-    ['Legend', 'A founding story', 'Sample text: community tradition describes the origin of the Samaj.', 'SAMPLE-001'],
-    ['Roots', 'Farming communities of North Gujarat', 'Sample text: the families’ agricultural roots in the Mehsana district.', 'SAMPLE-002'],
-    ['1950s', 'First village committees', 'Sample text: informal committees begin to organise festivals.', 'SAMPLE-003'],
-    ['1990s', 'A shared directory begins', 'Sample text: the first printed directory of families.', 'SAMPLE-004'],
-    ['Today', 'A community portal', 'Sample text: this website replaces the printed directory.', 'SAMPLE-005'],
+  const milestones: [string, string, string, string, Gu][] = [
+    ['Legend', 'A founding story', 'Sample text: community tradition describes the origin of the Samaj.', 'SAMPLE-001', {
+      periodLabelGu: 'દંતકથા', titleGu: 'સ્થાપનાની કથા', textGu: 'નમૂના લખાણ: સમાજની ઉત્પત્તિ વિશે સમુદાયની પરંપરાગત માન્યતા.', sourceRefGu: 'નમૂના-001',
+    }],
+    ['Roots', 'Farming communities of North Gujarat', 'Sample text: the families’ agricultural roots in the Mehsana district.', 'SAMPLE-002', {
+      periodLabelGu: 'મૂળ', titleGu: 'ઉત્તર ગુજરાતના ખેડૂત સમુદાયો', textGu: 'નમૂના લખાણ: મહેસાણા જિલ્લામાં પરિવારોના ખેતીવાડીના મૂળ.', sourceRefGu: 'નમૂના-002',
+    }],
+    ['1950s', 'First village committees', 'Sample text: informal committees begin to organise festivals.', 'SAMPLE-003', {
+      periodLabelGu: '૧૯૫૦નો દાયકો', titleGu: 'પ્રથમ ગામ સમિતિઓ', textGu: 'નમૂના લખાણ: તહેવારોના આયોજન માટે અનૌપચારિક સમિતિઓની શરૂઆત.', sourceRefGu: 'નમૂના-003',
+    }],
+    ['1990s', 'A shared directory begins', 'Sample text: the first printed directory of families.', 'SAMPLE-004', {
+      periodLabelGu: '૧૯૯૦નો દાયકો', titleGu: 'સહિયારી ડિરેક્ટરીની શરૂઆત', textGu: 'નમૂના લખાણ: પરિવારોની પ્રથમ છપાયેલી ડિરેક્ટરી.', sourceRefGu: 'નમૂના-004',
+    }],
+    ['Today', 'A community portal', 'Sample text: this website replaces the printed directory.', 'SAMPLE-005', {
+      periodLabelGu: 'આજે', titleGu: 'સમાજ પોર્ટલ', textGu: 'નમૂના લખાણ: આ વેબસાઇટ છપાયેલી ડિરેક્ટરીનું સ્થાન લે છે.', sourceRefGu: 'નમૂના-005',
+    }],
   ];
-  for (const [i, [periodLabel, title, text, sourceRef]] of milestones.entries()) {
-    await ensure(HistoryMilestone, { title }, { ...published, periodLabel, text, sourceRef, order: i });
+  for (const [i, [periodLabel, title, text, sourceRef, gu]] of milestones.entries()) {
+    await ensure(HistoryMilestone, { title }, { ...published, periodLabel, text, sourceRef, order: i, ...gu }, gu);
   }
 
   const term = await ensure<{ _id: string }>(CommitteeTerm, { label: '2025–2027' }, { ...published, startYear: 2025, endYear: 2027, isCurrent: true });
-  const roles: [string, string][] = [['Ashok Sample', 'President'], ['Hema Sample', 'Vice President'], ['Nilesh Sample', 'Treasurer'], ['Jaya Sample', 'Secretary'], ['Rohan Sample', 'Youth Coordinator']];
-  for (const [i, [name, position]] of roles.entries()) {
-    await ensure(CommitteeMember, { termId: term._id, name }, { ...published, position, order: i, bio: 'Sample biography.' });
+  const roles: [string, string, string, string][] = [
+    ['Ashok Sample', 'President', 'અશોક નમૂનો', 'પ્રમુખ'],
+    ['Hema Sample', 'Vice President', 'હેમા નમૂનો', 'ઉપપ્રમુખ'],
+    ['Nilesh Sample', 'Treasurer', 'નિલેશ નમૂનો', 'ખજાનચી'],
+    ['Jaya Sample', 'Secretary', 'જયા નમૂનો', 'મંત્રી'],
+    ['Rohan Sample', 'Youth Coordinator', 'રોહન નમૂનો', 'યુવા સંયોજક'],
+  ];
+  for (const [i, [name, position, nameGu, positionGu]] of roles.entries()) {
+    const gu = { nameGu, positionGu, bioGu: 'નમૂના પરિચય.' };
+    await ensure(CommitteeMember, { termId: term._id, name }, { ...published, position, order: i, bio: 'Sample biography.', ...gu }, gu);
   }
 
-  const faqs: [string, string][] = [
-    ['Who can become a member?', 'Any Kadva Patidar family with roots in North Gujarat. Contact the Samaj office to be listed in the directory. (Sample answer.)'],
-    ['Who can see my phone number and email?', 'Only the office. The public directory shows a name, village and city, and only for entries marked public. (Sample answer.)'],
-    ['Where can I find upcoming events?', 'Open the Events page for dates, venues and details. (Sample answer.)'],
+  const faqs: [string, string, string, string][] = [
+    ['Who can become a member?', 'Any Kadva Patidar family with roots in North Gujarat. Contact the Samaj office to be listed in the directory. (Sample answer.)',
+      'સભ્ય કોણ બની શકે?', 'ઉત્તર ગુજરાતમાં મૂળ ધરાવતો કોઈપણ કડવા પાટીદાર પરિવાર. ડિરેક્ટરીમાં નામ નોંધાવવા સમાજ કચેરીનો સંપર્ક કરો. (નમૂના જવાબ.)'],
+    ['Who can see my phone number and email?', 'Only the office. The public directory shows a name, village and city, and only for entries marked public. (Sample answer.)',
+      'મારો ફોન નંબર અને ઇમેઇલ કોણ જોઈ શકે?', 'ફક્ત કચેરી. જાહેર ડિરેક્ટરીમાં માત્ર નામ, ગામ અને શહેર દેખાય છે, અને તે પણ ફક્ત જાહેર તરીકે ચિહ્નિત નોંધણીઓ માટે. (નમૂના જવાબ.)'],
+    ['Where can I find upcoming events?', 'Open the Events page for dates, venues and details. (Sample answer.)',
+      'આગામી કાર્યક્રમો ક્યાં જોવા મળશે?', 'તારીખો, સ્થળ અને વિગતો માટે કાર્યક્રમો પેજ ખોલો. (નમૂના જવાબ.)'],
   ];
-  for (const [i, [question, answer]] of faqs.entries()) await ensure(Faq, { question }, { ...published, answer, order: i });
+  for (const [i, [question, answer, questionGu, answerGu]] of faqs.entries()) {
+    await ensure(Faq, { question }, { ...published, answer, order: i, questionGu, answerGu }, { questionGu, answerGu });
+  }
 
-  const links: [string, string, string][] = [
-    ['Membership application form', 'https://example.org/forms/membership.pdf', 'Forms'],
-    ['Scholarship application', 'https://example.org/forms/scholarship.pdf', 'Forms'],
-    ['Bhavan booking request', 'https://example.org/forms/booking.pdf', 'Services'],
+  const links: [string, string, string, string][] = [
+    ['Membership application form', 'https://example.org/forms/membership.pdf', 'Forms', 'સભ્યપદ અરજી ફોર્મ'],
+    ['Scholarship application', 'https://example.org/forms/scholarship.pdf', 'Forms', 'શિષ્યવૃત્તિ અરજી'],
+    ['Bhavan booking request', 'https://example.org/forms/booking.pdf', 'Services', 'ભવન બુકિંગ વિનંતી'],
   ];
-  for (const [i, [label, url, category]] of links.entries()) await ensure(ImportantLink, { label }, { ...published, url, category, order: i });
+  for (const [i, [label, url, category, labelGu]] of links.entries()) {
+    await ensure(ImportantLink, { label }, { ...published, url, category, order: i, labelGu }, { labelGu });
+  }
 
   await OrganizationSettings.updateOne(
     { key: 'main' },
@@ -195,37 +291,53 @@ async function seedContent(adminId: string) {
     },
     { upsert: true },
   );
+  // The settings document exists by now (new or old), so its empty Gujarati fields are filled in.
+  await fillGu(OrganizationSettings, { key: 'main' }, {
+    nameGu: 'ઉત્તર ગુજરાત કડવા પાટીદાર સમાજ',
+    shortNameGu: 'કડવા પાટીદાર સમાજ',
+    invocationGu: 'જય ઉમિયા માતા',
+    taglineGu: 'જ્યાં પણ રહીએ, મા ઉમિયાનો એક પરિવાર',
+    footerNoteGu: 'વિકાસ માટેનો નમૂના ડેટા. કોઈ સાચી સંસ્થાનો રેકોર્ડ નથી.',
+    'contact.addressGu': 'નમૂના કચેરી, ઊંઝા, મહેસાણા જિલ્લો',
+    'contact.officeHoursGu': 'સોમ–શનિ, સવારે ૧૦:૦૦ થી સાંજે ૬:૦૦',
+  });
 }
 
 async function seedEvents(adminId: string) {
   const base = { status: 'published', createdBy: adminId, updatedBy: adminId, publishedAt: new Date() };
-  const events: [string, string, number, number, string, boolean][] = [
-    ['Sample Sharad Purnima Raas', 'Festival', 4, 19, 'Samaj Bhavan lawns', true],
-    ['Sample Diwali Dinner', 'Festival', 12, 19, 'Samaj Bhavan main hall', false],
-    ['Sample New Year Sneh Milan', 'Family', 14, 10, 'Samaj Bhavan main hall', false],
-    ['Sample Blood Donation Camp', 'Seva', 26, 9, 'Samaj Bhavan ground floor', false],
-    ['Sample Scholarship Ceremony', 'Education', 40, 11, 'Town Hall, Mehsana', false],
+  const events: [string, string, number, number, string, boolean, string, string][] = [
+    ['Sample Sharad Purnima Raas', 'Festival', 4, 19, 'Samaj Bhavan lawns', true, 'નમૂના શરદ પૂર્ણિમા રાસ', 'સમાજ ભવનનાં લૉન'],
+    ['Sample Diwali Dinner', 'Festival', 12, 19, 'Samaj Bhavan main hall', false, 'નમૂના દિવાળી સ્નેહભોજન', 'સમાજ ભવનનો મુખ્ય હોલ'],
+    ['Sample New Year Sneh Milan', 'Family', 14, 10, 'Samaj Bhavan main hall', false, 'નમૂના નૂતન વર્ષ સ્નેહ મિલન', 'સમાજ ભવનનો મુખ્ય હોલ'],
+    ['Sample Blood Donation Camp', 'Seva', 26, 9, 'Samaj Bhavan ground floor', false, 'નમૂના રક્તદાન શિબિર', 'સમાજ ભવનનો ભોંયતળિયાનો ભાગ'],
+    ['Sample Scholarship Ceremony', 'Education', 40, 11, 'Town Hall, Mehsana', false, 'નમૂના શિષ્યવૃત્તિ સમારોહ', 'ટાઉન હૉલ, મહેસાણા'],
   ];
-  for (const [title, category, days, hour, venue, featured] of events) {
+  for (const [title, category, days, hour, venue, featured, titleGu, venueGu] of events) {
+    const gu = { titleGu, venueGu, descriptionGu: 'નમૂના કાર્યક્રમ. લાઇવ કરતાં પહેલાં સાચી વિગતો સાથે બદલો.' };
     await ensure(Event, { title }, {
       ...base, category, startsAt: inDays(days, hour), venue, featured,
       description: 'Sample event for development. Replace with real details before going live.',
-    });
+      ...gu,
+    }, gu);
   }
+  const draftGu = { titleGu: 'નમૂના ડ્રાફ્ટ કાર્યક્રમ (જાહેર નથી)', venueGu: 'હજુ નક્કી થયું નથી' };
   await ensure(Event, { title: 'Sample Draft Event (not public)' }, {
-    status: 'draft', createdBy: adminId, category: 'Meeting', startsAt: inDays(60), venue: 'To be decided',
-  });
+    status: 'draft', createdBy: adminId, category: 'Meeting', startsAt: inDays(60), venue: 'To be decided', ...draftGu,
+  }, draftGu);
 
-  const news: [string, string, string, boolean][] = [
-    ['Sample: Diwali Dinner details announced', 'Event', 'Join us at the Samaj Bhavan main hall. (Sample announcement.)', true],
-    ['Sample: Scholarship results announced', 'Education', 'Recipients have been informed. (Sample announcement.)', false],
-    ['Sample: Membership renewals open', 'Notice', 'Renew at the Samaj office. (Sample announcement.)', false],
+  const news: [string, string, string, boolean, string, string][] = [
+    ['Sample: Diwali Dinner details announced', 'Event', 'Join us at the Samaj Bhavan main hall. (Sample announcement.)', true,
+      'નમૂના: દિવાળી સ્નેહભોજનની વિગતો જાહેર', 'સમાજ ભવનના મુખ્ય હોલમાં અમારી સાથે જોડાઓ. (નમૂના જાહેરાત.)'],
+    ['Sample: Scholarship results announced', 'Education', 'Recipients have been informed. (Sample announcement.)', false,
+      'નમૂના: શિષ્યવૃત્તિનાં પરિણામો જાહેર', 'પ્રાપ્તકર્તાઓને જાણ કરવામાં આવી છે. (નમૂના જાહેરાત.)'],
+    ['Sample: Membership renewals open', 'Notice', 'Renew at the Samaj office. (Sample announcement.)', false,
+      'નમૂના: સભ્યપદ નવીનીકરણ શરૂ', 'સમાજ કચેરીમાં નવીનીકરણ કરાવો. (નમૂના જાહેરાત.)'],
   ];
-  for (const [i, [title, category, body, pinned]] of news.entries()) {
+  for (const [i, [title, category, body, pinned, titleGu, bodyGu]] of news.entries()) {
     await ensure(Announcement, { title }, {
       category, body, pinned, status: 'published', order: i, createdBy: adminId,
-      publishedAt: new Date(), publishAt: inDays(-(i + 1)),
-    });
+      publishedAt: new Date(), publishAt: inDays(-(i + 1)), titleGu, bodyGu,
+    }, { titleGu, bodyGu });
   }
 }
 

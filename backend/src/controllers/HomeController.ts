@@ -4,7 +4,6 @@ import Announcement from '../models/Announcement';
 import ContentBlock from '../models/ContentBlock';
 import Event from '../models/Event';
 import Faq from '../models/Faq';
-import HistoryMilestone from '../models/HistoryMilestone';
 import ImportantLink from '../models/ImportantLink';
 import MemberProfile from '../models/MemberProfile';
 import { EventStatus, MemberVisibility, MembershipStatus, PublishStatus, ResponseCodes } from '../config/constants';
@@ -15,9 +14,10 @@ import { getSettings } from '../utils/settings';
 import { toPublicEvent } from '../utils/eventView';
 import { toPublicAnnouncement, visibleNowFilter } from '../utils/announcementView';
 import { toDirectoryEntry } from '../utils/memberView';
-import { blockView, pick } from './ContentController';
+import { publicBlockView, pick } from './ContentController';
 import { toPublicSettings } from './SettingsController';
 import { ContentResources } from '../config/contentResources';
+import { localizeFields, searchFieldsFor } from '../utils/localize';
 
 // Only entries marked public are shown on the public site (there is no member sign-in).
 const memberLevels = (_req: Request) => [MemberVisibility.PUBLIC];
@@ -67,13 +67,13 @@ export const getHome = async (req: Request, res: Response, next: NextFunction) =
 
     const linkFields = ContentResources.links!.publicFields;
     return new ApiResponse(ResponseCodes.OK, 'Home fetched successfully', {
-      settings: toPublicSettings(settings!),
-      blocks: Object.fromEntries(blocks.map((b) => [b.key, blockView(b)])),
-      featuredEvent: featured ? toPublicEvent(featured) : null,
-      upcomingEvents: events.map(toPublicEvent),
-      announcements: announcements.map((a) => toPublicAnnouncement(a, false)),
+      settings: toPublicSettings(settings!, req.lang),
+      blocks: Object.fromEntries(blocks.map((b) => [b.key, publicBlockView(b, req.lang)])),
+      featuredEvent: featured ? toPublicEvent(featured, req.lang) : null,
+      upcomingEvents: events.map((e) => toPublicEvent(e, req.lang)),
+      announcements: announcements.map((a) => toPublicAnnouncement(a, false, req.lang)),
       memberHighlights: highlights.map(toDirectoryEntry),
-      links: links.map((l) => pick(l as never, linkFields)),
+      links: links.map((l) => pick(l as never, linkFields, req.lang)),
     }).send(res);
   } catch (err) {
     return next(err);
@@ -94,27 +94,26 @@ export const search = async (req: Request, res: Response, next: NextFunction) =>
   try {
     const { q } = matchedData<{ q: string }>(req, { locations: ['query'] });
     const rx = new RegExp(escapeRegex(q), 'i');
+    // Gujarati visitors also match the Gujarati text; English visitors only the English text.
+    const anyOf = (fields: string[]) => ({ $or: searchFieldsFor(fields, req.lang).map((f) => ({ [f]: rx })) });
     const now = new Date();
     const tabs = resolvePublicTabs((await getSettings())?.publicTabs);
 
-    const [events, announcements, faqs, milestones, links, members] = await Promise.all([
+    const [events, announcements, faqs, links, members] = await Promise.all([
       tabs.events
-        ? Event.find({ isDeleted: false, status: { $in: [EventStatus.PUBLISHED, EventStatus.CANCELLED] }, $or: [{ title: rx }, { description: rx }, { venue: rx }] })
+        ? Event.find({ isDeleted: false, status: { $in: [EventStatus.PUBLISHED, EventStatus.CANCELLED] }, ...anyOf(['title', 'description', 'venue']) })
             .sort({ startsAt: -1 })
             .limit(5)
             .lean()
         : [],
       tabs.news
-        ? Announcement.find({ ...visibleNowFilter(now), $and: [{ $or: [{ title: rx }, { summary: rx }, { body: rx }] }] })
+        ? Announcement.find({ ...visibleNowFilter(now), $and: [anyOf(['title', 'summary', 'body'])] })
             .sort({ publishAt: -1 })
             .limit(5)
             .lean()
         : [],
-      tabs.faq ? Faq.find({ isDeleted: false, status: PublishStatus.PUBLISHED, $or: [{ question: rx }, { answer: rx }] }).limit(5).lean() : [],
-      tabs.history
-        ? HistoryMilestone.find({ isDeleted: false, status: PublishStatus.PUBLISHED, $or: [{ title: rx }, { text: rx }, { periodLabel: rx }] }).limit(5).lean()
-        : [],
-      tabs.links ? ImportantLink.find({ isDeleted: false, status: PublishStatus.PUBLISHED, $or: [{ label: rx }, { description: rx }] }).limit(5).lean() : [],
+      tabs.faq ? Faq.find({ isDeleted: false, status: PublishStatus.PUBLISHED, ...anyOf(['question', 'answer']) }).limit(5).lean() : [],
+      tabs.links ? ImportantLink.find({ isDeleted: false, status: PublishStatus.PUBLISHED, ...anyOf(['label', 'description']) }).limit(5).lean() : [],
       tabs.directory
         ? MemberProfile.find({
             isDeleted: false,
@@ -130,11 +129,22 @@ export const search = async (req: Request, res: Response, next: NextFunction) =>
     ]);
 
     const results = {
-      events: events.map((e) => ({ id: e._id, title: e.title, snippet: e.venue, date: e.startsAt })),
-      announcements: announcements.map((a) => ({ id: a._id, title: a.title, snippet: a.summary ?? a.body.slice(0, 140) })),
-      faqs: faqs.map((f) => ({ id: f._id, title: f.question, snippet: f.answer.slice(0, 140) })),
-      history: milestones.map((m) => ({ id: m._id, title: m.title, snippet: m.periodLabel })),
-      links: links.map((l) => ({ id: l._id, title: l.label, snippet: l.description ?? null })),
+      events: events.map((raw) => {
+        const e = localizeFields(raw, ['title', 'venue'], req.lang);
+        return { id: e._id, title: e.title, snippet: e.venue, date: e.startsAt };
+      }),
+      announcements: announcements.map((raw) => {
+        const a = localizeFields(raw, ['title', 'summary', 'body'], req.lang);
+        return { id: a._id, title: a.title, snippet: a.summary ?? a.body.slice(0, 140) };
+      }),
+      faqs: faqs.map((raw) => {
+        const f = localizeFields(raw, ['question', 'answer'], req.lang);
+        return { id: f._id, title: f.question, snippet: f.answer.slice(0, 140) };
+      }),
+      links: links.map((raw) => {
+        const l = localizeFields(raw, ['label', 'description'], req.lang);
+        return { id: l._id, title: l.label, snippet: l.description ?? null };
+      }),
       members: members.map((m) => ({ id: m._id, title: m.displayName, snippet: [m.village, m.city].filter(Boolean).join(', ') })),
     };
     const totalCount = Object.values(results).reduce((n, list) => n + list.length, 0);

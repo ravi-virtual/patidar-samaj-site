@@ -1,11 +1,13 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { adminLoginApi, logoutApi, meApi, type SessionUser } from '../../api/authApi';
+import { adminLoginApi, getUserByIdApi, logoutApi, type SessionUser } from '../../api/authApi';
 import { getErrorCode, getErrorMessage } from '../../api/axiosInstance';
 import { setCsrfToken } from '../../api/csrf';
+import { getStoredUserId, setStoredUserId } from '../../api/currentUser';
+import { t } from '../../i18n';
 
 interface AuthState {
   user: SessionUser | null;
-  /** False until the first GET /auth/me has answered, so guards do not flash a redirect. */
+  /** False until the first GET /auth/:id has answered, so guards do not flash a redirect. */
   bootstrapped: boolean;
   loginStatus: 'idle' | 'loading' | 'failed';
   loginError: string | null;
@@ -22,12 +24,15 @@ const initialState: AuthState = {
 
 /** Restores the signed-in state on page load. A 401 simply means "not signed in". */
 export const bootstrapAuth = createAsyncThunk<SessionUser | null>('auth/bootstrap', async () => {
+  const storedId = getStoredUserId();
+  if (!storedId) return null;
   try {
-    const { user, csrfToken } = await meApi();
+    const { user, csrfToken } = await getUserByIdApi(storedId);
     setCsrfToken(csrfToken);
     return user;
   } catch {
     setCsrfToken(null);
+    setStoredUserId(null);
     return null;
   }
 });
@@ -42,10 +47,11 @@ export const adminLogin = createAsyncThunk<SessionUser, LoginArg, LoginReject>(
     try {
       const { user, csrfToken } = await adminLoginApi(credentials);
       setCsrfToken(csrfToken);
+      setStoredUserId(user.id);
       return user;
     } catch (err) {
       return rejectWithValue({
-        message: getErrorMessage(err, 'Could not sign in'),
+        message: getErrorMessage(err, t('Could not sign in')),
         code: getErrorCode(err),
       });
     }
@@ -59,6 +65,7 @@ export const logout = createAsyncThunk<void>('auth/logout', async () => {
     /* even if the request fails, the user is signed out locally below */
   } finally {
     setCsrfToken(null);
+    setStoredUserId(null);
   }
 });
 
@@ -70,6 +77,7 @@ const authSlice = createSlice({
     sessionLost(state) {
       state.user = null;
       setCsrfToken(null);
+      setStoredUserId(null);
     },
     clearLoginError(state) {
       state.loginStatus = 'idle';
@@ -98,7 +106,7 @@ const authSlice = createSlice({
       })
       .addCase(adminLogin.rejected, (state, action) => {
         state.loginStatus = 'failed';
-        state.loginError = action.payload?.message ?? 'Could not sign in';
+        state.loginError = action.payload?.message ?? t('Could not sign in');
         state.loginErrorCode = action.payload?.code ?? null;
       });
   },

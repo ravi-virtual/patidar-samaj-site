@@ -26,6 +26,7 @@ import { Pagination } from '../../components/ui/Pagination';
 import { formatDateTime } from '../../lib/format';
 import { useDebounced } from '../../lib/useDebounced';
 import { useFetch } from '../../lib/useFetch';
+import { t } from '../../i18n';
 
 const PAGE_SIZE = 20;
 
@@ -72,19 +73,19 @@ export default function AdminUsersPage() {
             ? userActionApi(user.id, 'revoke-sessions')
             : userActionApi(user.id, kind, kind === 'reactivate' ? undefined : { reason: reason.trim() || undefined }),
       kind === 'suspend'
-        ? 'Account marked inactive.'
+        ? t('Account marked inactive.')
         : kind === 'reactivate'
-          ? 'Account marked active.'
+          ? t('Account marked active.')
           : kind === 'delete'
-            ? 'Admin deleted.'
-            : 'Signed out everywhere.',
+            ? t('Admin deleted.')
+            : t('Signed out everywhere.'),
     );
     if (ok) setPending(null);
   };
 
   const columns: Column<AdminUser>[] = [
     {
-      header: 'Admin',
+      header: t('Admin'),
       cell: (u) => (
         <div className="flex items-center gap-2.5">
           <Avatar name={u.name} size="sm" />
@@ -96,32 +97,32 @@ export default function AdminUsersPage() {
       ),
     },
     {
-      header: 'Permissions',
+      header: t('Permissions'),
       cell: (u) =>
         u.permissions.length === 0 ? (
-          <span className="text-text-muted">None</span>
+          <span className="text-text-muted">{t('None')}</span>
         ) : (
           <span title={u.permissions.map(permissionLabel).join(', ')}>
-            <Badge>{u.permissions.length} selected</Badge>
+            <Badge>{t('{count} selected', { count: u.permissions.length })}</Badge>
           </span>
         ),
     },
-    { header: 'Status', cell: (u) => <StatusBadge status={u.status} /> },
-    { header: 'Last sign-in', className: 'whitespace-nowrap font-mono text-[13px]', cell: (u) => (u.lastLoginAt ? formatDateTime(u.lastLoginAt) : 'Never') },
+    { header: t('Status'), cell: (u) => <StatusBadge status={u.status} /> },
+    { header: t('Last sign-in'), className: 'whitespace-nowrap font-mono text-[13px]', cell: (u) => (u.lastLoginAt ? formatDateTime(u.lastLoginAt) : t('Never')) },
     {
-      header: 'Actions',
+      header: t('Actions'),
       srOnlyHeader: true,
       className: 'text-right',
       cell: (u) => (
         <RowMenu
           name={u.name}
           actions={[
-            { label: 'Edit', kind: 'edit', show: canManage, onSelect: () => navigate(`/admin/users/${u.id}/edit`) },
-            { label: 'Mark inactive…', danger: true, show: canManage && u.status === 'active', onSelect: () => (setReason(''), setPending({ kind: 'suspend', user: u })) },
-            { label: 'Mark active', show: canManage && u.status === 'suspended', onSelect: () => setPending({ kind: 'reactivate', user: u }) },
-            { label: 'Reset password…', show: canReset && u.status === 'active', onSelect: () => setResetting(u) },
-            { label: 'Sign out everywhere', show: canManage, onSelect: () => setPending({ kind: 'revoke', user: u }) },
-            { label: 'Delete', kind: 'delete', show: canManage, onSelect: () => setPending({ kind: 'delete', user: u }) },
+            { label: t('Edit'), kind: 'edit', show: canManage, onSelect: () => navigate(`/admin/users/${u.id}/edit`) },
+            { label: t('Mark inactive…'), danger: true, show: canManage && u.status === 'active', onSelect: () => (setReason(''), setPending({ kind: 'suspend', user: u })) },
+            { label: t('Mark active'), show: canManage && u.status === 'suspended', onSelect: () => setPending({ kind: 'reactivate', user: u }) },
+            { label: t('Reset password…'), show: canReset && u.status === 'active', onSelect: () => setResetting(u) },
+            { label: t('Sign out everywhere'), show: canManage, onSelect: () => setPending({ kind: 'revoke', user: u }) },
+            { label: t('Delete'), kind: 'delete', show: canManage, onSelect: () => setPending({ kind: 'delete', user: u }) },
           ]}
         />
       ),
@@ -131,33 +132,33 @@ export default function AdminUsersPage() {
   return (
     <>
       <PageHeader
-        title="Admins"
-        description={canManage ? 'Create admins and choose exactly what each one can do.' : 'Reset an admin’s password. Only the Super Admin can create or change admin accounts.'}
+        title={t('Admins')}
+        description={canManage ? t('Create admins and choose exactly what each one can do.') : t('Reset an admin’s password. Only the Super Admin can create or change admin accounts.')}
       />
       <Toolbar
         search={search}
         onSearch={reset(setSearch)}
-        searchLabel="Search admins"
+        searchLabel={t('Search admins')}
         actions={
           canManage ? (
             <Button onClick={() => navigate('/admin/users/new')}>
               <Plus aria-hidden="true" className="h-4 w-4" />
-              Add admin
+              {t('Add admin')}
             </Button>
           ) : undefined
         }
       >
-        <FilterSelect label="Status" value={status} onChange={reset(setStatus)} options={[{ value: '', label: 'All statuses' }, { value: 'active', label: 'Active' }, { value: 'suspended', label: 'Inactive' }]} />
+        <FilterSelect label={t('Status')} value={status} onChange={reset(setStatus)} options={[{ value: '', label: t('All statuses') }, { value: 'active', label: t('Active') }, { value: 'suspended', label: t('Inactive') }]} />
       </Toolbar>
       <DataTable
-        caption="Admin accounts"
+        caption={t('Admin accounts')}
         columns={columns}
         rows={list.data?.users}
         rowKey={(u) => u.id}
         loading={list.loading}
         error={list.error}
         onRetry={list.retry}
-        empty={<EmptyState title="No admins found" description="Add an admin, or try different filters." />}
+        empty={<EmptyState title={t('No admins found')} description={t('Add an admin, or try different filters.')} />}
       />
       {list.data && <Pagination page={page} pageSize={PAGE_SIZE} totalCount={list.data.totalCount} onChange={setPage} />}
 
@@ -165,27 +166,27 @@ export default function AdminUsersPage() {
       <ConfirmDialog
         open={pending !== null}
         title={
-          pending?.kind === 'suspend' ? 'Mark this admin inactive?'
-            : pending?.kind === 'reactivate' ? 'Mark this admin active?'
-            : pending?.kind === 'delete' ? 'Delete this admin?'
-            : 'Sign this admin out everywhere?'
+          pending?.kind === 'suspend' ? t('Mark this admin inactive?')
+            : pending?.kind === 'reactivate' ? t('Mark this admin active?')
+            : pending?.kind === 'delete' ? t('Delete this admin?')
+            : t('Sign this admin out everywhere?')
         }
-        confirmLabel={pending?.kind === 'suspend' ? 'Mark inactive' : pending?.kind === 'reactivate' ? 'Mark active' : pending?.kind === 'delete' ? 'Delete' : 'Sign out'}
+        confirmLabel={pending?.kind === 'suspend' ? t('Mark inactive') : pending?.kind === 'reactivate' ? t('Mark active') : pending?.kind === 'delete' ? t('Delete') : t('Sign out')}
         tone={pending?.kind === 'reactivate' ? 'primary' : 'danger'}
         busy={busy}
         onConfirm={() => void confirm()}
         onCancel={() => setPending(null)}
       >
-        {pending?.kind === 'revoke' && `${pending.user.name} will have to sign in again on every device.`}
-        {pending?.kind === 'reactivate' && `${pending.user.name} will be able to sign in again.`}
+        {pending?.kind === 'revoke' && t('{name} will have to sign in again on every device.', { name: pending.user.name })}
+        {pending?.kind === 'reactivate' && t('{name} will be able to sign in again.', { name: pending.user.name })}
         {pending?.kind === 'delete' &&
-          `${pending.user.name} is signed out immediately and removed from this list. Their email address stays reserved, so it cannot be used for a new account.`}
+          t('{name} is signed out immediately and removed from this list. Their email address stays reserved, so it cannot be used for a new account.', { name: pending.user.name })}
         {pending?.kind === 'suspend' && (
           <div className="space-y-3">
             <p>
-              {`${pending.user.name} is signed out immediately and cannot sign in until marked active again.`}
+              {t('{name} is signed out immediately and cannot sign in until marked active again.', { name: pending.user.name })}
             </p>
-            <TextAreaField label="Reason (kept on record)" rows={3} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
+            <TextAreaField label={t('Reason (kept on record)')} rows={3} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
           </div>
         )}
       </ConfirmDialog>

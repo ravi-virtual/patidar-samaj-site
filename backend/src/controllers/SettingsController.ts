@@ -7,30 +7,49 @@ import { PublicTabs, resolvePublicTabs, type PublicTab } from '../config/publicT
 import { getSettings } from '../utils/settings';
 import { missingMediaIds } from '../utils/media';
 import { writeAudit } from '../utils/audit';
+import { localizeFields } from '../utils/localize';
+import type { Language } from '../i18n/translate';
 
 type Settings = NonNullable<Awaited<ReturnType<typeof getSettings>>>;
 
-/** The public subset. Nothing about infrastructure or staff is ever part of settings. */
-export const toPublicSettings = (s: Settings) => ({
+/** The public subset in both languages (the `*Gu` twins included). Nothing about infrastructure or staff is ever part of settings. */
+const bilingualSettings = (s: Settings) => ({
   name: s.name,
+  nameGu: s.nameGu ?? '',
   shortName: s.shortName,
+  shortNameGu: s.shortNameGu ?? '',
   invocation: s.invocation,
+  invocationGu: s.invocationGu ?? '',
   tagline: s.tagline ?? '',
+  taglineGu: s.taglineGu ?? '',
   logoUrl: s.logoMediaId ? `/api/media/${s.logoMediaId}` : null,
   contact: {
     email: s.contact?.email ?? '',
     phone: s.contact?.phone ?? '',
     address: s.contact?.address ?? '',
+    addressGu: s.contact?.addressGu ?? '',
     officeHours: s.contact?.officeHours ?? '',
+    officeHoursGu: s.contact?.officeHoursGu ?? '',
   },
   socialLinks: (s.socialLinks ?? []).map((l) => ({ label: l.label, url: l.url })),
   footerNote: s.footerNote ?? '',
+  footerNoteGu: s.footerNoteGu ?? '',
   publicTabs: resolvePublicTabs(s.publicTabs),
   themeDefault: s.themeDefault ?? 'system',
 });
 
+/** The public subset in the visitor's language: Gujarati text where entered, English otherwise. Never has `*Gu` keys. */
+export const toPublicSettings = (s: Settings, lang: Language = 'en') => {
+  const view = bilingualSettings(s);
+  return {
+    ...localizeFields(view, ['name', 'shortName', 'invocation', 'tagline', 'footerNote'], lang),
+    contact: localizeFields(view.contact, ['address', 'officeHours'], lang),
+  };
+};
+
+/** Staff view: both languages side by side, never localized. */
 const toAdminSettings = (s: Settings) => ({
-  ...toPublicSettings(s),
+  ...bilingualSettings(s),
   logoMediaId: s.logoMediaId ?? null,
   updatedAt: s.updatedAt,
 });
@@ -44,11 +63,11 @@ const toAdminSettings = (s: Settings) => ({
  * for the public site header, footer, navigation and contact page.
  * @author Ravi Patel
  */
-export const getPublicSettings = async (_req: Request, res: Response, next: NextFunction) => {
+export const getPublicSettings = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const settings = await getSettings();
     return new ApiResponse(ResponseCodes.OK, 'Settings fetched successfully', {
-      settings: toPublicSettings(settings!),
+      settings: toPublicSettings(settings!, req.lang),
     }).send(res);
   } catch (err) {
     return next(err);
@@ -92,6 +111,12 @@ export const updateSettings = async (req: Request, res: Response, next: NextFunc
       invocation?: string;
       tagline?: string;
       footerNote?: string;
+      /** Gujarati twins of the organisation texts (contact.addressGu and contact.officeHoursGu live inside `contact`). */
+      nameGu?: string;
+      shortNameGu?: string;
+      invocationGu?: string;
+      taglineGu?: string;
+      footerNoteGu?: string;
       logoMediaId?: string | null;
       contact?: Record<string, string>;
       socialLinks?: { label: string; url: string }[];

@@ -21,6 +21,7 @@ import { useDebounced } from '../../lib/useDebounced';
 import { useFetch } from '../../lib/useFetch';
 import { useAppDispatch } from '../../store/hooks';
 import { showToast } from '../../store/slices/toastSlice';
+import { t } from '../../i18n';
 
 const PAGE_SIZE = 24;
 const MAX_IMAGE = 5 * 1024 * 1024;
@@ -40,11 +41,11 @@ function EditBody({ item, onClose, onSaved }: { item: MediaItem; onClose: () => 
     setError(undefined);
     try {
       await updateMediaApi(item.id, { altText: alt.trim() || null, visibility });
-      dispatch(showToast('Saved.'));
+      dispatch(showToast(t('Saved.')));
       onSaved();
       onClose();
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not save'));
+      setError(getErrorMessage(err, t('Could not save')));
     } finally {
       setBusy(false);
     }
@@ -56,25 +57,25 @@ function EditBody({ item, onClose, onSaved }: { item: MediaItem; onClose: () => 
         <p className="text-sm text-text-muted">{item.name}</p>
         {item.kind === 'image' && (
           <TextField
-            label="Description of the picture (alt text)"
-            hint="Read aloud by screen readers. Describe what the picture shows."
+            label={t('Description of the picture (alt text)')}
+            hint={t('Read aloud by screen readers. Describe what the picture shows.')}
             maxLength={200}
             value={alt}
             onChange={(e) => setAlt(e.target.value)}
             error={error}
           />
         )}
-        <SelectField label="Who can open this file" value={visibility} onChange={(e) => setVisibility(e.target.value as MediaItem['visibility'])}>
-          <option value="public">Anyone with the link</option>
-          <option value="private">Signed-in staff only</option>
+        <SelectField label={t('Who can open this file')} value={visibility} onChange={(e) => setVisibility(e.target.value as MediaItem['visibility'])}>
+          <option value="public">{t('Anyone with the link')}</option>
+          <option value="private">{t('Signed-in staff only')}</option>
         </SelectField>
       </div>
       <div className="flex justify-end gap-2 border-t border-border px-5 py-3.5">
         <Button variant="secondary" onClick={onClose} disabled={busy}>
-          Cancel
+          {t('Cancel')}
         </Button>
         <Button onClick={() => void save()} loading={busy}>
-          Save
+          {t('Save')}
         </Button>
       </div>
     </>
@@ -100,16 +101,16 @@ export default function AdminMediaPage() {
     if (!file) return;
     const isPdf = file.type === 'application/pdf';
     if (file.size > (isPdf ? MAX_DOC : MAX_IMAGE)) {
-      dispatch(showToast(`That file is too large. Pictures can be up to 5 MB and PDFs up to 10 MB.`, 'error'));
+      dispatch(showToast(t('That file is too large. Pictures can be up to 5 MB and PDFs up to 10 MB.'), 'error'));
       return;
     }
     setUploading(true);
     try {
       await uploadMediaApi(file);
-      dispatch(showToast('Uploaded. Add a description of the picture so it is accessible.'));
+      dispatch(showToast(t('Uploaded. Add a description of the picture so it is accessible.')));
       list.retry();
     } catch (err) {
-      dispatch(showToast(getErrorMessage(err, 'Upload failed'), 'error'));
+      dispatch(showToast(getErrorMessage(err, t('Upload failed')), 'error'));
     } finally {
       setUploading(false);
       if (fileInput.current) fileInput.current.value = '';
@@ -118,11 +119,11 @@ export default function AdminMediaPage() {
 
   return (
     <>
-      <PageHeader title="Media library" description="Pictures and PDFs used on the site. JPEG, PNG, WebP (up to 5 MB) and PDF (up to 10 MB)." />
+      <PageHeader title={t('Media library')} description={t('Pictures and PDFs used on the site. JPEG, PNG, WebP (up to 5 MB) and PDF (up to 10 MB).')} />
       <Toolbar
         search={search}
         onSearch={(v) => (setSearch(v), setPage(1))}
-        searchLabel="Search files"
+        searchLabel={t('Search files')}
         actions={
           can('media.upload') && (
             <>
@@ -131,19 +132,19 @@ export default function AdminMediaPage() {
                 type="file"
                 accept="image/jpeg,image/png,image/webp,application/pdf"
                 className="sr-only"
-                aria-label="Choose a file to upload"
+                aria-label={t('Choose a file to upload')}
                 tabIndex={-1}
                 onChange={(e) => void upload(e.target.files?.[0])}
               />
               <Button onClick={() => fileInput.current?.click()} loading={uploading}>
                 <Upload aria-hidden="true" className="h-4 w-4" />
-                Upload file
+                {t('Upload file')}
               </Button>
             </>
           )
         }
       >
-        <FilterSelect label="Type" value={kind} onChange={(v) => (setKind(v), setPage(1))} options={[{ value: '', label: 'All files' }, { value: 'image', label: 'Pictures' }, { value: 'document', label: 'PDFs' }]} />
+        <FilterSelect label={t('Type')} value={kind} onChange={(v) => (setKind(v), setPage(1))} options={[{ value: '', label: t('All files') }, { value: 'image', label: t('Pictures') }, { value: 'document', label: t('PDFs') }]} />
       </Toolbar>
 
       {list.error && !list.data ? (
@@ -151,7 +152,7 @@ export default function AdminMediaPage() {
       ) : !list.data ? (
         <Skeleton className="h-72" />
       ) : list.data.media.length === 0 ? (
-        <EmptyState title="No files yet" description="Upload a picture or PDF to use it on events, history and the committee page." />
+        <EmptyState title={t('No files yet')} description={t('Upload a picture or PDF to use it on events, history and the committee page.')} />
       ) : (
         <ul className={`m-0 grid list-none gap-3.5 p-0 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))] ${list.loading ? 'opacity-60' : ''}`}>
           {list.data.media.map((m) => (
@@ -170,20 +171,20 @@ export default function AdminMediaPage() {
                   </p>
                   <p className="flex flex-wrap items-center gap-1.5 text-xs text-text-muted">
                     {readableSize(m.size)}
-                    {m.visibility === 'private' && <Badge tone="warning">Staff only</Badge>}
-                    {m.kind === 'image' && !m.altText && <Badge tone="warning">No description</Badge>}
+                    {m.visibility === 'private' && <Badge tone="warning">{t('Staff only')}</Badge>}
+                    {m.kind === 'image' && !m.altText && <Badge tone="warning">{t('No description')}</Badge>}
                   </p>
                   <div className="mt-auto flex gap-1.5 pt-1.5">
                     {can('media.upload') && (
-                      <Button variant="secondary" size="sm" onClick={() => setEditing(m)} aria-label={`Edit ${m.name}`}>
+                      <Button variant="secondary" size="sm" onClick={() => setEditing(m)} aria-label={t('Edit {name}', { name: m.name })}>
                         <Pencil aria-hidden="true" className="h-3.5 w-3.5" />
-                        Edit
+                        {t('Edit')}
                       </Button>
                     )}
                     {can('content.publish') && (
-                      <Button variant="ghost" size="sm" onClick={() => setDeleting(m)} aria-label={`Delete ${m.name}`}>
+                      <Button variant="ghost" size="sm" onClick={() => setDeleting(m)} aria-label={t('Delete {name}', { name: m.name })}>
                         <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
-                        Delete
+                        {t('Delete')}
                       </Button>
                     )}
                   </div>
@@ -195,21 +196,21 @@ export default function AdminMediaPage() {
       )}
       {list.data && <Pagination page={page} pageSize={PAGE_SIZE} totalCount={list.data.totalCount} onChange={setPage} />}
 
-      <Modal open={editing !== null} onClose={() => setEditing(null)} title="File details">
+      <Modal open={editing !== null} onClose={() => setEditing(null)} title={t('File details')}>
         {editing && <EditBody key={editing.id} item={editing} onClose={() => setEditing(null)} onSaved={list.retry} />}
       </Modal>
       <ConfirmDialog
         open={deleting !== null}
-        title="Delete this file?"
-        confirmLabel="Delete"
+        title={t('Delete this file?')}
+        confirmLabel={t('Delete')}
         tone="danger"
         busy={busy}
         onConfirm={() => {
-          if (deleting) void run(() => deleteMediaApi(deleting.id), 'File deleted.').then((ok) => ok && setDeleting(null));
+          if (deleting) void run(() => deleteMediaApi(deleting.id), t('File deleted.')).then((ok) => ok && setDeleting(null));
         }}
         onCancel={() => setDeleting(null)}
       >
-        {deleting ? `“${deleting.name}” will be deleted. This is blocked while an event, page or setting still uses it.` : ''}
+        {deleting ? t('“{name}” will be deleted. This is blocked while an event, page or setting still uses it.', { name: deleting.name }) : ''}
       </ConfirmDialog>
     </>
   );

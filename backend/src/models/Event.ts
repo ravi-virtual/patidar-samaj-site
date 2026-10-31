@@ -16,6 +16,11 @@ export interface IEvent {
   publishedAt?: Date;
   cancelledAt?: Date;
   cancellationReason?: string;
+  /** Gujarati twins of title, description, venue and cancellationReason. Optional: empty means show the English text. */
+  titleGu?: string;
+  descriptionGu?: string;
+  venueGu?: string;
+  cancellationReasonGu?: string;
   createdBy?: string;
   updatedBy?: string;
   isDeleted: boolean;
@@ -38,6 +43,10 @@ const eventSchema = new Schema<IEvent>(
     publishedAt: { type: Date },
     cancelledAt: { type: Date },
     cancellationReason: { type: String, maxlength: 500 },
+    titleGu: { type: String, trim: true, maxlength: 150 },
+    descriptionGu: { type: String, trim: true, maxlength: 4000 },
+    venueGu: { type: String, trim: true, maxlength: 200 },
+    cancellationReasonGu: { type: String, trim: true, maxlength: 500 },
     createdBy: { type: String },
     updatedBy: { type: String },
     isDeleted: { type: Boolean, default: false },

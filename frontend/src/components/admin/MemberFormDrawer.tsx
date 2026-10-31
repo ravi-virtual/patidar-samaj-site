@@ -4,12 +4,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { createMemberApi, updateMemberApi, type MemberInput, type StaffMember } from '../../api/adminApi';
 import { getErrorMessage, getFieldErrors } from '../../api/axiosInstance';
+import { t } from '../../i18n';
 import { useAppDispatch } from '../../store/hooks';
 import { showToast } from '../../store/slices/toastSlice';
 import { Alert } from '../ui/Alert';
 import { SelectField, TextAreaField } from '../ui/FormFields';
 import { TextField } from '../ui/TextField';
 import { Toggle } from '../ui/Toggle';
+import { errText } from './BilingualField';
 import { FormDrawer, FullWidth } from './FormDrawer';
 import { useCan } from './usePermissions';
 
@@ -102,7 +104,7 @@ export function MemberFormDrawer({
     try {
       if (member) await updateMemberApi(member.id, body);
       else await createMemberApi(body);
-      dispatch(showToast(member ? 'Member updated.' : 'Member added.'));
+      dispatch(showToast(member ? t('Member updated.') : t('Member added.')));
       onSaved();
       onClose();
     } catch (err) {
@@ -114,17 +116,17 @@ export function MemberFormDrawer({
           placed = true;
         }
       }
-      if (!placed) setError('root', { message: getErrorMessage(err, 'Could not save the member') });
+      if (!placed) setError('root', { message: getErrorMessage(err, t('Could not save the member')) });
     }
   };
 
   return (
     <FormDrawer
       open={open}
-      title={member ? 'Edit member' : 'Add member'}
+      title={member ? t('Edit member') : t('Add member')}
       onClose={onClose}
       onSubmit={handleSubmit(onSubmit)}
-      submitLabel={member ? 'Save changes' : 'Add member'}
+      submitLabel={member ? t('Save changes') : t('Add member')}
       submitting={isSubmitting}
       pristine={Boolean(member) && !isDirty}
     >
@@ -134,31 +136,31 @@ export function MemberFormDrawer({
         </FullWidth>
       )}
       <FullWidth>
-        <TextField label="Full name" required error={errors.displayName?.message} {...register('displayName')} />
+        <TextField label={t('Full name')} required error={errText(errors.displayName)} {...register('displayName')} />
       </FullWidth>
-      <TextField label="Village" error={errors.village?.message} {...register('village')} />
-      <TextField label="City" error={errors.city?.message} {...register('city')} />
-      <TextField label="Country" error={errors.country?.message} {...register('country')} />
-      <TextField label="Occupation" error={errors.occupation?.message} {...register('occupation')} />
-      <TextField label="Member since (year)" inputMode="numeric" error={errors.joinedYear?.message} {...register('joinedYear')} />
-      <SelectField label="Membership" error={errors.membershipStatus?.message} {...register('membershipStatus')}>
-        <option value="active">Active</option>
-        <option value="inactive">Inactive</option>
+      <TextField label={t('Village')} error={errText(errors.village)} {...register('village')} />
+      <TextField label={t('City')} error={errText(errors.city)} {...register('city')} />
+      <TextField label={t('Country')} error={errText(errors.country)} {...register('country')} />
+      <TextField label={t('Occupation')} error={errText(errors.occupation)} {...register('occupation')} />
+      <TextField label={t('Member since (year)')} inputMode="numeric" error={errText(errors.joinedYear)} {...register('joinedYear')} />
+      <SelectField label={t('Membership')} error={errText(errors.membershipStatus)} {...register('membershipStatus')}>
+        <option value="active">{t('Active')}</option>
+        <option value="inactive">{t('Inactive')}</option>
       </SelectField>
-      <SelectField label="Who can find this entry" error={errors.visibility?.message} {...register('visibility')}>
-        <option value="hidden">Only the office</option>
-        <option value="public">Everyone</option>
+      <SelectField label={t('Who can find this entry')} error={errText(errors.visibility)} {...register('visibility')}>
+        <option value="hidden">{t('Only the office')}</option>
+        <option value="public">{t('Everyone')}</option>
       </SelectField>
-      <Toggle className="self-end pb-2.5" label="Show in “Member highlights”" {...register('highlighted')} />
+      <Toggle className="self-end pb-2.5" label={t('Show in “Member highlights”')} {...register('highlighted')} />
       {privateAccess && (
         <>
-          <TextField label="Phone (private)" type="tel" error={errors.phone?.message} {...register('phone')} />
-          <TextField label="Kul (private)" error={errors.kul?.message} {...register('kul')} />
-          <TextField label="Family size (private)" inputMode="numeric" error={errors.familySize?.message} {...register('familySize')} />
+          <TextField label={t('Phone (private)')} type="tel" error={errText(errors.phone)} {...register('phone')} />
+          <TextField label={t('Kul (private)')} error={errText(errors.kul)} {...register('kul')} />
+          <TextField label={t('Family size (private)')} inputMode="numeric" error={errText(errors.familySize)} {...register('familySize')} />
         </>
       )}
       <FullWidth>
-        <TextAreaField label="About" rows={3} error={errors.bio?.message} {...register('bio')} />
+        <TextAreaField label={t('About')} rows={3} error={errText(errors.bio)} {...register('bio')} />
       </FullWidth>
     </FormDrawer>
   );

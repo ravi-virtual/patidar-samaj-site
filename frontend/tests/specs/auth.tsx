@@ -13,13 +13,14 @@ import { HeaderActions } from '../../src/components/layout/HeaderActions';
 import * as authApi from '../../src/api/authApi';
 import { api } from '../../src/api/axiosInstance';
 import { getCsrfToken, setCsrfToken } from '../../src/api/csrf';
+import { setStoredUserId } from '../../src/api/currentUser';
 import type { SessionUser } from '../../src/api/authApi';
 
 vi.mock('../../src/api/authApi', () => ({
-  meApi: vi.fn(),
+  getUserByIdApi: vi.fn(),
   adminLoginApi: vi.fn(),
   logoutApi: vi.fn(),
-  updateThemeApi: vi.fn(),
+  updateUserThemeByIdApi: vi.fn(),
   forgotPasswordApi: vi.fn(),
   resetPasswordApi: vi.fn(),
 }));
@@ -68,7 +69,8 @@ const renderApp = async (path: string, store = createStore()) => {
 beforeEach(() => {
   vi.resetAllMocks();
   setCsrfToken(null);
-  mocked.meApi.mockRejectedValue(apiError(401, 'Not authenticated', 'UNAUTHORIZED'));
+  setStoredUserId('u1'); // a previous sign-in on this device, so bootstrap asks GET /auth/:id
+  mocked.getUserByIdApi.mockRejectedValue(apiError(401, 'Not authenticated', 'UNAUTHORIZED'));
 });
 
 describe('admin sign-in page', () => {
@@ -143,7 +145,7 @@ describe('admin sign-in page', () => {
   });
 
   it('does not show the sign-in form to someone who is already signed in', async () => {
-    mocked.meApi.mockResolvedValue({ user: admin, csrfToken: 'c' });
+    mocked.getUserByIdApi.mockResolvedValue({ user: admin, csrfToken: 'c' });
     await renderApp('/admin/login');
     expect(screen.queryByRole('heading', { name: /admin sign in/i })).not.toBeInTheDocument();
   });
@@ -206,7 +208,7 @@ describe('route guards (convenience only — the API enforces access)', () => {
   });
 
   it('lets a signed-in user through and blocks missing permissions', async () => {
-    mocked.meApi.mockResolvedValue({ user: admin, csrfToken: 'c' });
+    mocked.getUserByIdApi.mockResolvedValue({ user: admin, csrfToken: 'c' });
     const store = createStore();
     await store.dispatch(bootstrapAuth());
     const { unmount } = render(
@@ -247,7 +249,7 @@ describe('header actions per authentication state', () => {
   });
 
   it('shows the name and a working Sign out to a signed-in admin', async () => {
-    mocked.meApi.mockResolvedValue({ user: admin, csrfToken: 'c' });
+    mocked.getUserByIdApi.mockResolvedValue({ user: admin, csrfToken: 'c' });
     mocked.logoutApi.mockResolvedValue();
     const user = userEvent.setup();
     const store = createStore();
@@ -279,7 +281,7 @@ describe('theme and account', () => {
 
   it('falls back to following the system when the account has no explicit choice', async () => {
     window.__prefersDark = true;
-    mocked.meApi.mockResolvedValue({ user: { ...admin, themePreference: 'system' }, csrfToken: 'c' });
+    mocked.getUserByIdApi.mockResolvedValue({ user: { ...admin, themePreference: 'system' }, csrfToken: 'c' });
     const store = createStore();
     await store.dispatch(bootstrapAuth());
     expect(store.getState().theme.preference).toBe('system');
@@ -287,22 +289,22 @@ describe('theme and account', () => {
   });
 
   it('saves the choice to the account only when signed in', async () => {
-    mocked.updateThemeApi.mockResolvedValue();
+    mocked.updateUserThemeByIdApi.mockResolvedValue();
     const visitor = createStore();
     await visitor.dispatch(changeTheme('dark'));
-    expect(mocked.updateThemeApi).not.toHaveBeenCalled();
+    expect(mocked.updateUserThemeByIdApi).not.toHaveBeenCalled();
     expect(visitor.getState().theme.preference).toBe('dark');
 
-    mocked.meApi.mockResolvedValue({ user: admin, csrfToken: 'c' });
+    mocked.getUserByIdApi.mockResolvedValue({ user: admin, csrfToken: 'c' });
     const signedIn = createStore();
     await signedIn.dispatch(bootstrapAuth());
     await signedIn.dispatch(changeTheme('light'));
-    expect(mocked.updateThemeApi).toHaveBeenCalledWith('light');
+    expect(mocked.updateUserThemeByIdApi).toHaveBeenCalledWith('u1', 'light');
   });
 
   it('keeps the local choice when saving to the account fails', async () => {
-    mocked.meApi.mockResolvedValue({ user: admin, csrfToken: 'c' });
-    mocked.updateThemeApi.mockRejectedValue(new Error('offline'));
+    mocked.getUserByIdApi.mockResolvedValue({ user: admin, csrfToken: 'c' });
+    mocked.updateUserThemeByIdApi.mockRejectedValue(new Error('offline'));
     const store = createStore();
     await store.dispatch(bootstrapAuth());
     await store.dispatch(changeTheme('dark'));

@@ -28,7 +28,7 @@ vi.mock('../../src/api/adminApi', () => ({ getAdminSettingsApi: vi.fn(), updateA
 const site = vi.mocked(siteApi);
 const admin = vi.mocked(adminApi);
 
-const allOn = (): PublicTabs => ({ about: true, history: true, committee: true, faq: true, links: true, directory: true, events: true, news: true, contact: true });
+const allOn = (): PublicTabs => ({ about: true, committee: true, faq: true, links: true, directory: true, events: true, news: true, contact: true });
 const tabsWith = (off: PublicTabKey[]): PublicTabs => ({ ...allOn(), ...Object.fromEntries(off.map((t) => [t, false])) });
 
 const makeSettings = (off: PublicTabKey[] = []): PublicSettings => ({
@@ -63,7 +63,7 @@ describe('isTabOn', () => {
   });
 
   it('lists the nine public tabs', () => {
-    expect(PUBLIC_TABS.map((t) => t.key)).toEqual(['about', 'history', 'committee', 'faq', 'links', 'directory', 'events', 'news', 'contact']);
+    expect(PUBLIC_TABS.map((t) => t.key)).toEqual(['about', 'committee', 'faq', 'links', 'directory', 'events', 'news', 'contact']);
   });
 });
 
@@ -131,7 +131,7 @@ describe('AdminSettingsPage', () => {
     await screen.findByText('Public site tabs');
     expect(screen.getByText('Turn a tab off to hide it from the public website.')).toBeInTheDocument();
 
-    expect(screen.getAllByRole('switch')).toHaveLength(9);
+    expect(screen.getAllByRole('switch')).toHaveLength(8);
     for (const { label } of PUBLIC_TABS) expect(screen.getByRole('switch', { name: label })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'News' })).not.toBeChecked();
     expect(screen.getByRole('switch', { name: 'Events' })).toBeChecked();
@@ -249,7 +249,7 @@ describe('public routes and navigation', () => {
 
   it('lists every public tab in the menu while all are on', () => {
     renderAt('/no-such-page', storeWith());
-    expect(navNames()).toEqual(expect.arrayContaining(['About', 'History', 'Committee', 'Directory', 'Events', 'News', 'FAQ', 'Important links', 'Contact']));
+    expect(navNames()).toEqual(expect.arrayContaining(['About', 'Committee', 'Directory', 'Events', 'News', 'FAQ', 'Important links', 'Contact']));
   });
 
   it('removes a switched-off tab from the menu and keeps the rest', () => {
@@ -268,7 +268,6 @@ describe('public routes and navigation', () => {
 
   it.each([
     ['/about', 'about'],
-    ['/history', 'history'],
     ['/committee', 'committee'],
     ['/faq', 'faq'],
     ['/links', 'links'],
@@ -288,7 +287,7 @@ describe('public routes and navigation', () => {
 describe('SearchPalette', () => {
   const hit = (title: string) => [{ id: title, title, snippet: null }];
   const results = () => ({
-    results: { events: hit('Garba event'), announcements: hit('Garba news'), faqs: hit('Garba faq'), history: hit('Garba history'), links: hit('Garba link'), members: hit('Garba member') },
+    results: { events: hit('Garba event'), announcements: hit('Garba news'), faqs: hit('Garba faq'), links: hit('Garba link'), members: hit('Garba member') },
     totalCount: 6,
   });
 
@@ -302,13 +301,12 @@ describe('SearchPalette', () => {
 
   it('shows every group while all tabs are on', async () => {
     await search(storeWith());
-    for (const t of ['Garba event', 'Garba news', 'Garba faq', 'Garba history', 'Garba link', 'Garba member']) expect(await screen.findByText(t)).toBeInTheDocument();
+    for (const t of ['Garba event', 'Garba news', 'Garba faq', 'Garba link', 'Garba member']) expect(await screen.findByText(t)).toBeInTheDocument();
   });
 
   it('hides the results of switched-off tabs', async () => {
     await search(storeWith(['events', 'news', 'directory']));
     expect(await screen.findByText('Garba faq')).toBeInTheDocument();
-    expect(screen.getByText('Garba history')).toBeInTheDocument();
     expect(screen.queryByText('Garba event')).not.toBeInTheDocument();
     expect(screen.queryByText('Garba news')).not.toBeInTheDocument();
     expect(screen.queryByText('Garba member')).not.toBeInTheDocument();

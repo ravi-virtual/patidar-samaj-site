@@ -13,6 +13,7 @@ import { Pagination } from '../../components/ui/Pagination';
 import { formatDateTime } from '../../lib/format';
 import { useDebounced } from '../../lib/useDebounced';
 import { useFetch } from '../../lib/useFetch';
+import { t } from '../../i18n';
 
 const PAGE_SIZE = 20;
 const statuses = [
@@ -37,7 +38,7 @@ export default function AdminContactsPage() {
 
   const columns: Column<ContactMessage>[] = [
     {
-      header: 'From',
+      header: t('From'),
       cell: (m) => (
         <div className="max-w-[14rem]">
           <p className="truncate font-medium text-text">{m.name}</p>
@@ -46,7 +47,7 @@ export default function AdminContactsPage() {
       ),
     },
     {
-      header: 'Message',
+      header: t('Message'),
       cell: (m) => (
         <div className="max-w-md">
           <p className="truncate text-xs text-accent">{m.topic}</p>
@@ -54,15 +55,15 @@ export default function AdminContactsPage() {
         </div>
       ),
     },
-    { header: 'Received', className: 'whitespace-nowrap font-mono text-[13px]', cell: (m) => formatDateTime(m.createdAt) },
-    { header: 'Status', cell: (m) => <StatusBadge status={m.status} /> },
+    { header: t('Received'), className: 'whitespace-nowrap font-mono text-[13px]', cell: (m) => formatDateTime(m.createdAt) },
+    { header: t('Status'), cell: (m) => <StatusBadge status={m.status} /> },
     {
-      header: 'Open',
+      header: t('Open'),
       srOnlyHeader: true,
       className: 'text-right',
       cell: (m) => (
-        <Button variant="secondary" size="sm" onClick={() => setOpenId(m.id)} aria-label={`Open message from ${m.name}`}>
-          Open
+        <Button variant="secondary" size="sm" onClick={() => setOpenId(m.id)} aria-label={t('Open message from {name}', { name: m.name })}>
+          {t('Open')}
         </Button>
       ),
     },
@@ -72,29 +73,29 @@ export default function AdminContactsPage() {
 
   return (
     <>
-      <PageHeader title="Contact inbox" description="Messages sent through the contact form." />
-      <Toolbar search={search} onSearch={(v) => (setSearch(v), setPage(1))} searchLabel="Search messages">
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Status">
+      <PageHeader title={t('Contact inbox')} description={t('Messages sent through the contact form.')} />
+      <Toolbar search={search} onSearch={(v) => (setSearch(v), setPage(1))} searchLabel={t('Search messages')}>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('Status')}>
           {statuses.map((s) => (
             <Chip key={s.value} active={status === s.value} onClick={() => (setStatus(s.value), setPage(1))}>
-              {s.label}
+              {t(s.label)}
               {s.value && counts[s.value as keyof typeof counts] !== undefined ? ` · ${counts[s.value as keyof typeof counts]}` : ''}
             </Chip>
           ))}
           <Chip active={mine} onClick={() => (setMine((v) => !v), setPage(1))}>
-            Assigned to me
+            {t('Assigned to me')}
           </Chip>
         </div>
       </Toolbar>
       <DataTable
-        caption="Contact messages"
+        caption={t('Contact messages')}
         columns={columns}
         rows={list.data?.messages}
         rowKey={(m) => m.id}
         loading={list.loading}
         error={list.error}
         onRetry={list.retry}
-        empty={<EmptyState title="No messages" description="Nothing matches these filters." />}
+        empty={<EmptyState title={t('No messages')} description={t('Nothing matches these filters.')} />}
       />
       {list.data && <Pagination page={page} pageSize={PAGE_SIZE} totalCount={list.data.totalCount} onChange={setPage} />}
       <ContactDrawer id={openId} onClose={() => setOpenId(null)} onChanged={list.retry} />

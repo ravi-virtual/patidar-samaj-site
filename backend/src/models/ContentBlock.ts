@@ -22,6 +22,10 @@ export interface IContentItem {
   text?: string;
   value?: string;
   label?: string;
+  /** Gujarati twins of title, text and label. Optional: empty means show the English text. */
+  titleGu?: string;
+  textGu?: string;
+  labelGu?: string;
   imageMediaId?: string;
 }
 
@@ -30,6 +34,9 @@ export interface IContentBlock extends PublishableFields {
   key: ContentKey;
   title?: string;
   body?: string;
+  /** Gujarati twins of title and body. Optional: empty means show the English text. */
+  titleGu?: string;
+  bodyGu?: string;
   items: IContentItem[];
   createdAt: Date;
   updatedAt: Date;
@@ -43,6 +50,8 @@ const contentBlockSchema = new Schema<IContentBlock>(
     key: { type: String, enum: [...ContentKeys], required: true, unique: true },
     title: { type: String, trim: true, maxlength: 150 },
     body: { type: String, trim: true, maxlength: 6000 },
+    titleGu: { type: String, trim: true, maxlength: 150 },
+    bodyGu: { type: String, trim: true, maxlength: 6000 },
     items: {
       type: [
         new Schema(
@@ -51,6 +60,9 @@ const contentBlockSchema = new Schema<IContentBlock>(
             text: { type: String, trim: true, maxlength: 600 },
             value: { type: String, trim: true, maxlength: 40 },
             label: { type: String, trim: true, maxlength: 120 },
+            titleGu: { type: String, trim: true, maxlength: 120 },
+            textGu: { type: String, trim: true, maxlength: 600 },
+            labelGu: { type: String, trim: true, maxlength: 120 },
             imageMediaId: { type: String },
           },
           { _id: false },

@@ -13,6 +13,7 @@ import { formatDay, formatMonth, formatShortDate, formatTime, place } from '../l
 import { isTabOn } from '../lib/publicTabs';
 import { useFetch } from '../lib/useFetch';
 import { useAppSelector } from '../store/hooks';
+import { t } from '../i18n';
 
 // A quick link with a `tab` is hidden while that public tab is switched off.
 const quickLinks: { to: string; label: string; tab?: PublicTabKey }[] = [
@@ -24,7 +25,7 @@ const quickLinks: { to: string; label: string; tab?: PublicTabKey }[] = [
 function HomeSkeleton() {
   return (
     <div role="status" aria-busy="true" className="grid gap-4 lg:grid-cols-3">
-      <span className="sr-only">Loading…</span>
+      <span className="sr-only">{t('Loading…')}</span>
       <Skeleton className="h-72 lg:col-span-2" />
       <Skeleton className="h-72" />
       <Skeleton className="h-64" />
@@ -56,19 +57,19 @@ function NextEvent({ home }: { home: HomeData }) {
     return (
       <Card className="flex min-h-48 flex-col items-center justify-center gap-1 text-center lg:col-span-1">
         <CalendarDays aria-hidden="true" className="h-6 w-6 text-text-subtle" />
-        <p className="font-semibold">No upcoming events yet</p>
-        <p className="text-sm text-text-muted">New events appear here as soon as they are announced.</p>
+        <p className="font-semibold">{t('No upcoming events yet')}</p>
+        <p className="text-sm text-text-muted">{t('New events appear here as soon as they are announced.')}</p>
       </Card>
     );
   }
   return (
     <section
-      aria-label="Next event"
+      aria-label={t('Next event')}
       className="relative flex min-h-72 overflow-hidden rounded-xl bg-zinc-900 text-white shadow-card"
     >
       {image && <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-50" />}
       <div className="relative mt-auto w-full bg-gradient-to-t from-zinc-900/95 to-transparent p-6">
-        <p className="font-mono text-xs uppercase text-indigo-200">Next event · {formatShortDate(e.startsAt)}</p>
+        <p className="font-mono text-xs uppercase text-indigo-200">{t('Next event · {date}', { date: formatShortDate(e.startsAt) })}</p>
         <h2 className="my-1 text-2xl font-semibold tracking-tight">{e.title}</h2>
         <p className="mb-3.5 text-sm text-zinc-300">
           {formatTime(e.startsAt)} · {e.venue}
@@ -77,7 +78,7 @@ function NextEvent({ home }: { home: HomeData }) {
           to={`/events/${e.id}`}
           className="inline-flex h-9 items-center rounded-lg bg-white px-3.5 text-sm font-medium text-zinc-900 hover:bg-zinc-100"
         >
-          View details
+          {t('View details')}
         </Link>
       </div>
     </section>
@@ -97,7 +98,7 @@ function HomeContent({ home }: { home: HomeData }) {
       {on('events') && (
         <Section title="Upcoming" to="/events">
           {upcoming.length === 0 ? (
-            <p className="text-sm text-text-muted">Nothing else is scheduled right now.</p>
+            <p className="text-sm text-text-muted">{t('Nothing else is scheduled right now.')}</p>
           ) : (
             <ul className="m-0 list-none p-0">
               {upcoming.map((e) => (
@@ -107,7 +108,7 @@ function HomeContent({ home }: { home: HomeData }) {
                     <span className="min-w-0">
                       <span className="block text-sm font-medium">{e.title}</span>
                       <span className="text-xs text-text-muted">
-                        {e.category} · {formatTime(e.startsAt)}
+                        {t(e.category)} · {formatTime(e.startsAt)}
                       </span>
                     </span>
                   </Link>
@@ -126,7 +127,7 @@ function HomeContent({ home }: { home: HomeData }) {
                 to={q.to}
                 className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5 text-sm font-medium text-text hover:bg-bg"
               >
-                {q.label}
+                {t(q.label)}
                 <ArrowRight aria-hidden="true" className="h-4 w-4 text-text-subtle" />
               </Link>
             </li>
@@ -137,7 +138,7 @@ function HomeContent({ home }: { home: HomeData }) {
       {on('news') && (
         <Section title="Recent announcements" to="/news" linkLabel="All news">
           {home.announcements.length === 0 ? (
-            <p className="text-sm text-text-muted">No announcements yet.</p>
+            <p className="text-sm text-text-muted">{t('No announcements yet.')}</p>
           ) : (
             <ul className="m-0 list-none p-0">
               {home.announcements.map((a) => (
@@ -145,8 +146,8 @@ function HomeContent({ home }: { home: HomeData }) {
                   <Link to={`/news/${a.id}`} className="block py-2.5 text-text">
                     <span className="flex items-center gap-2 text-xs text-text-muted">
                       <span className="font-mono">{formatShortDate(a.publishedAt)}</span>
-                      <Badge>{a.category}</Badge>
-                      {a.pinned && <Badge tone="accent">Pinned</Badge>}
+                      <Badge>{t(a.category)}</Badge>
+                      {a.pinned && <Badge tone="accent">{t('Pinned')}</Badge>}
                     </span>
                     <span className="mt-0.5 block font-medium">{a.title}</span>
                   </Link>

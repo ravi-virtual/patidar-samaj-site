@@ -1,4 +1,5 @@
 import { Badge, type BadgeTone } from '../ui/Badge';
+import { t } from '../../i18n';
 
 const tones: Record<string, BadgeTone> = {
   // publishing
@@ -26,5 +27,5 @@ const labels: Record<string, string> = { in_progress: 'In progress', suspended: 
 /** The status is always spelled out, so colour is never the only signal. */
 export function StatusBadge({ status }: { status: string }) {
   const text = labels[status] ?? status.charAt(0).toUpperCase() + status.slice(1);
-  return <Badge tone={tones[status] ?? 'neutral'}>{text}</Badge>;
+  return <Badge tone={tones[status] ?? 'neutral'}>{t(text)}</Badge>;
 }

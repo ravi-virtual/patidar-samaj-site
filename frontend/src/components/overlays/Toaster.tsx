@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { CircleAlert, CircleCheck, Info, X } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { dismissToast, type Toast } from '../../store/slices/toastSlice';
+import { t } from '../../i18n';
 
 const icon = { success: CircleCheck, error: CircleAlert, info: Info } as const;
 const tone = {
@@ -26,7 +27,7 @@ function ToastItem({ toast }: { toast: Toast }) {
       <p className="flex-1 text-sm text-text">{toast.message}</p>
       <button
         type="button"
-        aria-label="Dismiss message"
+        aria-label={t('Dismiss message')}
         onClick={() => dispatch(dismissToast(toast.id))}
         className="rounded p-0.5 text-text-muted hover:text-text"
       >

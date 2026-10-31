@@ -5,7 +5,6 @@ import { PublicLayout } from '../components/layout/PublicLayout';
 import { TabGate } from '../components/layout/TabGate';
 import HomePage from '../pages/HomePage';
 import AboutPage from '../pages/AboutPage';
-import HistoryPage from '../pages/HistoryPage';
 import CommitteePage from '../pages/CommitteePage';
 import FaqPage from '../pages/FaqPage';
 import LinksPage from '../pages/LinksPage';
@@ -45,7 +44,6 @@ export const routes: RouteObject[] = [
       { index: true, element: <HomePage /> },
       // Each public tab sits behind a TabGate: Not found while an administrator has it switched off.
       { path: 'about', element: <TabGate tab="about" />, children: [{ index: true, element: <AboutPage /> }] },
-      { path: 'history', element: <TabGate tab="history" />, children: [{ index: true, element: <HistoryPage /> }] },
       { path: 'committee', element: <TabGate tab="committee" />, children: [{ index: true, element: <CommitteePage /> }] },
       { path: 'faq', element: <TabGate tab="faq" />, children: [{ index: true, element: <FaqPage /> }] },
       { path: 'links', element: <TabGate tab="links" />, children: [{ index: true, element: <LinksPage /> }] },

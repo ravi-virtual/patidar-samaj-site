@@ -20,6 +20,7 @@ declare global {
     }
 
     interface Request {
+      lang: 'en' | 'gu';
       user?: AuthUser;
       authSession?: AuthSession;
     }

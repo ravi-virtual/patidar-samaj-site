@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { t } from '../../i18n';
 import { Button } from './Button';
 
 interface PaginationProps {
@@ -13,17 +14,17 @@ export function Pagination({ page, pageSize, totalCount, onChange }: PaginationP
   const pages = Math.max(1, Math.ceil(totalCount / pageSize));
   if (pages <= 1) return null;
   return (
-    <nav aria-label="Pagination" className="mt-4 flex items-center justify-between gap-3">
+    <nav aria-label={t('Pagination')} className="mt-4 flex items-center justify-between gap-3">
       <p className="text-sm text-text-muted" aria-live="polite">
-        Page {page} of {pages}
+        {t('Page {page} of {pages}', { page, pages })}
       </p>
       <div className="flex gap-2">
         <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => onChange(page - 1)}>
           <ChevronLeft aria-hidden="true" className="h-4 w-4" />
-          Previous
+          {t('Previous')}
         </Button>
         <Button variant="secondary" size="sm" disabled={page >= pages} onClick={() => onChange(page + 1)}>
-          Next
+          {t('Next')}
           <ChevronRight aria-hidden="true" className="h-4 w-4" />
         </Button>
       </div>

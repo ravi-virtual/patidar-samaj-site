@@ -153,17 +153,25 @@ export const logout = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
+const notYourAccount = (res: Response) =>
+  sendError(res, {
+    statusCode: ResponseCodes.FORBIDDEN,
+    message: 'You can only access your own account',
+    code: ErrorCodes.FORBIDDEN,
+  });
+
 /**
- * @name getMe
+ * @name getUserById
  * @file AuthController.ts
  * @param {Request} req
  * @param {Response} res
- * @description Returns the signed-in user, their effective permissions and the CSRF token for
- * this session. The front end calls it on load to restore the signed-in state.
+ * @description Returns the signed-in user (the id must be their own), their effective permissions
+ * and the CSRF token for this session. The front end calls it on load to restore the signed-in state.
  * @author Ravi Patel
  */
-export const getMe = async (req: Request, res: Response, next: NextFunction) => {
+export const getUserById = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    if (req.params.id !== req.user?.id) return notYourAccount(res);
     const user = await User.findOne({ _id: req.user?.id, isDeleted: false }).lean();
     if (!user || !req.authSession) {
       return sendError(res, {
@@ -182,16 +190,17 @@ export const getMe = async (req: Request, res: Response, next: NextFunction) => 
 };
 
 /**
- * @name updateTheme
+ * @name updateUserThemeById
  * @file AuthController.ts
  * @param {Request} req
  * @param {Response} res
- * @description Saves the user's theme preference (system, light or dark) on their account so it
- * is restored on every device and login.
+ * @description Saves the user's theme preference (system, light or dark) on their account (the id
+ * must be their own) so it is restored on every device and login.
  * @author Ravi Patel
  */
-export const updateTheme = async (req: Request, res: Response, next: NextFunction) => {
+export const updateUserThemeById = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    if (req.params.id !== req.user?.id) return notYourAccount(res);
     const { themePreference } = matchedData<{ themePreference: 'system' | 'light' | 'dark' }>(req, {
       locations: ['body'],
     });

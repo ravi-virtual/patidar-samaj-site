@@ -41,6 +41,10 @@ const fields = (creating: boolean) => [
   plain('title', 3, 150, creating),
   plain('summary', 0, 300, false),
   plain('body', 1, 8000, creating),
+  // Gujarati twins: optional, same limits as the English text. Empty means "show the English text".
+  plain('titleGu', 0, 150, false),
+  plain('summaryGu', 0, 300, false),
+  plain('bodyGu', 0, 8000, false),
   body('category').optional().isIn([...AnnouncementCategories]).withMessage('Unknown category'),
   body('publishAt').optional({ values: 'null' }).isISO8601({ strict: true }).withMessage('publishAt must be a valid date and time').toDate(),
   body('featured').optional().isBoolean().toBoolean(),

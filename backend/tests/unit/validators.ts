@@ -149,8 +149,9 @@ describe('auth validators', () => {
 
   describe('themeRules', () => {
     it('accepts system, light and dark only', async () => {
-      for (const t of ['system', 'light', 'dark']) expect((await probe(themeRules).patch('/t').send({ themePreference: t })).status).toBe(200);
-      for (const t of ['neon', '', null, 1]) expect((await probe(themeRules).patch('/t').send({ themePreference: t })).status).toBe(400);
+      for (const t of ['system', 'light', 'dark']) expect((await probe(themeRules, '/t/:id').patch(`/t/${ID}`).send({ themePreference: t })).status).toBe(200);
+      for (const t of ['neon', '', null, 1]) expect((await probe(themeRules, '/t/:id').patch(`/t/${ID}`).send({ themePreference: t })).status).toBe(400);
+      expect((await probe(themeRules, '/t/:id').patch('/t/me').send({ themePreference: 'dark' })).status).toBe(400);
     });
   });
 });

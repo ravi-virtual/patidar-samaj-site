@@ -22,16 +22,17 @@ import { dismissToast, showToast } from '../../src/store/slices/toastSlice';
 import { fetchSiteSettings, settingsReplaced } from '../../src/store/slices/siteSlice';
 import { adminLogin, bootstrapAuth, clearLoginError, logout, sessionLost } from '../../src/store/slices/authSlice';
 import { getCsrfToken, setCsrfToken } from '../../src/api/csrf';
+import { setStoredUserId } from '../../src/api/currentUser';
 import * as authApi from '../../src/api/authApi';
 import * as siteApi from '../../src/api/siteApi';
 import type { PublicSettings } from '../../src/api/types';
 import { adminUser, apiError } from '../helpers';
 
 vi.mock('../../src/api/authApi', () => ({
-  meApi: vi.fn(),
+  getUserByIdApi: vi.fn(),
   adminLoginApi: vi.fn(),
   logoutApi: vi.fn(),
-  updateThemeApi: vi.fn(),
+  updateUserThemeByIdApi: vi.fn(),
 }));
 vi.mock('../../src/api/siteApi', () => ({ getSettingsApi: vi.fn() }));
 
@@ -175,16 +176,25 @@ describe('siteSlice', () => {
 });
 
 describe('authSlice', () => {
-  it('bootstraps to signed-out (not an error) when /me answers 401', async () => {
-    auth.meApi.mockRejectedValue(apiError(401, 'Not authenticated', 'UNAUTHORIZED'));
+  it('bootstraps to signed-out (not an error) when the session lookup answers 401', async () => {
+    setStoredUserId('u1');
+    auth.getUserByIdApi.mockRejectedValue(apiError(401, 'Not authenticated', 'UNAUTHORIZED'));
     const store = createStore();
     expect(store.getState().auth.bootstrapped).toBe(false);
     await store.dispatch(bootstrapAuth());
     expect(store.getState().auth).toMatchObject({ user: null, bootstrapped: true });
   });
 
+  it('stays signed out without calling the API when no user id is remembered', async () => {
+    const store = createStore();
+    await store.dispatch(bootstrapAuth());
+    expect(auth.getUserByIdApi).not.toHaveBeenCalled();
+    expect(store.getState().auth).toMatchObject({ user: null, bootstrapped: true });
+  });
+
   it('restores the user and CSRF token on bootstrap', async () => {
-    auth.meApi.mockResolvedValue({ user: adminUser, csrfToken: 'abc' });
+    setStoredUserId('u1');
+    auth.getUserByIdApi.mockResolvedValue({ user: adminUser, csrfToken: 'abc' });
     const store = createStore();
     await store.dispatch(bootstrapAuth());
     expect(store.getState().auth.user?.id).toBe('u1');

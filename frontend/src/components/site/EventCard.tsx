@@ -3,6 +3,7 @@ import type { EventItem } from '../../api/types';
 import { formatShortDate, formatTime } from '../../lib/format';
 import { Badge } from '../ui/Badge';
 import { Cover } from '../ui/Media';
+import { t } from '../../i18n';
 
 /** Card used in event lists. The whole card is one link, so the event title is its accessible name. */
 export function EventCard({ event }: { event: EventItem }) {
@@ -17,13 +18,13 @@ export function EventCard({ event }: { event: EventItem }) {
           <span className="font-mono">
             {formatShortDate(event.startsAt)} · {formatTime(event.startsAt)}
           </span>
-          <span>{event.category}</span>
+          <span>{t(event.category)}</span>
         </div>
         <h3 className="text-[17px] font-semibold leading-snug">{event.title}</h3>
         <p className="text-[13px] text-text-muted">{event.venue}</p>
         {event.status === 'cancelled' && (
           <div className="mt-auto pt-2.5">
-            <Badge tone="danger">Cancelled</Badge>
+            <Badge tone="danger">{t('Cancelled')}</Badge>
           </div>
         )}
       </div>

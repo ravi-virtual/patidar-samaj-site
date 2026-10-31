@@ -1,4 +1,5 @@
 import { TriangleAlert } from 'lucide-react';
+import { t } from '../../i18n';
 import { Button } from './Button';
 
 interface ErrorStateProps {
@@ -8,7 +9,7 @@ interface ErrorStateProps {
 }
 
 /** Actionable error: says what failed and offers a retry. role="alert" announces it. */
-export function ErrorState({ title = 'Something went wrong', message, onRetry }: ErrorStateProps) {
+export function ErrorState({ title = t('Something went wrong'), message, onRetry }: ErrorStateProps) {
   return (
     <div
       role="alert"
@@ -20,7 +21,7 @@ export function ErrorState({ title = 'Something went wrong', message, onRetry }:
         <p className="mt-0.5 text-sm text-text-secondary">{message}</p>
         {onRetry && (
           <Button variant="secondary" size="sm" className="mt-3" onClick={onRetry}>
-            Try again
+            {t('Try again')}
           </Button>
         )}
       </div>

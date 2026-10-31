@@ -1,7 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { matchedData } from 'express-validator';
-import { mkdir, unlink, writeFile } from 'node:fs/promises';
-import { basename, join } from 'node:path';
+import { basename } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import MediaAsset, { type IMediaAsset } from '../models/MediaAsset';
 import { ErrorCodes, ResponseCodes, config } from '../config/constants';
@@ -11,6 +10,7 @@ import { escapeRegex } from '../utils/escapeRegex';
 import { pageParams } from '../utils/pagination';
 import { findMediaReferences } from '../utils/mediaReferences';
 import { writeAudit } from '../utils/audit';
+import { removeFile, storeFile } from '../utils/fileStorage';
 
 const bad = (res: Response, message: string, field = 'file') =>
   sendError(res, {
@@ -54,7 +54,7 @@ const toView = (a: IMediaAsset) => ({
  * @author Ravi Patel
  */
 export const uploadMedia = async (req: Request, res: Response, next: NextFunction) => {
-  let writtenPath: string | null = null;
+  let stored: { name: string; kind: 'image' | 'document' } | null = null;
   try {
     const file = req.file;
     if (!file || file.size === 0) return bad(res, 'Choose a file to upload');
@@ -77,9 +77,8 @@ export const uploadMedia = async (req: Request, res: Response, next: NextFunctio
       locations: ['body'],
     });
     const storedName = `${randomUUID()}.${detected.ext}`;
-    await mkdir(config.uploads.dir, { recursive: true });
-    writtenPath = join(config.uploads.dir, storedName);
-    await writeFile(writtenPath, file.buffer, { flag: 'wx', mode: 0o640 });
+    await storeFile(file.buffer, storedName, detected.kind);
+    stored = { name: storedName, kind: detected.kind };
 
     const asset = await MediaAsset.create({
       storedName,
@@ -91,7 +90,7 @@ export const uploadMedia = async (req: Request, res: Response, next: NextFunctio
       visibility: visibility ?? 'public',
       uploadedBy: req.user!.id,
     });
-    writtenPath = null; // kept
+    stored = null; // kept
 
     await writeAudit(req, {
       action: 'media.uploaded',
@@ -101,7 +100,7 @@ export const uploadMedia = async (req: Request, res: Response, next: NextFunctio
     });
     return new ApiResponse(ResponseCodes.CREATED, 'File uploaded', { media: toView(asset.toObject()) }).send(res);
   } catch (err) {
-    if (writtenPath) await unlink(writtenPath).catch(() => undefined); // no orphan file if the record failed
+    if (stored) await removeFile(stored.name, stored.kind); // no orphan file if the record failed
     return next(err);
   }
 };
@@ -187,7 +186,7 @@ export const deleteMedia = async (req: Request, res: Response, next: NextFunctio
 
     asset.isDeleted = true;
     await asset.save();
-    await unlink(join(config.uploads.dir, asset.storedName)).catch(() => undefined);
+    await removeFile(asset.storedName, asset.kind);
     await writeAudit(req, { action: 'media.deleted', targetType: 'media', targetId: asset._id });
     return new ApiResponse(ResponseCodes.OK, 'File deleted').send(res);
   } catch (err) {

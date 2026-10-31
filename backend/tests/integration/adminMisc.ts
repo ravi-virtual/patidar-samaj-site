@@ -31,7 +31,7 @@ describe('suspension lifecycle', () => {
     const adminClient = await signIn(admin.email);
 
     expect((await sa.post(`/api/users/${admin._id}/suspend`).send({ reason: 'Policy' })).status).toBe(200);
-    expect((await adminClient.get('/api/auth/me')).status).toBe(401);
+    expect((await adminClient.get(`/api/auth/${adminClient.userId}`)).status).toBe(401);
     expect((await login(admin.email)).status).not.toBe(200);
 
     expect((await sa.post(`/api/users/${admin._id}/reactivate`)).status).toBe(200);

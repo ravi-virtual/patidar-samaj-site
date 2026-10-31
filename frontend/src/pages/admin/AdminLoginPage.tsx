@@ -9,6 +9,7 @@ import { PasswordField, TextField } from '../../components/ui/TextField';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { adminLogin, clearLoginError } from '../../store/slices/authSlice';
 import { loginSchema, type LoginForm } from '../../utils/validation';
+import { t } from '../../i18n';
 
 /** The only sign-in: the Super Admin and admins. Not linked from the public site. */
 export default function AdminLoginPage() {
@@ -39,18 +40,18 @@ export default function AdminLoginPage() {
   return (
     <main className="min-h-screen bg-bg px-4 py-8">
       <AuthCard
-        title="Admin sign in"
-        description="For the Samaj Super Admin and admins."
+        title={t('Admin sign in')}
+        description={t('For the Samaj Super Admin and admins.')}
         footer={
           <Link to="/" className="font-medium text-accent hover:underline">
-            Back to the site
+            {t('Back to the site')}
           </Link>
         }
       >
         <form noValidate onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {loginError && <Alert tone={accountNotice ? 'warning' : 'danger'}>{loginError}</Alert>}
           <TextField
-            label="Email"
+            label={t('Email')}
             type="email"
             autoComplete="email"
             inputMode="email"
@@ -59,7 +60,7 @@ export default function AdminLoginPage() {
             {...register('email')}
           />
           <PasswordField
-            label="Password"
+            label={t('Password')}
             autoComplete="current-password"
             required
             error={errors.password?.message}
@@ -67,11 +68,11 @@ export default function AdminLoginPage() {
           />
           <div className="flex justify-end">
             <Link to="/forgot-password" className="text-[13px] font-medium text-accent hover:underline">
-              Forgot password?
+              {t('Forgot password?')}
             </Link>
           </div>
           <Button type="submit" className="w-full" loading={loginStatus === 'loading'}>
-            {loginStatus === 'loading' ? 'Signing in…' : 'Sign in'}
+            {loginStatus === 'loading' ? t('Signing in…') : t('Sign in')}
           </Button>
         </form>
       </AuthCard>

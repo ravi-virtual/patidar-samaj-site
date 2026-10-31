@@ -87,8 +87,8 @@ describe('concurrent reuse of a password-reset link', () => {
 
     await Promise.all(Array.from({ length: PARALLEL }, (_, i) => reset(token, `Another-Choice-${i + 10}`)));
 
-    expect((await phone.get('/api/auth/me')).status).toBe(401);
-    expect((await laptop.get('/api/auth/me')).status).toBe(401);
+    expect((await phone.get(`/api/auth/${phone.userId}`)).status).toBe(401);
+    expect((await laptop.get(`/api/auth/${laptop.userId}`)).status).toBe(401);
     expect(await Session.countDocuments({ userId: user._id })).toBe(0);
     const old = await anon().post('/api/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: PASSWORD });
     expect(old.status).toBe(401);

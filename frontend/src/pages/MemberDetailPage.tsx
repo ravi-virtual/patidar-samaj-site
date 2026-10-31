@@ -8,6 +8,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { place } from '../lib/format';
 import { useFetch } from '../lib/useFetch';
 import { usePageTitle } from '../lib/usePageTitle';
+import { t } from '../i18n';
 
 export default function MemberDetailPage() {
   const { id = '' } = useParams();
@@ -18,9 +19,9 @@ export default function MemberDetailPage() {
   if (notFound) {
     return (
       <EmptyState
-        title="Member not found"
-        description="This entry does not exist or is not visible to you."
-        action={<Link to="/members">Back to directory</Link>}
+        title={t('Member not found')}
+        description={t('This entry does not exist or is not visible to you.')}
+        action={<Link to="/members">{t('Back to directory')}</Link>}
       />
     );
   }
@@ -36,12 +37,12 @@ export default function MemberDetailPage() {
             {m.bio && <p className="mt-3.5 text-text-secondary">{m.bio}</p>}
           </Card>
           <Card padded={false}>
-            <h2 className="border-b border-border px-5 py-3.5 font-semibold">Details</h2>
+            <h2 className="border-b border-border px-5 py-3.5 font-semibold">{t('Details')}</h2>
             <dl className="m-0 grid grid-cols-[minmax(110px,170px)_1fr]">
               {[
-                ['Village', m.village],
-                ['Location', place(m.city, m.country)],
-                ['Member since', m.joinedYear ? String(m.joinedYear) : null],
+                [t('Village'), m.village],
+                [t('Location'), place(m.city, m.country)],
+                [t('Member since'), m.joinedYear ? String(m.joinedYear) : null],
               ].map(([label, value]) => (
                 <div key={label} className="contents">
                   <dt className="border-b border-surface-muted px-5 py-3 text-text-muted last:border-b-0">{label}</dt>
@@ -50,11 +51,12 @@ export default function MemberDetailPage() {
               ))}
             </dl>
             <p className="border-t border-border px-5 py-3 text-xs text-text-muted">
-              Phone, email and family details are private. To reach this family, <Link to="/contact">ask the Samaj office</Link>.
+              {t('Phone, email and family details are private. To reach this family,')}{' '}
+              <Link to="/contact">{t('ask the Samaj office')}</Link>.
             </p>
           </Card>
           <p className="md:col-span-2">
-            <Link to="/members">← Back to directory</Link>
+            <Link to="/members">{t('← Back to directory')}</Link>
           </p>
         </div>
       )}

@@ -23,6 +23,10 @@ type AnnouncementInput = {
   title?: string;
   summary?: string | null;
   body?: string;
+  /** Gujarati twins of the text above (empty or missing means "show the English text"). */
+  titleGu?: string | null;
+  summaryGu?: string | null;
+  bodyGu?: string | null;
   category?: string;
   publishAt?: Date | null;
   featured?: boolean;
@@ -46,7 +50,7 @@ export const listAdminAnnouncements = async (req: Request, res: Response, next: 
     if (q.category) filter.category = q.category;
     if (q.search) {
       const rx = new RegExp(escapeRegex(q.search), 'i');
-      filter.$or = [{ title: rx }, { summary: rx }];
+      filter.$or = [{ title: rx }, { summary: rx }, { titleGu: rx }, { summaryGu: rx }];
     }
     const { limit, skip } = pageParams(q, 20);
     const [items, totalCount] = await Promise.all([

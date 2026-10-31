@@ -7,6 +7,10 @@ export interface IAnnouncement {
   title: string;
   summary?: string;
   body: string;
+  /** Gujarati twins of title, summary and body. Optional: empty means show the English text. */
+  titleGu?: string;
+  summaryGu?: string;
+  bodyGu?: string;
   category: string;
   status: PublishStatusValue;
   pinned: boolean;
@@ -29,6 +33,9 @@ const announcementSchema = new Schema<IAnnouncement>(
     title: { type: String, required: true, trim: true, minlength: 3, maxlength: 150 },
     summary: { type: String, trim: true, maxlength: 300 },
     body: { type: String, required: true, trim: true, maxlength: 8000 },
+    titleGu: { type: String, trim: true, maxlength: 150 },
+    summaryGu: { type: String, trim: true, maxlength: 300 },
+    bodyGu: { type: String, trim: true, maxlength: 8000 },
     category: { type: String, enum: [...AnnouncementCategories], default: 'Notice' },
     status: { type: String, enum: Object.values(PublishStatus), default: PublishStatus.DRAFT },
     pinned: { type: Boolean, default: false },

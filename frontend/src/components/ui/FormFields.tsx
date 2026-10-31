@@ -1,4 +1,5 @@
 import { useId, type ReactNode, type Ref, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
+import { t } from '../../i18n';
 
 const control =
   'w-full rounded-md border bg-surface px-3 text-sm text-text placeholder:text-text-subtle focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-[var(--focus-ring)] disabled:opacity-60';
@@ -27,12 +28,12 @@ function Frame({
       {children}
       {hint && !error && (
         <p id={`${id}-hint`} className="text-xs text-text-muted">
-          {hint}
+          {t(hint)}
         </p>
       )}
       {error && (
         <p id={`${id}-error`} role="alert" className="text-xs font-medium text-danger">
-          {error}
+          {t(error)}
         </p>
       )}
     </div>

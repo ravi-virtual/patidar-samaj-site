@@ -6,6 +6,7 @@ import router from './routes';
 import errorHandler from './middlewares/errorHandler';
 import { rateLimiter } from './middlewares/rateLimiter';
 import { originGuard } from './middlewares/originGuard';
+import { language } from './middlewares/language';
 import { sendError } from './utils/apiResponse';
 import { config, ResponseCodes, ErrorCodes } from './config/constants';
 
@@ -21,11 +22,12 @@ const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => callback(null, !origin || origin === config.clientOrigin),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'X-CSRF-Token'],
+  allowedHeaders: ['Content-Type', 'X-CSRF-Token', 'Accept-Language'],
 };
 
 // Middleware stack — order follows the mern-stack-project skill.
 app.use(cors(corsOptions));
+app.use(language);
 app.use(helmet());
 app.use(rateLimiter);
 app.use(express.json({ limit: '10kb' }));

@@ -8,6 +8,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { formatLongDate } from '../lib/format';
 import { useFetch } from '../lib/useFetch';
 import { usePageTitle } from '../lib/usePageTitle';
+import { t } from '../i18n';
 
 export default function NewsDetailPage() {
   const { id = '' } = useParams();
@@ -17,9 +18,9 @@ export default function NewsDetailPage() {
   if (error?.toLowerCase().includes('not found')) {
     return (
       <EmptyState
-        title="Announcement not found"
-        description="It may have been removed or is not published yet."
-        action={<Link to="/news">Back to news</Link>}
+        title={t('Announcement not found')}
+        description={t('It may have been removed or is not published yet.')}
+        action={<Link to="/news">{t('Back to news')}</Link>}
       />
     );
   }
@@ -33,15 +34,15 @@ export default function NewsDetailPage() {
               <time dateTime={a.publishedAt} className="font-mono">
                 {formatLongDate(a.publishedAt)}
               </time>
-              <Badge>{a.category}</Badge>
-              {a.pinned && <Badge tone="accent">Pinned</Badge>}
-              {a.archived && <Badge tone="warning">Archived</Badge>}
+              <Badge>{t(a.category)}</Badge>
+              {a.pinned && <Badge tone="accent">{t('Pinned')}</Badge>}
+              {a.archived && <Badge tone="warning">{t('Archived')}</Badge>}
             </div>
             <h1 className="text-[28px] font-semibold leading-tight tracking-tight">{a.title}</h1>
             <div className="whitespace-pre-line text-[16px] leading-relaxed text-text-secondary">{a.body ?? a.summary}</div>
           </Card>
           <p className="mt-4">
-            <Link to="/news">← All announcements</Link>
+            <Link to="/news">{t('← All announcements')}</Link>
           </p>
         </article>
       )}

@@ -46,6 +46,11 @@ const eventFields = (creating: boolean) => [
   plainText('title', 3, 150, creating),
   plainText('description', 0, 4000, false),
   plainText('venue', 2, 200, creating),
+  // Gujarati twins: optional, same limits as the English text. Empty means "show the English text".
+  plainText('titleGu', 0, 150, false),
+  plainText('descriptionGu', 0, 4000, false),
+  plainText('venueGu', 0, 200, false),
+  plainText('cancellationReasonGu', 0, 500, false),
   body('category').optional().isIn([...EventCategories]).withMessage('Unknown category'),
   dateField('startsAt', creating),
   dateField('endsAt', false),
@@ -67,5 +72,6 @@ export const updateEventRules = [idParam, ...eventFields(false), validateRequest
 export const cancelEventRules = [
   idParam,
   body('reason').optional().isString().trim().isLength({ max: 500 }),
+  body('reasonGu').optional().isString().trim().isLength({ max: 500 }),
   validateRequest,
 ];

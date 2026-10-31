@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { t } from '../../i18n';
 import { ErrorState } from './ErrorState';
 import { Skeleton, SkeletonText } from './Skeleton';
 
@@ -25,7 +26,7 @@ export function Async<T>({ data, loading, error, onRetry, skeleton, children }: 
 export function CardSkeletons({ count = 6, className = 'h-56' }: { count?: number; className?: string }) {
   return (
     <div role="status" aria-busy="true" className="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]">
-      <span className="sr-only">Loading…</span>
+      <span className="sr-only">{t('Loading…')}</span>
       {Array.from({ length: count }, (_, i) => (
         <Skeleton key={i} className={className} />
       ))}

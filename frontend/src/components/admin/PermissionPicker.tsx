@@ -1,5 +1,6 @@
 import { Checkbox } from '../ui/Checkbox';
 import { groupPermissions, permissionInfo, permissionLabel } from './permissionCatalog';
+import { t } from '../../i18n';
 
 const groups = groupPermissions();
 
@@ -26,38 +27,38 @@ export function PermissionPicker({
 
   return (
     <fieldset className="space-y-3">
-      <legend className="text-[13px] font-medium">Permissions</legend>
+      <legend className="text-[13px] font-medium">{t('Permissions')}</legend>
       <p className="text-xs text-text-muted">
-        An admin can do only what is ticked here. Creating, editing and deleting admin accounts is always reserved for the Super Admin.
+        {t('An admin can do only what is ticked here. Creating, editing and deleting admin accounts is always reserved for the Super Admin.')}
       </p>
       <div className={layout === 'page' ? 'grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3' : 'max-h-[48vh] space-y-3 overflow-y-auto pr-1'}>
         {groups.map((g) => {
           const on = g.permissions.filter((p) => selected.has(p)).length;
           return (
-            <section key={g.id} aria-label={g.label} className="rounded-lg border border-border">
+            <section key={g.id} aria-label={t(g.label)} className="rounded-lg border border-border">
               <div className="flex items-center justify-between gap-2 rounded-t-lg bg-surface-muted px-3 py-1.5">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                  {g.label}
+                  {t(g.label)}
                   <span className="ml-2 font-normal normal-case tracking-normal tabular-nums text-text-muted">
-                    {on} of {g.permissions.length}
+                    {t('{on} of {total}', { on, total: g.permissions.length })}
                   </span>
                 </h3>
                 <span className="flex items-center gap-2 text-xs">
                   <button
                     type="button"
                     onClick={() => setGroup(g.permissions, true)}
-                    aria-label={`Select all ${g.label}`}
+                    aria-label={t('Select all {group}', { group: t(g.label) })}
                     className="font-medium text-accent hover:underline"
                   >
-                    Select all
+                    {t('Select all')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setGroup(g.permissions, false)}
-                    aria-label={`Clear ${g.label}`}
+                    aria-label={t('Clear {group}', { group: t(g.label) })}
                     className="font-medium text-text-secondary hover:underline"
                   >
-                    Clear
+                    {t('Clear')}
                   </button>
                 </span>
               </div>
@@ -66,7 +67,7 @@ export function PermissionPicker({
                   <li key={p} className="px-3 py-2.5">
                     <Checkbox
                       label={permissionLabel(p)}
-                      description={permissionInfo[p]?.description}
+                      description={permissionInfo[p] ? t(permissionInfo[p].description) : undefined}
                       checked={selected.has(p)}
                       onChange={(e) => toggle(p, e.target.checked)}
                     />

@@ -76,6 +76,17 @@ export const config = {
     maxImageBytes: 5 * 1024 * 1024,
     maxDocumentBytes: 10 * 1024 * 1024,
   },
+  // Optional object storage. When all three are set, uploads go to Cloudinary instead of the
+  // local folder above (required on hosts with a read-only or ephemeral filesystem, e.g. Vercel).
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME ?? '',
+    apiKey: process.env.CLOUDINARY_API_KEY ?? '',
+    apiSecret: process.env.CLOUDINARY_API_SECRET ?? '',
+    folder: process.env.CLOUDINARY_FOLDER ?? 'patidar-samaj',
+    enabled: Boolean(
+      process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET,
+    ),
+  },
   audit: {
     retentionDays: toInt(process.env.AUDIT_RETENTION_DAYS, 365),
   },

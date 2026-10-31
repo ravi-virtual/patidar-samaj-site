@@ -1,6 +1,7 @@
 import { useId, type FormEventHandler, type ReactNode } from 'react';
 import { Modal } from '../overlays/Modal';
 import { Button } from '../ui/Button';
+import { t } from '../../i18n';
 
 interface FormDrawerProps {
   open: boolean;
@@ -29,7 +30,7 @@ export function FormDrawer({ open, title, onClose, onSubmit, submitLabel, submit
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={submitting}>
-            Cancel
+            {t('Cancel')}
           </Button>
           <Button type="submit" form={formId} loading={submitting} disabled={pristine}>
             {submitLabel}

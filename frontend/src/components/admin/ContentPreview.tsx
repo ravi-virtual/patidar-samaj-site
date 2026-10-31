@@ -3,6 +3,7 @@ import { ArrowLeft, Eye } from 'lucide-react';
 import type { AdminBlock } from '../../api/adminApi';
 import { mediaUrl } from '../../api/siteApi';
 import type { CommitteeMember, ContentBlock, ContentItem, Faq, ImportantLink, Milestone } from '../../api/types';
+import { t } from '../../i18n';
 import { useAppSelector } from '../../store/hooks';
 import { Modal } from '../overlays/Modal';
 import {
@@ -26,7 +27,7 @@ export function PreviewButton({ onClick }: { onClick: () => void }) {
   return (
     <Button variant="secondary" size="sm" onClick={onClick}>
       <Eye aria-hidden="true" className="h-3.5 w-3.5" />
-      Preview
+      {t('Preview')}
     </Button>
   );
 }
@@ -55,18 +56,18 @@ function PreviewPanel({
     <Modal
       open={open}
       onClose={onClose}
-      title="Preview — not saved yet"
+      title={t('Preview — not saved yet')}
       variant="drawer"
       footer={
         <Button variant="secondary" onClick={onClose}>
           <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-          Back to editing
+          {t('Back to editing')}
         </Button>
       }
     >
       <div className="flex flex-wrap items-center gap-2 border-b border-border bg-surface-muted px-5 py-2.5 text-[13px] text-text-muted">
         <StatusBadge status={status} />
-        <span>{note ?? 'Shown as it will look on the public site. Nothing has been saved or published.'}</span>
+        <span>{note ?? t('Shown as it will look on the public site. Nothing has been saved or published.')}</span>
       </div>
       <div className="p-5" onClickCapture={stopLinks}>
         {children}
@@ -130,7 +131,7 @@ function BlockPreviewBody({
     );
   }
   if (def.key === 'home.stats') {
-    return <div className="flex flex-col gap-4">{block.items.length ? <StatsCard items={block.items} /> : <p className="text-sm text-text-muted">Nothing to show yet. Add a figure.</p>}</div>;
+    return <div className="flex flex-col gap-4">{block.items.length ? <StatsCard items={block.items} /> : <p className="text-sm text-text-muted">{t('Nothing to show yet. Add a figure.')}</p>}</div>;
   }
   if (def.key === 'history.intro') {
     return <HistoryIntro intro={block} />;
@@ -143,7 +144,7 @@ function BlockPreviewBody({
 }
 
 const blockPreviewNote = (def: BlockDef): string | undefined =>
-  def.key.startsWith('about.') ? 'The other sections show their latest saved text, drafts included.' : undefined;
+  def.key.startsWith('about.') ? t('The other sections show their latest saved text, drafts included.') : undefined;
 
 // ─── Lists (FAQs, links, milestones, committee) ──────────────────────────────
 
@@ -172,7 +173,7 @@ function ResourcePreviewBody({ def, values, termLabel }: { def: ResourceDef; val
       return (
         <section aria-labelledby="preview-cat">
           <h2 id="preview-cat" className="mb-2.5 text-[13px] font-semibold uppercase tracking-wider text-text-subtle">
-            {link.category}
+            {t(link.category)}
           </h2>
           <LinkCard link={link} />
         </section>
@@ -204,7 +205,7 @@ function ResourcePreviewBody({ def, values, termLabel }: { def: ResourceDef; val
       };
       return (
         <div className="space-y-4">
-          <PageHeader eyebrow="Committee" title={termLabel ? `Committee ${termLabel}` : 'Committee'} />
+          <PageHeader eyebrow={t('Committee')} title={termLabel ? t('Committee {term}', { term: termLabel }) : t('Committee')} />
           <MemberCard m={m} />
         </div>
       );
@@ -212,9 +213,9 @@ function ResourcePreviewBody({ def, values, termLabel }: { def: ResourceDef; val
     case 'committee-terms':
       return (
         <PageHeader
-          eyebrow="Committee"
-          title={`Committee ${str(values, 'label')}`.trim()}
-          description={`${str(values, 'startYear')}–${str(values, 'endYear')}${values.isCurrent ? ' · current term' : ''}`}
+          eyebrow={t('Committee')}
+          title={t('Committee {term}', { term: str(values, 'label') }).trim()}
+          description={`${str(values, 'startYear')}–${str(values, 'endYear')}${values.isCurrent ? ` · ${t('current term')}` : ''}`}
         />
       );
     default:

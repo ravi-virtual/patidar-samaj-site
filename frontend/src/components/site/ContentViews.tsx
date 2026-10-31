@@ -7,6 +7,7 @@ import { Badge } from '../ui/Badge';
 import { Card } from '../ui/Card';
 import { useTabEnabled } from '../../hooks/useTabEnabled';
 import { EmptyState } from '../ui/EmptyState';
+import { t } from '../../i18n';
 
 /**
  * Presentational pieces of the public content pages. The public pages and the admin preview both
@@ -39,7 +40,7 @@ export function HeroCard({
               to="/members"
               className="inline-flex h-10 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-hover"
             >
-              Explore directory
+              {t('Explore directory')}
             </Link>
           )}
           {aboutOn && (
@@ -47,7 +48,7 @@ export function HeroCard({
               to="/about"
               className="inline-flex h-10 items-center rounded-lg border border-border px-4 text-sm font-medium text-text hover:bg-surface-muted"
             >
-              About the Samaj
+              {t('About the Samaj')}
             </Link>
           )}
         </div>
@@ -70,7 +71,7 @@ export function StatsCard({ items }: { items: ContentItem[] }) {
   if (!items.length) return null;
   return (
     <Card className="grid content-start gap-3 [grid-template-columns:repeat(auto-fit,minmax(120px,1fr))]">
-      <h2 className="sr-only">Community at a glance</h2>
+      <h2 className="sr-only">{t('Community at a glance')}</h2>
       {items.slice(0, 4).map((s, i) => (
         <div key={i} className="rounded-xl border border-surface-muted bg-bg p-3.5">
           <p className="text-[13px] text-text-muted">{s.label}</p>
@@ -95,7 +96,6 @@ function Statement({ label, block }: { label: string; block?: ContentBlock }) {
 
 export function AboutContent({ blocks }: { blocks: Record<string, ContentBlock> }) {
   const committeeOn = useTabEnabled('committee');
-  const historyOn = useTabEnabled('history');
   const faqOn = useTabEnabled('faq');
   const intro = blocks['about.intro'];
   const volunteers = blocks['about.volunteers'];
@@ -105,29 +105,32 @@ export function AboutContent({ blocks }: { blocks: Record<string, ContentBlock> 
   const hasAnything = Object.keys(blocks).some((k) => k.startsWith('about.'));
 
   if (!hasAnything) {
-    return <EmptyState title="About page coming soon" description="The Samaj office has not published this page yet." />;
+    return <EmptyState
+        title={t('About page coming soon')}
+        description={t('The Samaj office has not published this page yet.')}
+      />;
   }
 
   return (
     <div className="space-y-8">
       <div className="max-w-3xl">
-        <p className="font-mono text-xs uppercase tracking-wide text-accent">About</p>
+        <p className="font-mono text-xs uppercase tracking-wide text-accent">{t('About')}</p>
         <h1 className="mb-3.5 mt-1.5 text-4xl font-semibold leading-tight tracking-tight">
-          {intro?.title ?? 'About the Samaj'}
+          {intro?.title ?? t('About the Samaj')}
         </h1>
         {intro?.body && <p className="mb-3 text-[17px] text-text-secondary [text-wrap:pretty]">{intro.body}</p>}
         {volunteers?.body && <p className="text-text-muted">{volunteers.body}</p>}
       </div>
 
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
-        <Statement label="Mission" block={blocks['about.mission']} />
-        <Statement label="Vision" block={blocks['about.vision']} />
+        <Statement label={t('Mission')} block={blocks['about.mission']} />
+        <Statement label={t('Vision')} block={blocks['about.vision']} />
       </div>
 
       {values.length > 0 && (
         <section aria-labelledby="values-h">
           <h2 id="values-h" className="sr-only">
-            Our values
+            {t('Our values')}
           </h2>
           <ol className="m-0 grid list-none gap-4 p-0 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
             {values.map((v, i) => (
@@ -144,7 +147,7 @@ export function AboutContent({ blocks }: { blocks: Record<string, ContentBlock> 
       {achievements.length > 0 && (
         <section aria-labelledby="ach-h">
           <h2 id="ach-h" className="mb-3 text-lg font-semibold">
-            Achievements
+            {t('Achievements')}
           </h2>
           <ul className="m-0 grid list-none gap-3 p-0 [grid-template-columns:repeat(auto-fit,minmax(160px,1fr))]">
             {achievements.map((a, i) => (
@@ -162,7 +165,7 @@ export function AboutContent({ blocks }: { blocks: Record<string, ContentBlock> 
       {activities.length > 0 && (
         <section aria-labelledby="act-h">
           <h2 id="act-h" className="mb-3 text-lg font-semibold">
-            What we do
+            {t('What we do')}
           </h2>
           <ul className="m-0 grid list-none gap-3.5 p-0 [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
             {activities.map((a, i) => {
@@ -183,12 +186,11 @@ export function AboutContent({ blocks }: { blocks: Record<string, ContentBlock> 
         </section>
       )}
 
-      {(committeeOn || historyOn || faqOn) && (
+      {(committeeOn || faqOn) && (
         <p className="flex flex-wrap gap-x-4 text-sm text-text-muted">
-          <span>Read more:</span>
-          {committeeOn && <Link to="/committee">Current committee</Link>}
-          {historyOn && <Link to="/history">Our history</Link>}
-          {faqOn && <Link to="/faq">FAQ</Link>}
+          <span>{t('Read more:')}</span>
+          {committeeOn && <Link to="/committee">{t('Current committee')}</Link>}
+          {faqOn && <Link to="/faq">{t('FAQ')}</Link>}
         </p>
       )}
     </div>
@@ -200,13 +202,13 @@ export function AboutContent({ blocks }: { blocks: Record<string, ContentBlock> 
 export function HistoryIntro({ intro }: { intro?: ContentBlock }) {
   return (
     <div className="lg:sticky lg:top-20">
-      <p className="font-mono text-xs uppercase tracking-wide text-accent">History</p>
+      <p className="font-mono text-xs uppercase tracking-wide text-accent">{t('History')}</p>
       <h1 className="mb-3.5 mt-1.5 text-4xl font-semibold leading-tight tracking-tight">
-        {intro?.title ?? 'From legend to today'}
+        {intro?.title ?? t('From legend to today')}
       </h1>
       {intro?.body && <p className="text-text-secondary">{intro.body}</p>}
       <p className="mt-4 text-xs text-text-muted">
-        Each entry names where it is recorded. Where the records disagree, we say so.
+        {t('Each entry names where it is recorded. Where the records disagree, we say so.')}
       </p>
     </div>
   );
@@ -232,7 +234,7 @@ export function MilestoneEntry({ m }: { m: Milestone }) {
             className="h-36 w-full max-w-md rounded-lg border border-border object-cover"
           />
         )}
-        {m.sourceRef && <p className="mt-1.5 text-xs text-text-subtle">Source: {m.sourceRef}</p>}
+        {m.sourceRef && <p className="mt-1.5 text-xs text-text-subtle">{t('Source: {source}', { source: m.sourceRef })}</p>}
       </div>
     </li>
   );
@@ -289,7 +291,7 @@ export function LinkCard({ link }: { link: ImportantLink }) {
         <span className="block text-sm font-medium">{link.label}</span>
         {link.description && <span className="mt-0.5 block text-[13px] text-text-muted">{link.description}</span>}
         <span className="mt-1 block font-mono text-xs text-text-subtle">
-          {file ? 'PDF download' : 'External link'}
+          {file ? t('PDF download') : t('External link')}
         </span>
       </span>
     </>

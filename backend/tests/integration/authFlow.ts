@@ -9,6 +9,7 @@ import { hashToken } from '../../src/utils/tokens';
 import {
   ORIGIN,
   PASSWORD,
+  ANON_ID,
   anon,
   connectTestDb,
   disconnectTestDb,
@@ -169,13 +170,22 @@ describe('login', () => {
 
 describe('session lifecycle', () => {
   it('returns 401 without a cookie and the profile with one', async () => {
-    expect((await anon().get('/api/auth/me')).status).toBe(401);
+    expect((await anon().get(`/api/auth/${ANON_ID}`)).status).toBe(401);
     const user = await makeUser();
     const client = await signIn(user.email);
-    const me = await client.get('/api/auth/me');
+    const me = await client.get(`/api/auth/${client.userId}`);
     expect(me.status).toBe(200);
     expect(me.body.data.user.email).toBe(user.email);
     expect(me.body.data.csrfToken).toBe(client.csrf);
+  });
+
+  it('refuses another user\'s id and a malformed id', async () => {
+    const client = await signIn((await makeUser()).email);
+    const other = await makeUser();
+    expect((await client.get(`/api/auth/${other.id}`)).status).toBe(403);
+    expect((await client.patch(`/api/auth/${other.id}/theme`).send({ themePreference: 'dark' })).status).toBe(403);
+    expect((await User.findById(other._id).lean())?.themePreference).not.toBe('dark');
+    expect((await client.get('/api/auth/me')).status).toBe(400);
   });
 
   it('logout invalidates the session on the server, not just in the browser', async () => {
@@ -184,7 +194,7 @@ describe('session lifecycle', () => {
     expect((await client.post('/api/auth/logout')).status).toBe(200);
 
     // Replaying the old cookie must fail.
-    const replay = await request(app).get('/api/auth/me').set('Cookie', client.cookie);
+    const replay = await request(app).get(`/api/auth/${client.userId}`).set('Cookie', client.cookie);
     expect(replay.status).toBe(401);
     expect(await Session.countDocuments({ userId: user._id })).toBe(0);
   });
@@ -193,7 +203,7 @@ describe('session lifecycle', () => {
     const user = await makeUser();
     const client = await signIn(user.email);
     await Session.updateMany({ userId: user._id }, { $set: { expiresAt: new Date(Date.now() - 1000) } });
-    const res = await client.get('/api/auth/me');
+    const res = await client.get(`/api/auth/${client.userId}`);
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('SESSION_EXPIRED');
   });
@@ -203,7 +213,7 @@ describe('session lifecycle', () => {
     const client = await signIn(user.email);
     const stale = new Date(Date.now() - (config.session.idleMinutes + 5) * 60_000);
     await Session.updateMany({ userId: user._id }, { $set: { lastSeenAt: stale } });
-    const res = await client.get('/api/auth/me');
+    const res = await client.get(`/api/auth/${client.userId}`);
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('SESSION_EXPIRED');
   });
@@ -212,7 +222,7 @@ describe('session lifecycle', () => {
     const user = await makeUser();
     const client = await signIn(user.email);
     await User.updateOne({ _id: user._id }, { $set: { status: AccountStatus.SUSPENDED } });
-    const res = await client.get('/api/auth/me');
+    const res = await client.get(`/api/auth/${client.userId}`);
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('ACCOUNT_NOT_ACTIVE');
     expect(await Session.countDocuments({ userId: user._id })).toBe(0);
@@ -228,7 +238,7 @@ describe('session lifecycle', () => {
 
     const other = list.body.data.sessions.find((s: { current: boolean }) => !s.current);
     expect((await laptop.del(`/api/auth/sessions/${other.id}`)).status).toBe(200);
-    expect((await phone.get('/api/auth/me')).status).toBe(401);
+    expect((await phone.get(`/api/auth/${phone.userId}`)).status).toBe(401);
   });
 
   it('never lets a user revoke someone else’s session', async () => {
@@ -239,7 +249,7 @@ describe('session lifecycle', () => {
     const bobSession = await Session.findOne({ userId: bob._id }).lean();
     const res = await aliceClient.del(`/api/auth/sessions/${bobSession!._id}`);
     expect(res.status).toBe(404);
-    expect((await bobClient.get('/api/auth/me')).status).toBe(200);
+    expect((await bobClient.get(`/api/auth/${bobClient.userId}`)).status).toBe(200);
   });
 });
 
@@ -250,7 +260,7 @@ describe('CSRF protection', () => {
     const res = await client.agent.post('/api/auth/logout').set('Origin', ORIGIN);
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('CSRF_INVALID');
-    expect((await client.get('/api/auth/me')).status).toBe(200); // still signed in
+    expect((await client.get(`/api/auth/${client.userId}`)).status).toBe(200); // still signed in
   });
 
   it('rejects a wrong CSRF token', async () => {
@@ -285,26 +295,26 @@ describe('theme preference', () => {
   it('defaults to system, persists per user and is restored on another device', async () => {
     const user = await makeUser();
     const laptop = await signIn(user.email);
-    expect((await laptop.get('/api/auth/me')).body.data.user.themePreference).toBe('system');
+    expect((await laptop.get(`/api/auth/${laptop.userId}`)).body.data.user.themePreference).toBe('system');
 
-    const saved = await laptop.patch('/api/auth/me/theme').send({ themePreference: 'dark' });
+    const saved = await laptop.patch(`/api/auth/${laptop.userId}/theme`).send({ themePreference: 'dark' });
     expect(saved.status).toBe(200);
 
     const phone = await signIn(user.email); // a brand-new session on "another device"
-    expect((await phone.get('/api/auth/me')).body.data.user.themePreference).toBe('dark');
+    expect((await phone.get(`/api/auth/${phone.userId}`)).body.data.user.themePreference).toBe('dark');
   });
 
   it('keeps preferences separate for each user', async () => {
     const a = await signIn((await makeUser()).email);
     const b = await signIn((await makeUser()).email);
-    await a.patch('/api/auth/me/theme').send({ themePreference: 'light' });
-    expect((await b.get('/api/auth/me')).body.data.user.themePreference).toBe('system');
+    await a.patch(`/api/auth/${a.userId}/theme`).send({ themePreference: 'light' });
+    expect((await b.get(`/api/auth/${b.userId}`)).body.data.user.themePreference).toBe('system');
   });
 
   it('rejects unknown values and requires sign-in', async () => {
     const client = await signIn((await makeUser()).email);
-    expect((await client.patch('/api/auth/me/theme').send({ themePreference: 'neon' })).status).toBe(400);
-    const anonRes = await anon().patch('/api/auth/me/theme').set('Origin', ORIGIN).send({ themePreference: 'dark' });
+    expect((await client.patch(`/api/auth/${client.userId}/theme`).send({ themePreference: 'neon' })).status).toBe(400);
+    const anonRes = await anon().patch(`/api/auth/${ANON_ID}/theme`).set('Origin', ORIGIN).send({ themePreference: 'dark' });
     expect(anonRes.status).toBe(401);
   });
 });
@@ -320,8 +330,8 @@ describe('password change and reset', () => {
       confirmPassword: 'Brand-New-Pass-42',
     });
     expect(res.status).toBe(200);
-    expect((await phone.get('/api/auth/me')).status).toBe(401);
-    expect((await laptop.get('/api/auth/me')).status).toBe(200);
+    expect((await phone.get(`/api/auth/${phone.userId}`)).status).toBe(401);
+    expect((await laptop.get(`/api/auth/${laptop.userId}`)).status).toBe(200);
     expect((await anon().post('/api/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: PASSWORD })).status).toBe(401);
     expect((await signIn(user.email, 'Brand-New-Pass-42')).userId).toBe(user._id);
   });

@@ -48,29 +48,27 @@ describe('theme utilities', () => {
 });
 
 describe('<ThemeToggle />', () => {
-  it('exposes Light, Dark and System as a labelled radio group', () => {
+  it('is a single icon button that offers the opposite mode', async () => {
+    const user = userEvent.setup();
     renderToggle();
-    expect(screen.getByRole('group', { name: /colour theme/i })).toBeInTheDocument();
-    expect(screen.getAllByRole('radio')).toHaveLength(3);
-    expect(screen.getByRole('radio', { name: 'Light' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'Dark' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'System' })).toBeInTheDocument();
-  });
-
-  it('starts on System with no stored preference', () => {
-    renderToggle();
-    expect(screen.getByRole('radio', { name: 'System' })).toBeChecked();
+    // The portal starts light, so the button offers dark mode.
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Switch to dark mode' }));
+    // Now dark, so it offers light mode.
+    expect(screen.getByRole('button', { name: 'Switch to light mode' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Switch to dark mode' })).not.toBeInTheDocument();
   });
 
   it('switches the page theme and remembers the choice locally for anonymous visitors', async () => {
     const user = userEvent.setup();
     renderToggle();
 
-    await user.click(screen.getByRole('radio', { name: 'Dark' }));
+    await user.click(screen.getByRole('button', { name: 'Switch to dark mode' }));
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
     expect(window.localStorage.getItem('samaj.theme')).toBe('dark');
 
-    await user.click(screen.getByRole('radio', { name: 'Light' }));
+    await user.click(screen.getByRole('button', { name: 'Switch to light mode' }));
     expect(document.documentElement).toHaveAttribute('data-theme', 'light');
     expect(window.localStorage.getItem('samaj.theme')).toBe('light');
   });
@@ -79,8 +77,8 @@ describe('<ThemeToggle />', () => {
     const user = userEvent.setup();
     renderToggle();
     await user.tab();
-    expect(screen.getByRole('radio', { name: 'System' })).toHaveFocus();
-    await user.keyboard('{ArrowLeft}');
-    expect(screen.getByRole('radio', { name: 'Dark' })).toBeChecked();
+    expect(screen.getByRole('button', { name: 'Switch to dark mode' })).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
   });
 });

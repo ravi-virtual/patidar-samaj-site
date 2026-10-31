@@ -9,6 +9,7 @@ import { PasswordField } from '../components/ui/TextField';
 import { resetPasswordApi } from '../api/authApi';
 import { getErrorMessage, getFieldErrors } from '../api/axiosInstance';
 import { resetPasswordSchema, type ResetPasswordForm } from '../utils/validation';
+import { t } from '../i18n';
 
 export default function ResetPasswordPage() {
   const location = useLocation();
@@ -46,40 +47,40 @@ export default function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <AuthCard title="Reset link needed" footer={<Link to="/forgot-password" className="font-medium text-accent hover:underline">Request a new link</Link>}>
-        <Alert tone="warning">This page needs a valid reset link. Open the link you were given, or request a new one.</Alert>
+      <AuthCard title={t('Reset link needed')} footer={<Link to="/forgot-password" className="font-medium text-accent hover:underline">{t('Request a new link')}</Link>}>
+        <Alert tone="warning">{t('This page needs a valid reset link. Open the link you were given, or request a new one.')}</Alert>
       </AuthCard>
     );
   }
 
   if (done) {
     return (
-      <AuthCard title="Password updated">
+      <AuthCard title={t('Password updated')}>
         <Alert tone="success">{done}</Alert>
         <Link
           to="/admin/login"
           className="inline-flex h-10 w-full items-center justify-center rounded-md bg-primary text-sm font-medium text-primary-foreground hover:bg-primary-hover"
         >
-          Go to sign in
+          {t('Go to sign in')}
         </Link>
       </AuthCard>
     );
   }
 
   return (
-    <AuthCard title="Choose a new password" description="Use at least 10 characters, with a letter and a number.">
+    <AuthCard title={t('Choose a new password')} description={t('Use at least 10 characters, with a letter and a number.')}>
       <form noValidate onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {error && <Alert tone="danger">{error}</Alert>}
-        <PasswordField label="New password" autoComplete="new-password" required error={errors.password?.message} {...register('password')} />
+        <PasswordField label={t('New password')} autoComplete="new-password" required error={errors.password?.message} {...register('password')} />
         <PasswordField
-          label="Confirm new password"
+          label={t('Confirm new password')}
           autoComplete="new-password"
           required
           error={errors.confirmPassword?.message}
           {...register('confirmPassword')}
         />
         <Button type="submit" className="w-full" loading={isSubmitting}>
-          {isSubmitting ? 'Saving…' : 'Update password'}
+          {isSubmitting ? t('Saving…') : t('Update password')}
         </Button>
       </form>
     </AuthCard>

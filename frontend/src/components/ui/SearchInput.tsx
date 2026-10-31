@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import { Search, X } from 'lucide-react';
+import { t } from '../../i18n';
 
 interface SearchInputProps {
   /** Accessible name. */
@@ -52,7 +53,7 @@ export function SearchInput({
       {value ? (
         <button
           type="button"
-          aria-label="Clear search"
+          aria-label={t('Clear search')}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => {
             onChange('');
