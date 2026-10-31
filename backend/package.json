@@ -5,7 +5,7 @@
   "description": "Express + MongoDB API for the Uttar Gujarat Kadva Patidar Samaj portal",
   "main": "dist/server.js",
   "engines": {
-    "node": "24.22.0",
+    "node": "24.x",
     "npm": ">=11.19.1"
   },
   "scripts": {

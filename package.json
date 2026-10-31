@@ -5,7 +5,7 @@
   "description": "Uttar Gujarat Kadva Patidar Samaj — community website, member workspace and admin panel (MERN)",
   "license": "UNLICENSED",
   "engines": {
-    "node": "24.22.0",
+    "node": "24.x",
     "npm": ">=11.19.1"
   },
   "scripts": {
