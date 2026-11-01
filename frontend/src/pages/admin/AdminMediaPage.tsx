@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FileText, Pencil, Trash2, Upload } from 'lucide-react';
 import { deleteMediaApi, listMediaApi, updateMediaApi, type MediaItem } from '../../api/adminApi';
 import { getErrorMessage } from '../../api/axiosInstance';
+import { mediaUrl } from '../../api/siteApi';
 import { FilterSelect, Toolbar } from '../../components/admin/Toolbar';
 import { useCan } from '../../components/admin/usePermissions';
 import { useRunner } from '../../components/admin/useRunner';
@@ -124,7 +125,7 @@ export default function AdminMediaPage() {
             <li key={m.id}>
               <Card padded={false} className="flex h-full flex-col overflow-hidden">
                 {m.kind === 'image' ? (
-                  <img src={m.url} alt={m.altText ?? ''} loading="lazy" className="h-32 w-full object-cover" />
+                  <img src={mediaUrl(m.id) ?? undefined} alt={m.altText ?? ''} loading="lazy" className="h-32 w-full object-cover" />
                 ) : (
                   <div aria-hidden="true" className="flex h-32 items-center justify-center bg-surface-muted text-text-muted">
                     <FileText className="h-9 w-9" />
