@@ -33,7 +33,7 @@ const cleanOriginalName = (name: string): string =>
 
 const toView = (a: IMediaAsset) => ({
   id: a._id,
-  url: `/api/media/${a._id}`,
+  url: `/media/${a._id}`,
   name: a.originalName,
   mimeType: a.mimeType,
   size: a.size,

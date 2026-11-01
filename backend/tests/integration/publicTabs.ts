@@ -33,9 +33,9 @@ describe('resolvePublicTabs', () => {
 
   it('keeps working for a settings document saved before the tabs existed', async () => {
     await OrganizationSettings.collection.insertOne({ _id: 'old' as never, key: 'main', name: 'Old', themeDefault: 'dark' });
-    const res = await anon().get('/api/public/settings');
+    const res = await anon().get('/public/settings');
     expect(res.body.data.settings.publicTabs).toEqual(Object.fromEntries(PublicTabs.map((t) => [t, true])));
-    expect((await anon().get('/api/events')).status).toBe(200);
+    expect((await anon().get('/events')).status).toBe(200);
   });
 });
 
@@ -45,10 +45,10 @@ describe('gated public endpoints', () => {
     const note = await makeAnnouncement();
     const member = await makeProfile();
     for (const url of [
-      '/api/events', `/api/events/${event._id}`, '/api/announcements', `/api/announcements/${note._id}`,
-      '/api/members', '/api/members/filters', `/api/members/${member._id}`,
-      '/api/content/faqs', '/api/content/links', '/api/content/milestones', '/api/content/committee',
-      '/api/content/committee-terms', '/api/content/committee-members', '/api/content/blocks',
+      '/events', `/events/${event._id}`, '/announcements', `/announcements/${note._id}`,
+      '/members', '/members/filters', `/members/${member._id}`,
+      '/content/faqs', '/content/links', '/content/milestones', '/content/committee',
+      '/content/committee-terms', '/content/committee-members', '/content/blocks',
     ]) {
       expect((await anon().get(url)).status, url).toBe(200);
     }
@@ -58,20 +58,20 @@ describe('gated public endpoints', () => {
     const event = await makeEvent();
     await makeAnnouncement();
     await turnOff('events');
-    for (const url of ['/api/events', `/api/events/${event._id}`]) {
+    for (const url of ['/events', `/events/${event._id}`]) {
       const res = await anon().get(url);
       expect(res.status, url).toBe(404);
       expect(res.body).toMatchObject({ success: false, error: { code: 'NOT_FOUND' } });
     }
-    expect((await anon().get('/api/announcements')).status).toBe(200);
+    expect((await anon().get('/announcements')).status).toBe(200);
   });
 
   it('answer 404 for news', async () => {
     const note = await makeAnnouncement();
     await turnOff('news');
-    expect((await anon().get('/api/announcements')).status).toBe(404);
-    expect((await anon().get(`/api/announcements/${note._id}`)).status).toBe(404);
-    expect((await anon().get('/api/events')).status).toBe(200);
+    expect((await anon().get('/announcements')).status).toBe(404);
+    expect((await anon().get(`/announcements/${note._id}`)).status).toBe(404);
+    expect((await anon().get('/events')).status).toBe(200);
   });
 
   it('answer 404 for the members directory, for visitors and signed-in users alike', async () => {
@@ -79,7 +79,7 @@ describe('gated public endpoints', () => {
     await turnOff('directory');
     const { client } = await signInAs(Roles.ADMIN);
     for (const who of [anon(), client]) {
-      for (const url of ['/api/members', '/api/members/filters', `/api/members/${member._id}`]) {
+      for (const url of ['/members', '/members/filters', `/members/${member._id}`]) {
         expect((await who.get(url)).status, url).toBe(404);
       }
     }
@@ -92,9 +92,9 @@ describe('gated public endpoints', () => {
     await CommitteeMember.create({ termId: term._id, name: 'Ashok Patel', position: 'President', status: 'published' });
 
     const cases: [PublicTab, string[]][] = [
-      ['faq', ['/api/content/faqs']],
-      ['links', ['/api/content/links']],
-      ['committee', ['/api/content/committee', '/api/content/committee-terms', '/api/content/committee-members']],
+      ['faq', ['/content/faqs']],
+      ['links', ['/content/links']],
+      ['committee', ['/content/committee', '/content/committee-terms', '/content/committee-members']],
     ];
     for (const [tab, urls] of cases) {
       await OrganizationSettings.deleteMany({});
@@ -109,19 +109,19 @@ describe('gated public endpoints', () => {
   it('keep serving text blocks (about copy is hidden by the website only)', async () => {
     await ContentBlock.create({ key: 'about.intro', title: 'About us', body: 'Text.', status: 'published' });
     await turnOff('about');
-    const res = await anon().get('/api/content/blocks');
+    const res = await anon().get('/content/blocks');
     expect(res.status).toBe(200);
     expect(res.body.data.blocks['about.intro']).toBeDefined();
   });
 
   it('refuse the contact form when the contact tab is off, and store nothing', async () => {
     await turnOff('contact');
-    const res = await anon().post('/api/contact').set('Origin', ORIGIN).send(contactBody);
+    const res = await anon().post('/contact').set('Origin', ORIGIN).send(contactBody);
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('NOT_FOUND');
     expect(await ContactMessage.countDocuments()).toBe(0);
     await OrganizationSettings.deleteMany({});
-    expect((await anon().post('/api/contact').set('Origin', ORIGIN).send(contactBody)).status).toBe(201);
+    expect((await anon().post('/contact').set('Origin', ORIGIN).send(contactBody)).status).toBe(201);
   });
 
   it('never affect admin endpoints: staff can still manage hidden tabs', async () => {
@@ -132,7 +132,7 @@ describe('gated public endpoints', () => {
     await ContactMessage.create({ name: 'A B', email: 'a@b.co', message: 'A message long enough.' });
     await turnOff(...PublicTabs);
     const { client } = await signInAs(Roles.SUPER_ADMIN);
-    for (const url of ['/api/admin/events', '/api/admin/announcements', '/api/admin/members', '/api/admin/content/faqs', '/api/admin/contacts', '/api/admin/settings']) {
+    for (const url of ['/admin/events', '/admin/announcements', '/admin/members', '/admin/content/faqs', '/admin/contacts', '/admin/settings']) {
       expect((await client.get(url)).status, url).toBe(200);
     }
   });
@@ -149,7 +149,7 @@ describe('home and search while tabs are off', () => {
 
   it('home carries every section while all tabs are on', async () => {
     await seed();
-    const home = (await anon().get('/api/public/home')).body.data;
+    const home = (await anon().get('/public/home')).body.data;
     expect(home.featuredEvent).not.toBeNull();
     expect(home.upcomingEvents).toHaveLength(1);
     expect(home.announcements).toHaveLength(1);
@@ -160,7 +160,7 @@ describe('home and search while tabs are off', () => {
   it('home omits the data of each switched-off tab', async () => {
     await seed();
     await turnOff('events', 'news', 'directory', 'links');
-    const home = (await anon().get('/api/public/home')).body.data;
+    const home = (await anon().get('/public/home')).body.data;
     expect(home.featuredEvent).toBeNull();
     expect(home.upcomingEvents).toEqual([]);
     expect(home.announcements).toEqual([]);
@@ -173,13 +173,13 @@ describe('home and search while tabs are off', () => {
     await ContentBlock.create({ key: 'about.intro', title: 'About', body: 'x', status: 'published' });
     await ContentBlock.create({ key: 'home.welcome', title: 'Welcome', body: 'x', status: 'published' });
     await turnOff('about');
-    const blocks = (await anon().get('/api/public/home')).body.data.blocks;
+    const blocks = (await anon().get('/public/home')).body.data.blocks;
     expect(Object.keys(blocks)).toEqual(['home.welcome']);
   });
 
   it('search leaves out results from each switched-off tab', async () => {
     await seed();
-    const all = (await anon().get('/api/search?q=garba')).body.data.results;
+    const all = (await anon().get('/search?q=garba')).body.data.results;
     for (const group of ['events', 'announcements', 'members', 'faqs', 'links']) expect(all[group], group).toHaveLength(1);
 
     const groups: [PublicTab, string][] = [
@@ -188,7 +188,7 @@ describe('home and search while tabs are off', () => {
     for (const [tab, group] of groups) {
       await OrganizationSettings.deleteMany({});
       await turnOff(tab);
-      const results = (await anon().get('/api/search?q=garba')).body.data.results;
+      const results = (await anon().get('/search?q=garba')).body.data.results;
       expect(results[group], `${tab} off`).toHaveLength(0);
       for (const [, other] of groups) if (other !== group) expect(results[other], `${tab} off, ${other}`).toHaveLength(1);
     }

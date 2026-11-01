@@ -22,7 +22,7 @@ import adminRoutes from './adminRoutes';
 
 const router = Router();
 
-router.use('/health', healthRoutes);
+router.use('/hc', healthRoutes);
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/members', memberRoutes);

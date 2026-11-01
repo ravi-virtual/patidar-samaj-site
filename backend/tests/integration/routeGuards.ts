@@ -14,12 +14,12 @@ beforeEach(resetDb);
 const routesDir = join(__dirname, '..', '..', 'src', 'routes');
 const indexSource = readFileSync(join(routesDir, 'index.ts'), 'utf8');
 
-// "router.use('/members', memberRoutes)" → memberRoutes mounted at /api/members
+// "router.use('/members', memberRoutes)" → memberRoutes mounted at /members
 const mounts = [...indexSource.matchAll(/router\.use\('([^']+)',\s*(\w+)\)/g)].map((m) => ({ prefix: m[1]!, file: m[2]! }));
 
 interface Route {
   method: 'get' | 'post' | 'put' | 'patch' | 'delete';
-  path: string; // as mounted, e.g. /api/members/:id
+  path: string; // as mounted, e.g. /members/:id
 }
 
 const discovered: Route[] = [];
@@ -27,36 +27,36 @@ for (const { prefix, file } of mounts) {
   const src = readFileSync(join(routesDir, `${file}.ts`), 'utf8');
   for (const m of src.matchAll(/router\.(get|post|put|patch|delete)\(\s*'([^']*)'/g)) {
     const sub = m[2] === '/' ? '' : m[2]!;
-    discovered.push({ method: m[1] as Route['method'], path: `/api${prefix}${sub}` });
+    discovered.push({ method: m[1] as Route['method'], path: `${prefix}${sub}` });
   }
 }
 // Routes declared directly in index.ts (e.g. search).
 for (const m of indexSource.matchAll(/router\.(get|post|put|patch|delete)\('([^']+)'/g)) {
-  discovered.push({ method: m[1] as Route['method'], path: `/api${m[2]}` });
+  discovered.push({ method: m[1] as Route['method'], path: `${m[2]}` });
 }
 
 /** Public on purpose. Each entry is a decision someone made; everything else must require sign-in. */
 const PUBLIC = new Set([
-  'get /api/health',
-  'post /api/auth/admin-login',
-  'post /api/auth/forgot-password',
-  'post /api/auth/reset-password',
-  'get /api/members',
-  'get /api/members/filters',
-  'get /api/members/:id',
-  'get /api/events',
-  'get /api/events/:id',
-  'get /api/announcements',
-  'get /api/announcements/:id',
-  'get /api/content/blocks',
-  'get /api/content/blocks/:key',
-  'get /api/content/committee',
-  'get /api/content/:resource',
-  'post /api/contact',
-  'get /api/media/:id',
-  'get /api/public/home',
-  'get /api/public/settings',
-  'get /api/search',
+  'get /hc',
+  'post /auth/admin-login',
+  'post /auth/forgot-password',
+  'post /auth/reset-password',
+  'get /members',
+  'get /members/filters',
+  'get /members/:id',
+  'get /events',
+  'get /events/:id',
+  'get /announcements',
+  'get /announcements/:id',
+  'get /content/blocks',
+  'get /content/blocks/:key',
+  'get /content/committee',
+  'get /content/:resource',
+  'post /contact',
+  'get /media/:id',
+  'get /public/home',
+  'get /public/settings',
+  'get /search',
 ]);
 
 const concrete = (path: string) =>
@@ -104,14 +104,14 @@ describe('routes that are not public', () => {
 
   it('has no member sign-in or registration route at all', () => {
     const found = new Set(discovered.map(key));
-    expect(found.has('post /api/auth/register')).toBe(false);
-    expect(found.has('post /api/auth/login')).toBe(false);
-    expect(found.has('get /api/members/me')).toBe(false);
-    expect(found.has('patch /api/members/me')).toBe(false);
-    expect(found.has('get /api/admin/roles')).toBe(false);
+    expect(found.has('post /auth/register')).toBe(false);
+    expect(found.has('post /auth/login')).toBe(false);
+    expect(found.has('get /members/me')).toBe(false);
+    expect(found.has('patch /members/me')).toBe(false);
+    expect(found.has('get /admin/roles')).toBe(false);
   });
 
-  it('every /api/admin and /api/users route refuses an admin who holds no permissions', async () => {
+  it('every /admin and /users route refuses an admin who holds no permissions', async () => {
     const { client } = await signInAs(Roles.ADMIN, { permissions: [] });
     const failures: string[] = [];
     for (const r of protectedRoutes.filter((x) => /^\/api\/(admin|users)/.test(x.path))) {
@@ -123,10 +123,10 @@ describe('routes that are not public', () => {
 });
 
 describe('admin account management', () => {
-  it('every /api/users route refuses an admin without users.reset_password, even with every other selectable permission', async () => {
+  it('every /users route refuses an admin without users.reset_password, even with every other selectable permission', async () => {
     const { client } = await signInAs(Roles.ADMIN, { permissions: ADMIN_PERMISSIONS_WITHOUT_USER_RESET });
     const failures: string[] = [];
-    const userRoutes = protectedRoutes.filter((x) => x.path.startsWith('/api/users'));
+    const userRoutes = protectedRoutes.filter((x) => x.path.startsWith('/users'));
     expect(userRoutes.length).toBeGreaterThanOrEqual(8);
     for (const r of userRoutes) {
       const res = await client[r.method === 'delete' ? 'del' : r.method](concrete(r.path)).send({});
@@ -138,7 +138,7 @@ describe('admin account management', () => {
 
 describe('public routes never leak server internals', () => {
   it('unknown paths and methods return the standard error shape without stack traces', async () => {
-    for (const path of ['/api/nope', '/api/admin/nope', '/api/members/x/y/z']) {
+    for (const path of ['/nope', '/admin/nope', '/members/x/y/z']) {
       const res = await anon().get(path);
       expect([401, 404]).toContain(res.status);
       expect(JSON.stringify(res.body)).not.toMatch(/node_modules|\.ts:\d+|at .*\(/);

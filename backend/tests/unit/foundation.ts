@@ -6,7 +6,7 @@ import { ResponseCodes } from '../../src/config/constants';
 
 describe('foundation: HTTP layer', () => {
   it('returns the standard 404 error shape for unknown routes', async () => {
-    const res = await request(app).get('/api/does-not-exist');
+    const res = await request(app).get('/does-not-exist');
     expect(res.status).toBe(404);
     expect(res.body).toMatchObject({
       success: false,
@@ -14,15 +14,15 @@ describe('foundation: HTTP layer', () => {
     });
   });
 
-  it('reports 503 from /api/health when the database is not connected', async () => {
-    const res = await request(app).get('/api/health');
+  it('reports 503 from /hc when the database is not connected', async () => {
+    const res = await request(app).get('/hc');
     expect(res.status).toBe(503);
     expect(res.body.error.code).toBe('DATABASE_UNAVAILABLE');
   });
 
   it('rejects malformed JSON with 400 and no stack trace', async () => {
     const res = await request(app)
-      .post('/api/health')
+      .post('/hc')
       .set('Content-Type', 'application/json')
       .send('{"broken":');
     expect(res.status).toBe(400);
@@ -32,7 +32,7 @@ describe('foundation: HTTP layer', () => {
 
   it('rejects bodies over the 10kb limit with 413', async () => {
     const res = await request(app)
-      .post('/api/health')
+      .post('/hc')
       .set('Content-Type', 'application/json')
       .send(JSON.stringify({ blob: 'x'.repeat(20_000) }));
     expect(res.status).toBe(413);
@@ -40,18 +40,18 @@ describe('foundation: HTTP layer', () => {
   });
 
   it('sets security headers and does not advertise Express', async () => {
-    const res = await request(app).get('/api/health');
+    const res = await request(app).get('/hc');
     expect(res.headers['x-powered-by']).toBeUndefined();
     expect(res.headers['x-content-type-options']).toBe('nosniff');
     expect(res.headers['content-security-policy']).toBeDefined();
   });
 
   it('only allows the configured CORS origin', async () => {
-    const allowed = await request(app).get('/api/health').set('Origin', 'http://localhost:5173');
+    const allowed = await request(app).get('/hc').set('Origin', 'http://localhost:5173');
     expect(allowed.headers['access-control-allow-origin']).toBe('http://localhost:5173');
     expect(allowed.headers['access-control-allow-credentials']).toBe('true');
 
-    const denied = await request(app).get('/api/health').set('Origin', 'https://evil.example');
+    const denied = await request(app).get('/hc').set('Origin', 'https://evil.example');
     expect(denied.headers['access-control-allow-origin']).toBeUndefined();
   });
 });

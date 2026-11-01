@@ -105,7 +105,7 @@ export interface Client {
 /** Signs a user in and returns a client that sends the Origin and CSRF headers like the real app. */
 export const signIn = async (email: string, password = PASSWORD): Promise<Client> => {
   const agent = request.agent(app);
-  const res = await agent.post('/api/auth/admin-login').set('Origin', ORIGIN).send({ email, password });
+  const res = await agent.post('/auth/admin-login').set('Origin', ORIGIN).send({ email, password });
   if (res.status !== 200) throw new Error(`Sign-in failed for ${email}: ${res.status} ${JSON.stringify(res.body)}`);
   const csrf = res.body.data.csrfToken as string;
   const cookie = (res.headers['set-cookie'] as unknown as string[])
@@ -225,5 +225,5 @@ export const makeAnnouncement = async (
   });
 };
 
-/** Everything selectable except the right to reset other admins' passwords, which opens part of /api/users. */
+/** Everything selectable except the right to reset other admins' passwords, which opens part of /users. */
 export const ADMIN_PERMISSIONS_WITHOUT_USER_RESET: string[] = SELECTABLE_PERMISSIONS.filter((p) => p !== P.USERS_RESET_PASSWORD);

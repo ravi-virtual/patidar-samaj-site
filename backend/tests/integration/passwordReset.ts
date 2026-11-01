@@ -25,7 +25,7 @@ beforeEach(resetDb);
 const PARALLEL = 12;
 
 const reset = (token: string, password: string) =>
-  anon().post('/api/auth/reset-password').set('Origin', ORIGIN).send({ token, password, confirmPassword: password });
+  anon().post('/auth/reset-password').set('Origin', ORIGIN).send({ token, password, confirmPassword: password });
 
 /** A live, valid reset token for a user, created the way the controllers do (only the hash is stored). */
 const issueToken = async (userId: string, over: Partial<{ expiresAt: Date; purpose: 'reset' | 'setup' }> = {}) => {
@@ -87,10 +87,10 @@ describe('concurrent reuse of a password-reset link', () => {
 
     await Promise.all(Array.from({ length: PARALLEL }, (_, i) => reset(token, `Another-Choice-${i + 10}`)));
 
-    expect((await phone.get(`/api/auth/${phone.userId}`)).status).toBe(401);
-    expect((await laptop.get(`/api/auth/${laptop.userId}`)).status).toBe(401);
+    expect((await phone.get(`/auth/${phone.userId}`)).status).toBe(401);
+    expect((await laptop.get(`/auth/${laptop.userId}`)).status).toBe(401);
     expect(await Session.countDocuments({ userId: user._id })).toBe(0);
-    const old = await anon().post('/api/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: PASSWORD });
+    const old = await anon().post('/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: PASSWORD });
     expect(old.status).toBe(401);
   });
 
@@ -137,7 +137,7 @@ describe('reset link lifecycle', () => {
   it('refuses mismatched confirmation, and a token of the wrong shape', async () => {
     const user = await makeUser();
     const token = await issueToken(user._id);
-    const mismatch = await anon().post('/api/auth/reset-password').set('Origin', ORIGIN).send({
+    const mismatch = await anon().post('/auth/reset-password').set('Origin', ORIGIN).send({
       token,
       password: 'Strong-Choice-2026',
       confirmPassword: 'Different-Choice-2026',
@@ -185,7 +185,7 @@ describe('reset link lifecycle', () => {
     const { client: admin } = await signInAs(Roles.SUPER_ADMIN);
     const token = await issueToken(member._id);
 
-    const res = await admin.post(`/api/users/${member._id}/password-reset`).send({ password: 'Direct-Reset-2026' });
+    const res = await admin.post(`/users/${member._id}/password-reset`).send({ password: 'Direct-Reset-2026' });
     expect(res.status).toBe(200);
 
     expect((await reset(token, 'Admin-Link-Choice-2026')).status).toBe(400);
@@ -194,7 +194,7 @@ describe('reset link lifecycle', () => {
 
   it('does not issue a link through forgot-password to a suspended account', async () => {
     const user = await makeUser({ status: AccountStatus.SUSPENDED });
-    const res = await anon().post('/api/auth/forgot-password').set('Origin', ORIGIN).send({ email: user.email });
+    const res = await anon().post('/auth/forgot-password').set('Origin', ORIGIN).send({ email: user.email });
     expect(res.status).toBe(200);
     expect(await PasswordResetToken.countDocuments({ userId: user._id })).toBe(0);
   });

@@ -82,7 +82,7 @@ export const config = {
     maxPasswordLength: 128,
   },
   uploads: {
-    // Outside any web root. Files are served only through GET /api/media/:id after checks.
+    // Outside any web root. Files are served only through GET /media/:id after checks.
     dir: resolve(process.env.UPLOAD_DIR ?? 'uploads'),
     maxImageBytes: 3 * 1024 * 1024,
     maxDocumentBytes: 10 * 1024 * 1024,

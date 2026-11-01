@@ -35,14 +35,14 @@ beforeEach(async () => {
 });
 
 const upload = (client: Awaited<ReturnType<typeof signInAs>>['client'], buf: Buffer, filename: string, type: string, fields: Record<string, string> = {}) => {
-  let req = client.post('/api/admin/media').attach('file', buf, { filename, contentType: type });
+  let req = client.post('/admin/media').attach('file', buf, { filename, contentType: type });
   for (const [k, v] of Object.entries(fields)) req = req.field(k, v);
   return req;
 };
 
 describe('upload permissions', () => {
   it('rejects visitors and admins without media.upload; allows those who have it and the Super Admin', async () => {
-    expect((await anon().post('/api/admin/media').set('Origin', ORIGIN).attach('file', PNG, { filename: 'a.png', contentType: 'image/png' })).status).toBe(401);
+    expect((await anon().post('/admin/media').set('Origin', ORIGIN).attach('file', PNG, { filename: 'a.png', contentType: 'image/png' })).status).toBe(401);
     for (const permissions of [[], READ_ONLY_ADMIN_PERMISSIONS]) {
       const { client } = await signInAs(Roles.ADMIN, { permissions });
       expect((await upload(client, PNG, 'a.png', 'image/png')).status).toBe(403);
@@ -56,7 +56,7 @@ describe('upload permissions', () => {
 
   it('needs the CSRF token even for multipart uploads', async () => {
     const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
-    const res = await client.agent.post('/api/admin/media').set('Origin', ORIGIN).attach('file', PNG, { filename: 'a.png', contentType: 'image/png' });
+    const res = await client.agent.post('/admin/media').set('Origin', ORIGIN).attach('file', PNG, { filename: 'a.png', contentType: 'image/png' });
     expect(res.status).toBe(403);
     expect(filesOnDisk()).toHaveLength(0);
   });
@@ -74,7 +74,7 @@ describe('what an upload may be', () => {
     expect(res.status).toBe(201);
     const m = res.body.data.media;
     expect(m).toMatchObject({ mimeType: type, kind, altText: 'A description', visibility: 'public', size: buf.length });
-    expect(m.url).toBe(`/api/media/${m.id}`);
+    expect(m.url).toBe(`/media/${m.id}`);
 
     const stored = await MediaAsset.findById(m.id).lean();
     expect(stored?.storedName).toMatch(new RegExp(`^[0-9a-f-]{36}\\.${ext}$`));
@@ -139,10 +139,10 @@ describe('what an upload may be', () => {
 
   it('rejects requests with no file, the wrong field name, or more than one file', async () => {
     const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
-    expect((await client.post('/api/admin/media').field('altText', 'x')).status).toBe(400);
-    expect((await client.post('/api/admin/media').attach('document', PNG, { filename: 'a.png', contentType: 'image/png' })).status).toBe(400);
+    expect((await client.post('/admin/media').field('altText', 'x')).status).toBe(400);
+    expect((await client.post('/admin/media').attach('document', PNG, { filename: 'a.png', contentType: 'image/png' })).status).toBe(400);
     const two = await client
-      .post('/api/admin/media')
+      .post('/admin/media')
       .attach('file', PNG, { filename: 'a.png', contentType: 'image/png' })
       .attach('file', PNG, { filename: 'b.png', contentType: 'image/png' });
     expect(two.status).toBe(400);
@@ -199,8 +199,8 @@ describe('serving files', () => {
     const stored = await MediaAsset.findById(m.id).lean();
     await rm(join(uploadDir(), stored!.storedName));
     expect((await anon().get(m.url)).status).toBe(404); // record exists, file lost
-    expect((await anon().get('/api/media/11111111-1111-4111-8111-111111111111')).status).toBe(404);
-    expect((await anon().get('/api/media/not-an-id')).status).toBe(400);
+    expect((await anon().get('/media/11111111-1111-4111-8111-111111111111')).status).toBe(404);
+    expect((await anon().get('/media/not-an-id')).status).toBe(400);
     await MediaAsset.updateOne({ _id: m.id }, { $set: { isDeleted: true } });
     expect((await anon().get(m.url)).status).toBe(404);
   });
@@ -213,7 +213,7 @@ describe('serving files', () => {
       size: 10,
       kind: 'document',
     });
-    expect((await anon().get(`/api/media/${asset._id}`)).status).toBe(404);
+    expect((await anon().get(`/media/${asset._id}`)).status).toBe(404);
   });
 });
 
@@ -222,23 +222,23 @@ describe('media library management', () => {
     const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     await upload(client, PNG, 'banner.png', 'image/png');
     await upload(client, PDF, 'minutes-2025.pdf', 'application/pdf');
-    expect((await client.get('/api/admin/media')).body.data.totalCount).toBe(2);
-    expect((await client.get('/api/admin/media?kind=document')).body.data.media[0].name).toBe('minutes-2025.pdf');
-    expect((await client.get('/api/admin/media?search=BANNER')).body.data.totalCount).toBe(1);
-    expect((await client.get('/api/admin/media?kind=exe')).status).toBe(400);
+    expect((await client.get('/admin/media')).body.data.totalCount).toBe(2);
+    expect((await client.get('/admin/media?kind=document')).body.data.media[0].name).toBe('minutes-2025.pdf');
+    expect((await client.get('/admin/media?search=BANNER')).body.data.totalCount).toBe(1);
+    expect((await client.get('/admin/media?kind=exe')).status).toBe(400);
     const { client: none } = await signInAs(Roles.ADMIN, { permissions: [] });
-    expect((await none.get('/api/admin/media')).status).toBe(403);
+    expect((await none.get('/admin/media')).status).toBe(403);
   });
 
   it('edits description and visibility, and nothing else', async () => {
     const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const m = (await upload(client, PNG, 'a.png', 'image/png')).body.data.media;
-    const res = await client.patch(`/api/admin/media/${m.id}`).send({ altText: 'New text', visibility: 'private', storedName: 'hacked', size: 1, mimeType: 'text/html' });
+    const res = await client.patch(`/admin/media/${m.id}`).send({ altText: 'New text', visibility: 'private', storedName: 'hacked', size: 1, mimeType: 'text/html' });
     expect(res.status).toBe(200);
     const stored = await MediaAsset.findById(m.id).lean();
     expect(stored).toMatchObject({ altText: 'New text', visibility: 'private', mimeType: 'image/png', size: PNG.length });
     expect(stored?.storedName).not.toBe('hacked');
-    expect((await client.patch(`/api/admin/media/${m.id}`).send({ visibility: 'everyone' })).status).toBe(400);
+    expect((await client.patch(`/admin/media/${m.id}`).send({ visibility: 'everyone' })).status).toBe(400);
   });
 
   it('refuses to delete a file that is still in use, naming where', async () => {
@@ -248,10 +248,10 @@ describe('media library management', () => {
     await makeEvent({ title: 'Event With Banner' }).then((e) => Event.updateOne({ _id: e._id }, { $set: { imageMediaId: image.id } }));
     await ImportantLink.create({ label: 'Linked PDF', fileMediaId: pdf.id });
 
-    const a = await client.del(`/api/admin/media/${image.id}`);
+    const a = await client.del(`/admin/media/${image.id}`);
     expect(a.status).toBe(409);
     expect(a.body.message).toMatch(/event/);
-    const b = await client.del(`/api/admin/media/${pdf.id}`);
+    const b = await client.del(`/admin/media/${pdf.id}`);
     expect(b.status).toBe(409);
     expect(b.body.message).toMatch(/important link/);
     expect(filesOnDisk()).toHaveLength(2);
@@ -264,12 +264,12 @@ describe('media library management', () => {
     const term = await CommitteeTerm.create({ label: '2025–2027', startYear: 2025, endYear: 2027 });
     const member = await CommitteeMember.create({ termId: term._id, name: 'Real Person', position: 'Chair', imageMediaId: image.id });
 
-    expect((await client.del(`/api/admin/content/committee-members/${member._id}`)).status).toBe(200);
+    expect((await client.del(`/admin/content/committee-members/${member._id}`)).status).toBe(200);
     expect((await anon().get(image.url)).status).toBe(200); // file untouched
     expect(filesOnDisk()).toHaveLength(1);
 
     // Now nothing uses it, so it can be removed deliberately.
-    expect((await client.del(`/api/admin/media/${image.id}`)).status).toBe(200);
+    expect((await client.del(`/admin/media/${image.id}`)).status).toBe(200);
     expect(filesOnDisk()).toHaveLength(0);
     expect((await MediaAsset.findById(image.id).lean())?.isDeleted).toBe(true);
     expect((await anon().get(image.url)).status).toBe(404);
@@ -280,7 +280,7 @@ describe('media library management', () => {
     const { client: admin } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const m = (await upload(admin, PNG, 'a.png', 'image/png')).body.data.media;
     const { client: editor } = await signInAs(Roles.ADMIN, { permissions: DRAFT_ADMIN_PERMISSIONS });
-    expect((await editor.del(`/api/admin/media/${m.id}`)).status).toBe(403);
+    expect((await editor.del(`/admin/media/${m.id}`)).status).toBe(403);
     expect((await MediaAsset.findById(m.id).lean())?.isDeleted).toBe(false);
   });
 
@@ -291,9 +291,9 @@ describe('media library management', () => {
     const term = await CommitteeTerm.create({ label: '2025–2027', startYear: 2025, endYear: 2027 });
     const member = await CommitteeMember.create({ termId: term._id, name: 'Real Person', position: 'Chair', imageMediaId: oldImg.id });
 
-    expect((await client.del(`/api/admin/media/${oldImg.id}`)).status).toBe(409);
-    expect((await client.patch(`/api/admin/content/committee-members/${member._id}`).send({ imageMediaId: newImg.id })).status).toBe(200);
-    expect((await client.del(`/api/admin/media/${oldImg.id}`)).status).toBe(200);
+    expect((await client.del(`/admin/media/${oldImg.id}`)).status).toBe(409);
+    expect((await client.patch(`/admin/content/committee-members/${member._id}`).send({ imageMediaId: newImg.id })).status).toBe(200);
+    expect((await client.del(`/admin/media/${oldImg.id}`)).status).toBe(200);
     expect((await anon().get(newImg.url)).status).toBe(200);
   });
 });

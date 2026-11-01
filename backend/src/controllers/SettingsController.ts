@@ -22,7 +22,7 @@ const bilingualSettings = (s: Settings) => ({
   invocationGu: s.invocationGu ?? '',
   tagline: s.tagline ?? '',
   taglineGu: s.taglineGu ?? '',
-  logoUrl: s.logoMediaId ? `/api/media/${s.logoMediaId}` : null,
+  logoUrl: s.logoMediaId ? `/media/${s.logoMediaId}` : null,
   contact: {
     email: s.contact?.email ?? '',
     phone: s.contact?.phone ?? '',

@@ -3,7 +3,7 @@ import { ErrorCodes, ResponseCodes, StaffRoles } from '../config/constants';
 import { sendError } from '../utils/apiResponse';
 
 /**
- * Gate for every /api/admin route: staff roles only. Members hold some read permissions for the
+ * Gate for every /admin route: staff roles only. Members hold some read permissions for the
  * member-facing site (directory, events), so a permission check alone must never be enough to
  * reach an admin endpoint. Runs after hasToken and isAuthenticated.
  */

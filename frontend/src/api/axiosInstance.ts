@@ -2,11 +2,11 @@ import axios, { AxiosError } from 'axios';
 import { getCsrfToken } from './csrf';
 import { getLanguage, t } from '../i18n';
 
-// Empty in development (the Vite dev server proxies /api); the API's own origin in production.
+// The API's own origin in production. Empty in development: the Vite dev server proxies /api and strips it.
 const API_ORIGIN = ((import.meta.env.VITE_API_URL as string | undefined) ?? '').replace(/\/+$/, '');
 
-/** Prefix for every API path, including media links used in <img>/<a>. */
-export const API_BASE = `${API_ORIGIN}/api`;
+/** Base for every API path, including media links used in <img>/<a>. */
+export const API_BASE = API_ORIGIN || '/api';
 
 /**
  * Single Axios instance for the whole app (mern-stack-project skill: all API calls live in src/api).

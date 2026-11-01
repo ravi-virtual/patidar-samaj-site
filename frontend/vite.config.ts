@@ -13,12 +13,18 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       strictPort: true,
       proxy: {
-        '/api': { target: env.VITE_API_PROXY_TARGET ?? 'http://localhost:5000', changeOrigin: false },
+        '/api': {
+          target: env.VITE_API_PROXY_TARGET ?? 'http://localhost:5000',
+          changeOrigin: false,
+          rewrite: (path) => path.replace(/^\/api/, ''),
+        },
       },
     },
     build: { sourcemap: false },
     test: {
       environment: 'jsdom',
+      // Tests always use the relative dev base, whatever frontend/.env says.
+      env: { VITE_API_URL: '' },
       globals: true,
       include: ['tests/specs/**/*.{ts,tsx}'],
       setupFiles: ['tests/setupTests.ts'],

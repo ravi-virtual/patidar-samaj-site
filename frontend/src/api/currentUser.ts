@@ -1,5 +1,5 @@
 // Only the id of the signed-in user is remembered, so a page reload knows which
-// GET /api/auth/:id to call. It is not a credential: the HTTP-only session cookie is still
+// GET /auth/:id to call. It is not a credential: the HTTP-only session cookie is still
 // what proves who the caller is, and the server rejects any id that is not the caller's own.
 const KEY = 'samaj.userId';
 

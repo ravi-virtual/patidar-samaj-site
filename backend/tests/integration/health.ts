@@ -24,7 +24,7 @@ describe('integration: database and health', () => {
   });
 
   it('reports healthy with the standard success shape', async () => {
-    const res = await request(app).get('/api/health');
+    const res = await request(app).get('/hc');
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
       success: true,
@@ -35,7 +35,7 @@ describe('integration: database and health', () => {
   });
 
   it('does not leak configuration in the health response', async () => {
-    const res = await request(app).get('/api/health');
+    const res = await request(app).get('/hc');
     const body = JSON.stringify(res.body);
     expect(body).not.toContain(config.mongo.uri);
     expect(body).not.toContain(config.session.secret);

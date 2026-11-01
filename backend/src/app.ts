@@ -36,10 +36,10 @@ app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cookieParser());
 
 // CSRF layer 1: state-changing requests must come from our own origin (layer 2 is in hasToken).
-app.use('/api', originGuard);
+app.use(originGuard);
 
 // Routes
-app.use('/api', router);
+app.use(router);
 
 // 404 handler — after all routes
 app.use((req, res) => {
