@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as adminApi from '../../src/api/adminApi';
-import { EventFormDrawer } from '../../src/components/admin/EventFormDrawer';
-import { AnnouncementFormDrawer } from '../../src/components/admin/AnnouncementFormDrawer';
-import { ContentFormDrawer } from '../../src/components/admin/ContentFormDrawer';
-import { BlockDrawer } from '../../src/components/admin/BlockDrawer';
+import { EventForm } from '../../src/components/admin/EventForm';
+import { AnnouncementForm } from '../../src/components/admin/AnnouncementForm';
+import { ContentForm } from '../../src/components/admin/ContentForm';
+import { BlockForm } from '../../src/components/admin/BlockForm';
 import AdminSettingsPage from '../../src/pages/admin/AdminSettingsPage';
 import { blocks, resources } from '../../src/components/admin/contentConfig';
 import { apiError, renderWithApp } from '../helpers';
@@ -43,7 +43,7 @@ const expectGujarati = (label: string) => {
 
 describe('Event form', () => {
   const open = (event: adminApi.AdminEvent | null = null) =>
-    renderWithApp(<EventFormDrawer open event={event} onClose={vi.fn()} onSaved={vi.fn()} />);
+    renderWithApp(<EventForm event={event} />);
 
   it('puts a Gujarati input under each English one: title, venue and description', () => {
     open();
@@ -145,7 +145,7 @@ describe('Announcement form', () => {
   it('has Gujarati title, summary and text, and sends them', async () => {
     admin.createAnnouncementApi.mockResolvedValue({} as adminApi.AdminAnnouncement);
     const user = userEvent.setup();
-    renderWithApp(<AnnouncementFormDrawer open item={null} onClose={vi.fn()} onSaved={vi.fn()} />);
+    renderWithApp(<AnnouncementForm item={null} />);
     for (const field of ['Title', 'Summary', 'Announcement']) expectGujarati(`${field} (Gujarati)`);
     await user.type(screen.getByLabelText(/^Title \(English\)/), 'Office closed');
     await user.type(screen.getByLabelText('Title (Gujarati)'), 'કચેરી બંધ');
@@ -172,7 +172,7 @@ describe('Content form (FAQs, links, history, committee)', () => {
   it('shows a Gujarati input beside each translatable FAQ field and sends it', async () => {
     admin.saveContentApi.mockResolvedValue(row({}));
     const user = userEvent.setup();
-    renderWithApp(<ContentFormDrawer def={def('faqs')} open row={null} onClose={vi.fn()} onSaved={vi.fn()} />);
+    renderWithApp(<ContentForm def={def('faqs')} row={null} />);
     expectGujarati('Question (Gujarati)');
     expectGujarati('Answer (Gujarati)');
     await user.type(screen.getByLabelText(/^Question \(English\)/), 'How do I join?');
@@ -191,7 +191,7 @@ describe('Content form (FAQs, links, history, committee)', () => {
 
   it('does not ask for the Gujarati text and applies the same maximum length to it', async () => {
     const user = userEvent.setup();
-    renderWithApp(<ContentFormDrawer def={def('faqs')} open row={null} onClose={vi.fn()} onSaved={vi.fn()} />);
+    renderWithApp(<ContentForm def={def('faqs')} row={null} />);
     await user.type(screen.getByLabelText(/^Question \(English\)/), 'How do I join?');
     await user.type(screen.getByLabelText(/^Answer \(English\)/), 'Ask at the office.');
     fireEvent.change(screen.getByLabelText('Question (Gujarati)'), { target: { value: 'ક'.repeat(201) } });
@@ -203,7 +203,7 @@ describe('Content form (FAQs, links, history, committee)', () => {
   it('prefills the Gujarati text when editing and keeps non-translated fields single', async () => {
     admin.listContentApi.mockResolvedValue({ items: [row({ id: 't1', label: '2025–2027' })], totalCount: 1 });
     renderWithApp(
-      <ContentFormDrawer def={def('committee-members')} open row={row({ termId: 't1', name: 'Asha Patel', nameGu: 'આશા પટેલ', position: 'President', positionGu: 'પ્રમુખ', bio: null, bioGu: null })} onClose={vi.fn()} onSaved={vi.fn()} />,
+      <ContentForm def={def('committee-members')} row={row({ termId: 't1', name: 'Asha Patel', nameGu: 'આશા પટેલ', position: 'President', positionGu: 'પ્રમુખ', bio: null, bioGu: null })} />,
     );
     await waitFor(() => expect(screen.getByLabelText('Name (Gujarati)')).toHaveValue('આશા પટેલ'));
     expect(screen.getByLabelText('Position (Gujarati)')).toHaveValue('પ્રમુખ');
@@ -212,12 +212,12 @@ describe('Content form (FAQs, links, history, committee)', () => {
   });
 
   it('covers every translatable field of links and history', () => {
-    const { unmount } = renderWithApp(<ContentFormDrawer def={def('links')} open row={null} onClose={vi.fn()} onSaved={vi.fn()} />);
+    const { unmount } = renderWithApp(<ContentForm def={def('links')} row={null} />);
     expect(screen.getByLabelText('Title (Gujarati)')).toBeInTheDocument();
     expect(screen.getByLabelText('Description (Gujarati)')).toBeInTheDocument();
     expect(screen.queryByLabelText('Web address (Gujarati)')).not.toBeInTheDocument();
     unmount();
-    renderWithApp(<ContentFormDrawer def={def('milestones')} open row={null} onClose={vi.fn()} onSaved={vi.fn()} />);
+    renderWithApp(<ContentForm def={def('milestones')} row={null} />);
     for (const label of ['Year or era', 'Title', 'Text', 'Source']) expect(screen.getByLabelText(`${label} (Gujarati)`)).toBeInTheDocument();
   });
 });
@@ -228,12 +228,10 @@ describe('Page text block form', () => {
     const user = userEvent.setup();
     const def = blocks.find((b) => b.key === 'about.values')!;
     renderWithApp(
-      <BlockDrawer
+      <BlockForm
         def={def}
         block={{ key: 'about.values', status: 'draft', items: [{ title: 'Unity', text: 'Together.', value: null, label: null, imageMediaId: null, titleGu: 'એકતા', textGu: null }] }}
         allBlocks={[]}
-        onClose={vi.fn()}
-        onSaved={vi.fn()}
       />,
     );
     const titleGu = await screen.findByLabelText('Title (Gujarati)');
@@ -252,7 +250,7 @@ describe('Page text block form', () => {
     admin.saveBlockApi.mockResolvedValue({ key: 'about.intro', status: 'draft' });
     const user = userEvent.setup();
     const def = blocks.find((b) => b.key === 'about.intro')!;
-    renderWithApp(<BlockDrawer def={def} block={undefined} allBlocks={[]} onClose={vi.fn()} onSaved={vi.fn()} />);
+    renderWithApp(<BlockForm def={def} block={undefined} allBlocks={[]} />);
     await user.type(screen.getByLabelText('Heading (English)'), 'Welcome');
     await user.type(screen.getByLabelText('Heading (Gujarati)'), 'સ્વાગત');
     await user.type(screen.getByLabelText('Text (English)'), 'Hello.');

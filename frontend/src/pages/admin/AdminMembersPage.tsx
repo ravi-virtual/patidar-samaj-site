@@ -1,10 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Download, Plus, UserX } from 'lucide-react';
 import { anonymizeMemberApi, downloadCsv, listStaffMembersApi, type StaffMember } from '../../api/adminApi';
 import { getErrorMessage } from '../../api/axiosInstance';
 import { RowMenu } from '../../components/admin/RowActions';
 import { DataTable, type Column } from '../../components/admin/DataTable';
-import { MemberFormDrawer } from '../../components/admin/MemberFormDrawer';
 import { StatusBadge } from '../../components/admin/StatusBadge';
 import { FilterSelect, Toolbar } from '../../components/admin/Toolbar';
 import { useCan } from '../../components/admin/usePermissions';
@@ -30,6 +30,7 @@ const visibilityLabel = { hidden: 'Office only', public: 'Everyone' } as const;
 /** The community directory: plain entries added and kept up to date by the office. No accounts. */
 export default function AdminMembersPage() {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const can = useCan();
   const [search, setSearch] = useState('');
   const [membershipStatus, setMembershipStatus] = useState('');
@@ -42,7 +43,6 @@ export default function AdminMembersPage() {
     listStaffMembersApi({ ...filters, page, limit: PAGE_SIZE }),
   );
   const { busy, run } = useRunner(list.retry);
-  const [editing, setEditing] = useState<StaffMember | null | 'new'>(null);
   const [anonymizing, setAnonymizing] = useState<StaffMember | null>(null);
 
   const reset = (setter: (v: string) => void) => (v: string) => {
@@ -82,7 +82,7 @@ export default function AdminMembersPage() {
         <RowMenu
           name={m.name}
           actions={[
-            { label: t('Edit'), kind: 'edit', show: can('members.update') && !m.anonymizedAt, onSelect: () => setEditing(m) },
+            { label: t('Edit'), kind: 'edit', show: can('members.update') && !m.anonymizedAt, onSelect: () => navigate(`/admin/members/${m.id}/edit`) },
             { label: t('Anonymise…'), icon: UserX, danger: true, show: can('members.anonymize') && !m.anonymizedAt, onSelect: () => setAnonymizing(m) },
           ]}
         />
@@ -106,7 +106,7 @@ export default function AdminMembersPage() {
               </Button>
             )}
             {can('members.create') && (
-              <Button onClick={() => setEditing('new')}>
+              <Button onClick={() => navigate('/admin/members/new')}>
                 <Plus aria-hidden="true" className="h-4 w-4" />
                 {t('Add member')}
               </Button>
@@ -130,7 +130,6 @@ export default function AdminMembersPage() {
       />
       {list.data && <Pagination page={page} pageSize={PAGE_SIZE} totalCount={list.data.totalCount} onChange={setPage} />}
 
-      <MemberFormDrawer open={editing !== null} member={editing === 'new' ? null : editing} onClose={() => setEditing(null)} onSaved={list.retry} />
       <ConfirmDialog
         open={anonymizing !== null}
         title={t('Anonymise this member?')}

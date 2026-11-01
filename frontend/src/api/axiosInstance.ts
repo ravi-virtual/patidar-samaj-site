@@ -2,13 +2,19 @@ import axios, { AxiosError } from 'axios';
 import { getCsrfToken } from './csrf';
 import { getLanguage, t } from '../i18n';
 
+// Empty in development (the Vite dev server proxies /api); the API's own origin in production.
+const API_ORIGIN = ((import.meta.env.VITE_API_URL as string | undefined) ?? '').replace(/\/+$/, '');
+
+/** Prefix for every API path, including media links used in <img>/<a>. */
+export const API_BASE = `${API_ORIGIN}/api`;
+
 /**
  * Single Axios instance for the whole app (mern-stack-project skill: all API calls live in src/api).
  * Auth uses HTTP-only session cookies, so credentials are sent but no token is ever stored in JS.
  * State-changing requests carry the per-session CSRF token from memory.
  */
 export const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE,
   withCredentials: true,
   timeout: 15_000,
   headers: { 'Content-Type': 'application/json' },

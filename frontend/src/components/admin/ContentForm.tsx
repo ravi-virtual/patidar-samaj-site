@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { listContentApi, saveContentApi, type ContentRow } from '../../api/adminApi';
 import { getErrorMessage, getFieldErrors } from '../../api/axiosInstance';
 import { t } from '../../i18n';
@@ -12,9 +13,9 @@ import { TextField } from '../ui/TextField';
 import { Toggle } from '../ui/Toggle';
 import { BilingualField, errText } from './BilingualField';
 import type { FieldDef, ResourceDef } from './contentConfig';
-import { FormDrawer, FullWidth } from './FormDrawer';
+import { FormPage, FullWidth } from './FormPage';
 import { MediaPicker } from './MediaPicker';
-import { PreviewButton, ResourcePreview } from './ContentPreview';
+import { PreviewButton, type DraftState, type PreviewState } from './ContentPreview';
 
 type Values = Record<string, string | boolean>;
 
@@ -125,32 +126,29 @@ function Field({ f, form, errors, terms }: { f: FieldDef; form: ReturnType<typeo
   }
 }
 
-/** Generic create/edit form for any managed content type, generated from its definition. */
-export function ContentFormDrawer({
-  def,
-  open,
-  row,
-  onClose,
-  onSaved,
-}: {
-  def: ResourceDef;
-  open: boolean;
-  row: ContentRow | null;
-  onClose: () => void;
-  onSaved: () => void;
-}) {
+/** Generic create/edit page for any managed content type, generated from its definition. */
+export function ContentForm({ def, row }: { def: ResourceDef; row: ContentRow | null }) {
   const dispatch = useAppDispatch();
-  const defaults = useMemo(() => initialValues(def, null), [def]);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const back = `/admin/content?tab=${def.key}`;
+  const defaults = useMemo(() => initialValues(def, row), [def, row]);
   const form = useForm<Values>({ defaultValues: defaults });
-  const { handleSubmit, reset, setError, formState, control } = form;
+  const { handleSubmit, setError, formState, control, reset } = form;
   const values = useWatch({ control }) as Values;
-  const [previewing, setPreviewing] = useState(false);
-  const needsTerms = def.fields.some((f) => f.type === 'term');
-  const terms = useFetch(`terms:${needsTerms}`, () => (needsTerms ? listContentApi('committee-terms', { limit: 100 }) : Promise.resolve(null)));
+  const editPath = row ? `/admin/content/${def.key}/${row.id}/edit` : `/admin/content/${def.key}/new`;
 
+  // Coming back from the preview page: put the typed values back, still compared with the saved ones.
+  const draft = (location.state as DraftState<Values> | null)?.draft;
   useEffect(() => {
-    if (open) reset(initialValues(def, row));
-  }, [open, def, row, reset]);
+    if (draft) reset(draft, { keepDefaultValues: true });
+  }, [draft, reset]);
+  const needsTerms = def.fields.some((f) => f.type === 'term');
+  // Coming back from the preview page the terms are handed over, so nothing is fetched again.
+  const cachedTerms = (location.state as DraftState<Values> | null)?.cache?.terms as Awaited<ReturnType<typeof listContentApi>> | undefined;
+  const terms = useFetch(`terms:${needsTerms}`, () =>
+    needsTerms ? (cachedTerms ? Promise.resolve(cachedTerms) : listContentApi('committee-terms', { limit: 100 })) : Promise.resolve(null),
+  );
 
   const onSubmit = async (v: Values) => {
     let invalid = false;
@@ -172,8 +170,7 @@ export function ContentFormDrawer({
     try {
       await saveContentApi(def.key, row?.id ?? null, toBody(def, v));
       dispatch(showToast(row ? t('Saved.') : t('Saved as a draft. Publish it when it is ready.')));
-      onSaved();
-      onClose();
+      navigate(back);
     } catch (err) {
       let placed = false;
       for (const f of getFieldErrors(err)) {
@@ -187,11 +184,23 @@ export function ContentFormDrawer({
   };
 
   const rootError = formState.errors.root?.message;
+
+  const openPreview = () => {
+    const state: PreviewState<Values> = {
+      values,
+      status: row?.status ?? 'draft',
+      termLabel: terms.data?.items.find((term) => term.id === values.termId)?.label ?? undefined,
+      cache: { row, terms: terms.data },
+    };
+    navigate(`${editPath.replace(/\/edit$/, '')}/preview`, { state });
+  };
+
   return (
-    <FormDrawer
-      open={open}
+    <FormPage
       title={row ? t('Edit {item}', { item: t(def.singular) }) : t('New {item}', { item: t(def.singular) })}
-      onClose={onClose}
+      description={t('Nothing appears on the site until it is published.')}
+      backTo={back}
+      backLabel={t('Back to {items}', { items: t(def.plural) })}
       onSubmit={handleSubmit(onSubmit)}
       submitLabel={row ? t('Save changes') : t('Save draft')}
       submitting={formState.isSubmitting}
@@ -199,7 +208,7 @@ export function ContentFormDrawer({
     >
       <FullWidth>
         <div className="flex justify-end">
-          <PreviewButton onClick={() => setPreviewing(true)} />
+          <PreviewButton onClick={openPreview} />
         </div>
       </FullWidth>
       {rootError && (
@@ -211,14 +220,6 @@ export function ContentFormDrawer({
         const node = <Field f={f} form={form} errors={formState.errors as Record<string, { message?: string } | undefined>} terms={terms.data?.items ?? []} />;
         return f.wide || f.type === 'checkbox' ? <FullWidth key={f.name}>{node}</FullWidth> : <div key={f.name}>{node}</div>;
       })}
-      <ResourcePreview
-        open={previewing}
-        onClose={() => setPreviewing(false)}
-        def={def}
-        values={values}
-        termLabel={terms.data?.items.find((term) => term.id === values.termId)?.label ?? undefined}
-        status={row?.status ?? 'draft'}
-      />
-    </FormDrawer>
+    </FormPage>
   );
 }

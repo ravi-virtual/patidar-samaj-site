@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -19,7 +19,7 @@ import { SelectField } from '../ui/FormFields';
 import { TextField } from '../ui/TextField';
 import { Toggle } from '../ui/Toggle';
 import { BilingualField, errText } from './BilingualField';
-import { FormDrawer, FullWidth } from './FormDrawer';
+import { FormPage, FullWidth } from './FormPage';
 
 const noAngle = (v: string) => !/[<>]/.test(v);
 
@@ -74,38 +74,25 @@ const toInput = (v: Form): AnnouncementInput => ({
   featured: v.featured,
 });
 
-/** Create or edit one announcement. `item` null means "new". New items start as drafts. */
-export function AnnouncementFormDrawer({
-  open,
-  item,
-  onClose,
-  onSaved,
-}: {
-  open: boolean;
-  item: AdminAnnouncement | null;
-  onClose: () => void;
-  onSaved: () => void;
-}) {
+const BACK = '/admin/announcements';
+
+/** Create or edit one announcement on its own page. `item` null means "new". New items start as drafts. */
+export function AnnouncementForm({ item }: { item: AdminAnnouncement | null }) {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const {
     register,
     handleSubmit,
-    reset,
     setError,
     formState: { errors, isDirty, isSubmitting },
-  } = useForm<Form>({ resolver: zodResolver(schema), defaultValues: blank });
-
-  useEffect(() => {
-    if (open) reset(item ? fromItem(item) : blank);
-  }, [open, item, reset]);
+  } = useForm<Form>({ resolver: zodResolver(schema), defaultValues: item ? fromItem(item) : blank });
 
   const onSubmit = async (v: Form) => {
     try {
       if (item) await updateAnnouncementApi(item.id, toInput(v));
       else await createAnnouncementApi(toInput(v));
       dispatch(showToast(item ? t('Announcement updated.') : t('Announcement saved as a draft.')));
-      onSaved();
-      onClose();
+      navigate(BACK);
     } catch (err) {
       let placed = false;
       for (const f of getFieldErrors(err)) {
@@ -119,10 +106,11 @@ export function AnnouncementFormDrawer({
   };
 
   return (
-    <FormDrawer
-      open={open}
+    <FormPage
       title={item ? t('Edit announcement') : t('New announcement')}
-      onClose={onClose}
+      description={t('News and notices. New items start as drafts and go live when published.')}
+      backTo={BACK}
+      backLabel={t('Back to announcements')}
       onSubmit={handleSubmit(onSubmit)}
       submitLabel={item ? t('Save changes') : t('Save draft')}
       submitting={isSubmitting}
@@ -184,6 +172,6 @@ export function AnnouncementFormDrawer({
       <FullWidth>
         <Toggle label={t('Feature on the home page')} {...register('featured')} />
       </FullWidth>
-    </FormDrawer>
+    </FormPage>
   );
 }

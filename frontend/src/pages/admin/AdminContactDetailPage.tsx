@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import {
   addContactNoteApi,
   getContactApi,
@@ -6,38 +8,53 @@ import {
   type ContactMessage,
   type ContactStatus,
 } from '../../api/adminApi';
-import { t } from '../../i18n';
+import { StatusBadge } from '../../components/admin/StatusBadge';
+import { useCan } from '../../components/admin/usePermissions';
+import { useRunner } from '../../components/admin/useRunner';
+import { Button } from '../../components/ui/Button';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { SelectField, TextAreaField } from '../../components/ui/FormFields';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { formatDateTime } from '../../lib/format';
 import { useFetch } from '../../lib/useFetch';
 import { useAppSelector } from '../../store/hooks';
-import { Modal } from '../overlays/Modal';
-import { Button } from '../ui/Button';
-import { ErrorState } from '../ui/ErrorState';
-import { SelectField, TextAreaField } from '../ui/FormFields';
-import { Skeleton } from '../ui/Skeleton';
-import { StatusBadge } from './StatusBadge';
-import { useCan } from './usePermissions';
-import { useRunner } from './useRunner';
+import { t } from '../../i18n';
 
-function Body({ id, onChanged }: { id: string; onChanged: () => void }) {
+/** Full-page view of one inbox message with its status, assignment and internal notes. */
+export default function AdminContactDetailPage() {
   const can = useCan();
+  const { id = '' } = useParams();
   const me = useAppSelector((s) => s.auth.user)!;
   const { data, error, retry } = useFetch(`contact:${id}`, () => getContactApi(id));
   const [note, setNote] = useState('');
-  const refresh = () => {
-    retry();
-    onChanged();
-  };
-  const { busy, run } = useRunner(refresh);
+  const { busy, run } = useRunner(retry);
 
-  if (error && !data) return <div className="p-5"><ErrorState message={error} onRetry={retry} /></div>;
-  if (!data) return <div className="p-5"><Skeleton className="h-60" /></div>;
+  const header = (
+    <PageHeader
+      title={t('Message')}
+      actions={
+        <Link
+          to="/admin/contacts"
+          className="inline-flex h-10 items-center gap-2 rounded-md border border-border-strong px-3.5 text-sm font-medium text-text hover:bg-surface-muted"
+        >
+          <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+          {t('Back to contact inbox')}
+        </Link>
+      }
+    />
+  );
+
+  if (error && !data) return <>{header}<ErrorState message={error} onRetry={retry} /></>;
+  if (!data) return <>{header}<Skeleton className="h-60" /></>;
 
   const m: ContactMessage = data;
   const mine = m.assignedTo === me.id;
 
   return (
-    <div className="space-y-5 p-5">
+    <>
+      {header}
+    <div className="space-y-5 rounded-lg border border-border bg-surface p-4 sm:p-5">
       <div>
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={m.status} />
@@ -120,14 +137,6 @@ function Body({ id, onChanged }: { id: string; onChanged: () => void }) {
         )}
       </section>
     </div>
-  );
-}
-
-/** One inbox message with its status, assignment and internal notes. */
-export function ContactDrawer({ id, onClose, onChanged }: { id: string | null; onClose: () => void; onChanged: () => void }) {
-  return (
-    <Modal open={id !== null} onClose={onClose} title={t('Message')} variant="drawer">
-      {id && <Body key={id} id={id} onChanged={onChanged} />}
-    </Modal>
+    </>
   );
 }

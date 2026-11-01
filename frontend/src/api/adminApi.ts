@@ -545,6 +545,28 @@ export const reorderContentApi = async (resource: ContentResource, ids: string[]
   await api.patch(`/admin/content/${resource}/reorder`, { ids });
 };
 
+// Single-record reads, used to fill the full-page edit forms from the address bar.
+
+export const getEventApi = async (id: string): Promise<AdminEvent> => {
+  const { data } = await api.get<Envelope<{ event: AdminEvent }>>(`/admin/events/${id}`);
+  return data.data.event;
+};
+
+export const getAnnouncementApi = async (id: string): Promise<AdminAnnouncement> => {
+  const { data } = await api.get<Envelope<{ announcement: AdminAnnouncement }>>(`/admin/announcements/${id}`);
+  return data.data.announcement;
+};
+
+export const getMemberApi = async (id: string): Promise<StaffMember> => {
+  const { data } = await api.get<Envelope<{ member: StaffMember }>>(`/admin/members/${id}`);
+  return data.data.member;
+};
+
+export const getContentApi = async (resource: ContentResource, id: string): Promise<ContentRow> => {
+  const { data } = await api.get<Envelope<{ item: ContentRow }>>(`/admin/content/${resource}/${id}`);
+  return data.data.item;
+};
+
 export const getAdminApi = async (id: string): Promise<AdminUser> => {
   const { data } = await api.get<Envelope<{ user: AdminUser }>>(`/users/${id}`);
   return data.data.user;

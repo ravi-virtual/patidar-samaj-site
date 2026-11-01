@@ -14,6 +14,7 @@ import {
   anonymizeMember,
   createMember,
   exportMembers,
+  getMember,
   listMembers,
   updateMember,
 } from '../controllers/MemberAdminController';
@@ -27,6 +28,7 @@ router.use(hasToken, isAuthenticated, isStaff);
 router.get('/', hasPermission(P.MEMBERS_READ), adminListRules, listMembers);
 router.get('/export', hasPermission(P.MEMBERS_EXPORT), adminListRules, exportMembers);
 router.post('/', hasPermission(P.MEMBERS_CREATE), createMemberRules, createMember);
+router.get('/:id', hasPermission(P.MEMBERS_READ), memberIdRules, getMember);
 router.patch('/:id', hasPermission(P.MEMBERS_UPDATE), updateMemberRules, updateMember);
 router.post('/:id/anonymize', hasPermission(P.MEMBERS_ANONYMIZE), memberIdRules, anonymizeMember);
 

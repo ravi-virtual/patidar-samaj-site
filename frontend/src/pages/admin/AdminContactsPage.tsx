@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { listContactsApi, type ContactMessage } from '../../api/adminApi';
-import { ContactDrawer } from '../../components/admin/ContactDrawer';
 import { DataTable, type Column } from '../../components/admin/DataTable';
 import { StatusBadge } from '../../components/admin/StatusBadge';
 import { Toolbar } from '../../components/admin/Toolbar';
@@ -25,11 +24,11 @@ const statuses = [
 
 export default function AdminContactsPage() {
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState(params.get('status') ?? '');
   const [mine, setMine] = useState(false);
   const [page, setPage] = useState(1);
-  const [openId, setOpenId] = useState<string | null>(null);
   const term = useDebounced(search.trim(), 300);
 
   const list = useFetch(`admin-contacts:${term}:${status}:${mine}:${page}`, () =>
@@ -62,7 +61,7 @@ export default function AdminContactsPage() {
       srOnlyHeader: true,
       className: 'text-right',
       cell: (m) => (
-        <Button variant="secondary" size="sm" onClick={() => setOpenId(m.id)} aria-label={t('Open message from {name}', { name: m.name })}>
+        <Button variant="secondary" size="sm" onClick={() => navigate(`/admin/contacts/${m.id}`)} aria-label={t('Open message from {name}', { name: m.name })}>
           {t('Open')}
         </Button>
       ),
@@ -98,7 +97,6 @@ export default function AdminContactsPage() {
         empty={<EmptyState title={t('No messages')} description={t('Nothing matches these filters.')} />}
       />
       {list.data && <Pagination page={page} pageSize={PAGE_SIZE} totalCount={list.data.totalCount} onChange={setPage} />}
-      <ContactDrawer id={openId} onClose={() => setOpenId(null)} onChanged={list.retry} />
     </>
   );
 }

@@ -16,10 +16,10 @@ if (config.trustProxy) app.set('trust proxy', 1);
 app.disable('x-powered-by');
 
 const corsOptions: cors.CorsOptions = {
-  // Exactly one allowed origin, never '*' with credentials. Requests with no Origin header
+  // Only the listed front-end origins, never '*' with credentials. Requests with no Origin header
   // (same-origin via the dev proxy, curl, health checks) are not cross-origin, so they pass;
   // any other origin gets no CORS headers at all.
-  origin: (origin, callback) => callback(null, !origin || origin === config.clientOrigin),
+  origin: (origin, callback) => callback(null, !origin || config.clientOrigins.includes(origin)),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'X-CSRF-Token', 'Accept-Language'],
@@ -28,7 +28,8 @@ const corsOptions: cors.CorsOptions = {
 // Middleware stack — order follows the mern-stack-project skill.
 app.use(cors(corsOptions));
 app.use(language);
-app.use(helmet());
+// The front end lives on a sibling subdomain, so images served by the API must be same-site readable.
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'same-site' } }));
 app.use(rateLimiter);
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));

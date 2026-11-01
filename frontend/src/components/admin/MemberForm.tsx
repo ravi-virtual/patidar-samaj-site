@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { createMemberApi, updateMemberApi, type MemberInput, type StaffMember } from '../../api/adminApi';
@@ -12,7 +12,7 @@ import { SelectField, TextAreaField } from '../ui/FormFields';
 import { TextField } from '../ui/TextField';
 import { Toggle } from '../ui/Toggle';
 import { errText } from './BilingualField';
-import { FormDrawer, FullWidth } from './FormDrawer';
+import { FormPage, FullWidth } from './FormPage';
 import { useCan } from './usePermissions';
 
 const noAngle = (v: string) => !/[<>]/.test(v);
@@ -58,32 +58,20 @@ const fromMember = (m: StaffMember): Form => ({
   familySize: m.familySize ? String(m.familySize) : '',
 });
 
-/** Add or edit a directory entry. `member` null means "new". */
-export function MemberFormDrawer({
-  open,
-  member,
-  onClose,
-  onSaved,
-}: {
-  open: boolean;
-  member: StaffMember | null;
-  onClose: () => void;
-  onSaved: () => void;
-}) {
+const BACK = '/admin/members';
+
+/** Add or edit a directory entry on its own page. `member` null means "new". */
+export function MemberForm({ member }: { member: StaffMember | null }) {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const can = useCan();
   const privateAccess = can('members.read.private');
   const {
     register,
     handleSubmit,
-    reset,
     setError,
     formState: { errors, isDirty, isSubmitting },
-  } = useForm<Form>({ resolver: zodResolver(schema), defaultValues: blank });
-
-  useEffect(() => {
-    if (open) reset(member ? fromMember(member) : blank);
-  }, [open, member, reset]);
+  } = useForm<Form>({ resolver: zodResolver(schema), defaultValues: member ? fromMember(member) : blank });
 
   const onSubmit = async (v: Form) => {
     const body: MemberInput = {
@@ -105,8 +93,7 @@ export function MemberFormDrawer({
       if (member) await updateMemberApi(member.id, body);
       else await createMemberApi(body);
       dispatch(showToast(member ? t('Member updated.') : t('Member added.')));
-      onSaved();
-      onClose();
+      navigate(BACK);
     } catch (err) {
       let placed = false;
       for (const f of getFieldErrors(err)) {
@@ -121,10 +108,11 @@ export function MemberFormDrawer({
   };
 
   return (
-    <FormDrawer
-      open={open}
+    <FormPage
       title={member ? t('Edit member') : t('Add member')}
-      onClose={onClose}
+      description={t('Directory entries are kept by the office; members do not sign in.')}
+      backTo={BACK}
+      backLabel={t('Back to members')}
       onSubmit={handleSubmit(onSubmit)}
       submitLabel={member ? t('Save changes') : t('Add member')}
       submitting={isSubmitting}
@@ -162,6 +150,6 @@ export function MemberFormDrawer({
       <FullWidth>
         <TextAreaField label={t('About')} rows={3} error={errText(errors.bio)} {...register('bio')} />
       </FullWidth>
-    </FormDrawer>
+    </FormPage>
   );
 }

@@ -77,6 +77,27 @@ export const listMembers = async (req: Request, res: Response, next: NextFunctio
 };
 
 /**
+ * @name getMember
+ * @file MemberAdminController.ts
+ * @param {Request} req
+ * @param {Response} res
+ * @description Staff view of one directory entry, used to fill the edit page. Private fields are
+ * included only for holders of members.read.private.
+ * @author Ravi Patel
+ */
+export const getMember = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const profile = await MemberProfile.findOne({ _id: req.params.id, isDeleted: false }).lean();
+    if (!profile) return notFound(res);
+    return new ApiResponse(ResponseCodes.OK, 'Member fetched successfully', {
+      member: toStaffMember(profile, { includePrivate: canSeePrivate(req) }),
+    }).send(res);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+/**
  * @name createMember
  * @file MemberAdminController.ts
  * @param {Request} req

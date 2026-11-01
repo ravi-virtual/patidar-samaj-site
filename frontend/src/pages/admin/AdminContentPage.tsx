@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import {
   blockActionApi,
@@ -11,9 +12,7 @@ import {
   type ContentRow,
 } from '../../api/adminApi';
 import { RowMenu } from '../../components/admin/RowActions';
-import { BlockDrawer } from '../../components/admin/BlockDrawer';
 import { blocks, resources, type BlockDef, type ResourceDef } from '../../components/admin/contentConfig';
-import { ContentFormDrawer } from '../../components/admin/ContentFormDrawer';
 import { DataTable, type Column } from '../../components/admin/DataTable';
 import { StatusBadge } from '../../components/admin/StatusBadge';
 import { useCan } from '../../components/admin/usePermissions';
@@ -31,9 +30,9 @@ import { t } from '../../i18n';
 
 function BlocksPanel() {
   const can = useCan();
+  const navigate = useNavigate();
   const list = useFetch('admin-blocks', listBlocksAdminApi);
   const { run } = useRunner(list.retry);
-  const [editing, setEditing] = useState<BlockDef | null>(null);
 
   return (
     <Async data={list.data} loading={list.initialLoading} error={list.error} onRetry={list.retry} skeleton={<Skeleton className="h-72" />}>
@@ -64,7 +63,7 @@ function BlocksPanel() {
                 <RowMenu
                   name={def.label}
                   actions={[
-                    { label: t('Edit'), kind: 'edit', show: editable, onSelect: () => setEditing(def) },
+                    { label: t('Edit'), kind: 'edit', show: editable, onSelect: () => navigate(`/admin/content/blocks/${def.key}/edit`) },
                     { label: t('Publish'), show: can('content.publish') && Boolean(written) && block?.status !== 'published', onSelect: () => void run(() => blockActionApi(def.key, 'publish'), t('Published.')) },
                     { label: t('Unpublish'), show: can('content.publish') && block?.status === 'published', onSelect: () => void run(() => blockActionApi(def.key, 'unpublish'), t('Moved back to draft.')) },
                   ]}
@@ -74,10 +73,7 @@ function BlocksPanel() {
           },
         ];
         return (
-          <>
-            <DataTable caption={t('Page text blocks')} columns={columns} rows={rows} rowKey={(r) => r.def.key} minWidth={640} />
-            <BlockDrawer def={editing} block={editing ? byKey.get(editing.key) : undefined} allBlocks={data} onClose={() => setEditing(null)} onSaved={list.retry} />
-          </>
+          <DataTable caption={t('Page text blocks')} columns={columns} rows={rows} rowKey={(r) => r.def.key} minWidth={640} />
         );
       }}
     </Async>
@@ -86,9 +82,9 @@ function BlocksPanel() {
 
 function ResourcePanel({ def }: { def: ResourceDef }) {
   const can = useCan();
+  const navigate = useNavigate();
   const list = useFetch(`admin-content:${def.key}`, () => listContentApi(def.key, { limit: 100 }));
   const { busy, run } = useRunner(list.retry);
-  const [editing, setEditing] = useState<ContentRow | null | 'new'>(null);
   const [deleting, setDeleting] = useState<ContentRow | null>(null);
 
   const rows = list.data?.items;
@@ -124,7 +120,7 @@ function ResourcePanel({ def }: { def: ResourceDef }) {
           <RowMenu
             name={def.title(r)}
             actions={[
-              { label: t('Edit'), kind: 'edit', show: editable(r), onSelect: () => setEditing(r) },
+              { label: t('Edit'), kind: 'edit', show: editable(r), onSelect: () => navigate(`/admin/content/${def.key}/${r.id}/edit`) },
               { label: t('Publish'), show: publisher && r.status !== 'published', onSelect: () => void run(() => contentActionApi(def.key, r.id, 'publish'), t('Published.')) },
               { label: t('Unpublish'), show: publisher && r.status === 'published', onSelect: () => void run(() => contentActionApi(def.key, r.id, 'unpublish'), t('Moved back to draft.')) },
               { label: t('Archive'), show: publisher && r.status === 'published', onSelect: () => void run(() => contentActionApi(def.key, r.id, 'archive'), t('Archived.')) },
@@ -142,7 +138,7 @@ function ResourcePanel({ def }: { def: ResourceDef }) {
     <>
       {can('content.manage') && (
         <div className="mb-4 flex justify-end">
-          <Button onClick={() => setEditing('new')}>
+          <Button onClick={() => navigate(`/admin/content/${def.key}/new`)}>
             <Plus aria-hidden="true" className="h-4 w-4" />
             {t('New {item}', { item: t(def.singular) })}
           </Button>
@@ -159,7 +155,6 @@ function ResourcePanel({ def }: { def: ResourceDef }) {
         minWidth={560}
         empty={<EmptyState title={t('No {items} yet', { items: t(def.plural).toLowerCase() })} description={t('Create the first one. It stays a draft until you publish it.')} />}
       />
-      <ContentFormDrawer def={def} open={editing !== null} row={editing === 'new' ? null : editing} onClose={() => setEditing(null)} onSaved={list.retry} />
       <ConfirmDialog
         open={deleting !== null}
         title={t('Delete this {item}?', { item: t(def.singular) })}
@@ -178,7 +173,10 @@ function ResourcePanel({ def }: { def: ResourceDef }) {
 }
 
 export default function AdminContentPage() {
-  const [tab, setTab] = useState<'blocks' | ResourceDef['key']>('blocks');
+  // The tab lives in the address (`?tab=faqs`) so returning from an edit page lands on the same list.
+  const [params, setParams] = useSearchParams();
+  const tab = params.get('tab') ?? 'blocks';
+  const setTab = (next: string) => setParams(next === 'blocks' ? {} : { tab: next }, { replace: true });
   const def = resources.find((r) => r.key === tab);
   return (
     <>

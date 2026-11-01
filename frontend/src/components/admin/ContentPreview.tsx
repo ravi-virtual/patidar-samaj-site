@@ -5,7 +5,6 @@ import { mediaUrl } from '../../api/siteApi';
 import type { CommitteeMember, ContentBlock, ContentItem, Faq, ImportantLink, Milestone } from '../../api/types';
 import { t } from '../../i18n';
 import { useAppSelector } from '../../store/hooks';
-import { Modal } from '../overlays/Modal';
 import {
   AboutContent,
   FaqItem,
@@ -22,6 +21,22 @@ import { PageHeader } from '../ui/PageHeader';
 import type { BlockDef, ResourceDef } from './contentConfig';
 import { StatusBadge } from './StatusBadge';
 
+/**
+ * What the edit page hands to its preview page (through the router) and gets back on return, so
+ * unsaved values survive the round trip: `values` going out, `draft` coming back.
+ */
+export interface PreviewState<V> {
+  values: V;
+  status: string;
+  termLabel?: string;
+  /** Data the editor already loaded, echoed back on return so neither page asks the server again. */
+  cache?: Record<string, unknown>;
+}
+export interface DraftState<V> {
+  draft?: V;
+  cache?: Record<string, unknown>;
+}
+
 /** The button that opens a preview. Lives inside the edit form. */
 export function PreviewButton({ onClick }: { onClick: () => void }) {
   return (
@@ -33,18 +48,17 @@ export function PreviewButton({ onClick }: { onClick: () => void }) {
 }
 
 /**
- * Side panel showing unsaved form values rendered with the public site's own components.
- * Links inside are inert so a stray click cannot navigate away from the editor.
+ * Full-page preview of unsaved form values, rendered with the public site's own components. It has
+ * its own address; "Back to editing" returns to the edit page with the typed values restored.
+ * Links inside are inert so a stray click cannot leave the editor.
  */
 function PreviewPanel({
-  open,
-  onClose,
+  onBack,
   status,
   note,
   children,
 }: {
-  open: boolean;
-  onClose: () => void;
+  onBack: () => void;
   status: string;
   note?: string;
   children: ReactNode;
@@ -53,26 +67,26 @@ function PreviewPanel({
     if ((e.target as HTMLElement).closest('a')) e.preventDefault();
   };
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={t('Preview — not saved yet')}
-      variant="drawer"
-      footer={
-        <Button variant="secondary" onClick={onClose}>
-          <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-          {t('Back to editing')}
-        </Button>
-      }
-    >
-      <div className="flex flex-wrap items-center gap-2 border-b border-border bg-surface-muted px-5 py-2.5 text-[13px] text-text-muted">
-        <StatusBadge status={status} />
-        <span>{note ?? t('Shown as it will look on the public site. Nothing has been saved or published.')}</span>
+    <>
+      <PageHeader
+        title={t('Preview — not saved yet')}
+        actions={
+          <Button variant="secondary" onClick={onBack}>
+            <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+            {t('Back to editing')}
+          </Button>
+        }
+      />
+      <div className="space-y-5">
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface-muted px-4 py-2.5 text-[13px] text-text-muted">
+          <StatusBadge status={status} />
+          <span>{note ?? t('Shown as it will look on the public site. Nothing has been saved or published.')}</span>
+        </div>
+        <div className="rounded-lg border border-border bg-surface p-4 sm:p-5" onClickCapture={stopLinks}>
+          {children}
+        </div>
       </div>
-      <div className="p-5" onClickCapture={stopLinks}>
-        {children}
-      </div>
-    </Modal>
+    </>
   );
 }
 
@@ -223,7 +237,7 @@ function ResourcePreviewBody({ def, values, termLabel }: { def: ResourceDef; val
   }
 }
 
-// ─── Entry points used by the edit drawers ───────────────────────────────────
+// ─── Entry points used by the edit pages ───────────────────────────────────
 
 interface BlockValues {
   title: string;
@@ -232,44 +246,40 @@ interface BlockValues {
 }
 
 export function BlockPreview({
-  open,
-  onClose,
+  onBack,
   def,
   values,
   others,
   status,
 }: {
-  open: boolean;
-  onClose: () => void;
+  onBack: () => void;
   def: BlockDef;
   values: BlockValues;
   others: AdminBlock[];
   status: string;
 }) {
   return (
-    <PreviewPanel open={open} onClose={onClose} status={status} note={blockPreviewNote(def)}>
+    <PreviewPanel onBack={onBack} status={status} note={blockPreviewNote(def)}>
       <BlockPreviewBody def={def} values={values} others={others} />
     </PreviewPanel>
   );
 }
 
 export function ResourcePreview({
-  open,
-  onClose,
+  onBack,
   def,
   values,
   termLabel,
   status,
 }: {
-  open: boolean;
-  onClose: () => void;
+  onBack: () => void;
   def: ResourceDef;
   values: Values;
   termLabel?: string;
   status: string;
 }) {
   return (
-    <PreviewPanel open={open} onClose={onClose} status={status}>
+    <PreviewPanel onBack={onBack} status={status}>
       <ResourcePreviewBody def={def} values={values} termLabel={termLabel} />
     </PreviewPanel>
   );

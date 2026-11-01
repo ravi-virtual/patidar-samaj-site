@@ -22,12 +22,12 @@ export const originGuard = (req: Request, res: Response, next: NextFunction) => 
   if (SAFE_METHODS.has(req.method)) return next();
 
   const origin = req.get('origin');
-  if (origin) return origin === config.clientOrigin ? next() : reject(res);
+  if (origin) return config.clientOrigins.includes(origin) ? next() : reject(res);
 
   const referer = req.get('referer');
   if (referer) {
     try {
-      return new URL(referer).origin === config.clientOrigin ? next() : reject(res);
+      return config.clientOrigins.includes(new URL(referer).origin) ? next() : reject(res);
     } catch {
       return reject(res);
     }

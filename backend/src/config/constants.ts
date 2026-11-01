@@ -32,13 +32,21 @@ if (isProduction) {
   }
 }
 
+const clientOrigins = (process.env.CLIENT_ORIGIN ?? '')
+  .split(',')
+  .map((o) => o.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+
 // ─── Environment config ──────────────────────────────────────────────────────
 export const config = {
   port: toInt(process.env.PORT, 5000),
   nodeEnv,
   isProduction,
   isTest: nodeEnv === 'test',
-  clientOrigin: process.env.CLIENT_ORIGIN as string,
+  // CLIENT_ORIGIN may list several comma-separated origins (e.g. the deployed site and the local
+  // dev server). The first is the primary one, used for links in emails.
+  clientOrigins: clientOrigins,
+  clientOrigin: clientOrigins[0] as string,
   trustProxy: process.env.TRUST_PROXY === 'true',
   mongo: {
     uri: process.env.MONGO_URI as string,
@@ -76,7 +84,7 @@ export const config = {
   uploads: {
     // Outside any web root. Files are served only through GET /api/media/:id after checks.
     dir: resolve(process.env.UPLOAD_DIR ?? 'uploads'),
-    maxImageBytes: 5 * 1024 * 1024,
+    maxImageBytes: 3 * 1024 * 1024,
     maxDocumentBytes: 10 * 1024 * 1024,
   },
   // Optional object storage. When all three are set, uploads go to Cloudinary instead of the

@@ -1,6 +1,7 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FileText, Pencil, Trash2, Upload } from 'lucide-react';
-import { deleteMediaApi, listMediaApi, updateMediaApi, uploadMediaApi, type MediaItem } from '../../api/adminApi';
+import { deleteMediaApi, listMediaApi, updateMediaApi, type MediaItem } from '../../api/adminApi';
 import { getErrorMessage } from '../../api/axiosInstance';
 import { FilterSelect, Toolbar } from '../../components/admin/Toolbar';
 import { useCan } from '../../components/admin/usePermissions';
@@ -22,12 +23,9 @@ import { useFetch } from '../../lib/useFetch';
 import { useAppDispatch } from '../../store/hooks';
 import { showToast } from '../../store/slices/toastSlice';
 import { t } from '../../i18n';
+import { readableSize } from './mediaLimits';
 
 const PAGE_SIZE = 24;
-const MAX_IMAGE = 5 * 1024 * 1024;
-const MAX_DOC = 10 * 1024 * 1024;
-
-const readableSize = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 
 function EditBody({ item, onClose, onSaved }: { item: MediaItem; onClose: () => void; onSaved: () => void }) {
   const dispatch = useAppDispatch();
@@ -83,7 +81,7 @@ function EditBody({ item, onClose, onSaved }: { item: MediaItem; onClose: () => 
 }
 
 export default function AdminMediaPage() {
-  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const can = useCan();
   const [search, setSearch] = useState('');
   const [kind, setKind] = useState('');
@@ -92,55 +90,22 @@ export default function AdminMediaPage() {
   const list = useFetch(`admin-media:${term}:${kind}:${page}`, () => listMediaApi({ search: term, kind, page, limit: PAGE_SIZE }));
   const { busy, run } = useRunner(list.retry);
 
-  const fileInput = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
   const [editing, setEditing] = useState<MediaItem | null>(null);
   const [deleting, setDeleting] = useState<MediaItem | null>(null);
 
-  const upload = async (file: File | undefined) => {
-    if (!file) return;
-    const isPdf = file.type === 'application/pdf';
-    if (file.size > (isPdf ? MAX_DOC : MAX_IMAGE)) {
-      dispatch(showToast(t('That file is too large. Pictures can be up to 5 MB and PDFs up to 10 MB.'), 'error'));
-      return;
-    }
-    setUploading(true);
-    try {
-      await uploadMediaApi(file);
-      dispatch(showToast(t('Uploaded. Add a description of the picture so it is accessible.')));
-      list.retry();
-    } catch (err) {
-      dispatch(showToast(getErrorMessage(err, t('Upload failed')), 'error'));
-    } finally {
-      setUploading(false);
-      if (fileInput.current) fileInput.current.value = '';
-    }
-  };
-
   return (
     <>
-      <PageHeader title={t('Media library')} description={t('Pictures and PDFs used on the site. JPEG, PNG, WebP (up to 5 MB) and PDF (up to 10 MB).')} />
+      <PageHeader title={t('Media library')} description={t('Pictures and PDFs used on the site. JPEG, PNG, WebP (up to 3 MB) and PDF (up to 10 MB).')} />
       <Toolbar
         search={search}
         onSearch={(v) => (setSearch(v), setPage(1))}
         searchLabel={t('Search files')}
         actions={
           can('media.upload') && (
-            <>
-              <input
-                ref={fileInput}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,application/pdf"
-                className="sr-only"
-                aria-label={t('Choose a file to upload')}
-                tabIndex={-1}
-                onChange={(e) => void upload(e.target.files?.[0])}
-              />
-              <Button onClick={() => fileInput.current?.click()} loading={uploading}>
-                <Upload aria-hidden="true" className="h-4 w-4" />
-                {t('Upload file')}
-              </Button>
-            </>
+            <Button onClick={() => navigate('/admin/media/upload')}>
+              <Upload aria-hidden="true" className="h-4 w-4" />
+              {t('Upload file')}
+            </Button>
           )
         }
       >

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import {
   deleteEventApi,
@@ -9,7 +10,6 @@ import {
 import { EVENT_CATEGORIES } from '../../api/types';
 import { RowMenu } from '../../components/admin/RowActions';
 import { DataTable, type Column } from '../../components/admin/DataTable';
-import { EventFormDrawer } from '../../components/admin/EventFormDrawer';
 import { StatusBadge } from '../../components/admin/StatusBadge';
 import { FilterSelect, Toolbar } from '../../components/admin/Toolbar';
 import { useCan } from '../../components/admin/usePermissions';
@@ -34,6 +34,7 @@ type Pending =
 
 export default function AdminEventsPage() {
   const can = useCan();
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [when, setWhen] = useState('all');
@@ -46,7 +47,6 @@ export default function AdminEventsPage() {
   );
   const { busy, run } = useRunner(list.retry);
 
-  const [editing, setEditing] = useState<AdminEvent | null | 'new'>(null);
   const [pending, setPending] = useState<Pending | null>(null);
   const [reason, setReason] = useState('');
   const [reasonGu, setReasonGu] = useState('');
@@ -81,7 +81,7 @@ export default function AdminEventsPage() {
         <RowMenu
           name={e.title}
           actions={[
-            { label: t('Edit'), kind: 'edit', show: canEdit(e), onSelect: () => setEditing(e) },
+            { label: t('Edit'), kind: 'edit', show: canEdit(e), onSelect: () => navigate(`/admin/events/${e.id}/edit`) },
             { label: t('Publish'), show: can('events.publish') && (e.status === 'draft' || e.status === 'archived'), onSelect: () => void run(() => eventActionApi(e.id, 'publish'), t('Event published.')) },
             { label: t('Unpublish'), show: can('events.publish') && e.status === 'published', onSelect: () => void run(() => eventActionApi(e.id, 'unpublish'), t('Event moved back to draft.')) },
             { label: t('Cancel event'), show: can('events.publish') && e.status === 'published', onSelect: () => (setReason(''), setReasonGu(''), setPending({ kind: 'cancel', event: e })) },
@@ -117,7 +117,7 @@ export default function AdminEventsPage() {
         searchLabel={t('Search events')}
         actions={
           can('events.create') && (
-            <Button onClick={() => setEditing('new')}>
+            <Button onClick={() => navigate('/admin/events/new')}>
               <Plus aria-hidden="true" className="h-4 w-4" />
               {t('New event')}
             </Button>
@@ -140,13 +140,6 @@ export default function AdminEventsPage() {
         empty={<EmptyState title={t('No events found')} description={t('Try different filters, or create the first event.')} />}
       />
       {list.data && <Pagination page={page} pageSize={PAGE_SIZE} totalCount={list.data.totalCount} onChange={setPage} />}
-
-      <EventFormDrawer
-        open={editing !== null}
-        event={editing === 'new' ? null : editing}
-        onClose={() => setEditing(null)}
-        onSaved={list.retry}
-      />
 
       <ConfirmDialog
         open={pending !== null}

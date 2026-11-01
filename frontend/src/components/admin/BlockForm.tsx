@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Plus, Trash2 } from 'lucide-react';
 import { saveBlockApi, type AdminBlock } from '../../api/adminApi';
 import { getErrorMessage, getFieldErrors } from '../../api/axiosInstance';
@@ -12,9 +13,9 @@ import { TextAreaField } from '../ui/FormFields';
 import { TextField } from '../ui/TextField';
 import type { BlockDef } from './contentConfig';
 import { BilingualField, errText } from './BilingualField';
-import { FormDrawer, FullWidth } from './FormDrawer';
+import { FormPage, FullWidth } from './FormPage';
 import { MediaPicker } from './MediaPicker';
-import { BlockPreview, PreviewButton } from './ContentPreview';
+import { PreviewButton, type DraftState, type PreviewState } from './ContentPreview';
 
 interface Values {
   title: string;
@@ -44,33 +45,32 @@ const fromBlock = (def: BlockDef, b: AdminBlock | undefined): Values => ({
   }),
 });
 
-/** Edit one fixed text block of the site (the home welcome, about sections, …). */
-export function BlockDrawer({
+const BACK = '/admin/content';
+
+/** Edit one fixed text block of the site (the home welcome, about sections, …) on its own page. */
+export function BlockForm({
   def,
   block,
   allBlocks,
-  onClose,
-  onSaved,
 }: {
-  def: BlockDef | null;
+  def: BlockDef;
   block: AdminBlock | undefined;
-  /** All saved blocks, so a page preview can show the edited block among its neighbours. */
+  /** All saved blocks. Only carried to the preview page, which shows the edited block among its neighbours. */
   allBlocks: AdminBlock[];
-  onClose: () => void;
-  onSaved: () => void;
 }) {
   const dispatch = useAppDispatch();
-  const form = useForm<Values>({ defaultValues: { title: '', titleGu: '', body: '', bodyGu: '', items: [] } });
-  const { register, handleSubmit, reset, setError, control, formState } = form;
+  const navigate = useNavigate();
+  const form = useForm<Values>({ defaultValues: fromBlock(def, block) });
+  const { register, handleSubmit, setError, control, formState } = form;
   const values = useWatch({ control }) as Values;
   const { fields, append, remove } = useFieldArray({ control, name: 'items' });
-  const [previewing, setPreviewing] = useState(false);
 
+  // Coming back from the preview page: put the typed values back, still compared with the saved ones.
+  const draft = (useLocation().state as DraftState<Values> | null)?.draft;
+  const { reset } = form;
   useEffect(() => {
-    if (def) reset(fromBlock(def, block));
-  }, [def, block, reset]);
-
-  if (!def) return null;
+    if (draft) reset(draft, { keepDefaultValues: true });
+  }, [draft, reset]);
 
   const onSubmit = async (v: Values) => {
     const body: Parameters<typeof saveBlockApi>[1] = {};
@@ -95,8 +95,7 @@ export function BlockDrawer({
     try {
       await saveBlockApi(def.key, body);
       dispatch(showToast(t('Saved. Publish it from the list when it is ready.')));
-      onSaved();
-      onClose();
+      navigate(BACK);
     } catch (err) {
       let placed = false;
       for (const f of getFieldErrors(err)) {
@@ -117,11 +116,22 @@ export function BlockDrawer({
   const itemName = t(def.itemLabel ?? 'item').toLowerCase();
   const errors = formState.errors;
 
+  const openPreview = () => {
+    const state: PreviewState<Values> = {
+      values,
+      status: block && block.status !== 'empty' ? block.status : 'draft',
+      cache: { blocks: allBlocks },
+    };
+    navigate(`/admin/content/blocks/${def.key}/preview`, { state });
+  };
+
   return (
-    <FormDrawer
-      open
+    <FormPage
       title={t(def.label)}
-      onClose={onClose}
+      description={t('Appears on: {where}.', { where: t(def.where) })}
+      backTo={BACK}
+      backLabel={t('Back to site content')}
+      actions={<PreviewButton onClick={openPreview} />}
       onSubmit={handleSubmit(onSubmit)}
       submitLabel={t('Save')}
       submitting={formState.isSubmitting}
@@ -132,12 +142,6 @@ export function BlockDrawer({
           <Alert tone="danger">{errors.root.message}</Alert>
         </FullWidth>
       )}
-      <FullWidth>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-[13px] text-text-muted">{t('Appears on: {where}.', { where: t(def.where) })}</p>
-          <PreviewButton onClick={() => setPreviewing(true)} />
-        </div>
-      </FullWidth>
       {def.title && (
         <FullWidth>
           <BilingualField
@@ -219,14 +223,6 @@ export function BlockDrawer({
           </fieldset>
         </FullWidth>
       )}
-      <BlockPreview
-        open={previewing}
-        onClose={() => setPreviewing(false)}
-        def={def}
-        values={values}
-        others={allBlocks}
-        status={block && block.status !== 'empty' ? block.status : 'draft'}
-      />
-    </FormDrawer>
+    </FormPage>
   );
 }

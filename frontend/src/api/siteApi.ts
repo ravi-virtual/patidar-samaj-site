@@ -1,4 +1,4 @@
-import { api } from './axiosInstance';
+import { api, API_BASE } from './axiosInstance';
 import type {
   AnnouncementItem,
   CommitteeMember,
@@ -16,7 +16,7 @@ import type {
 type Envelope<T> = { data: T };
 
 /** Where a stored image or document is served from (the API checks visibility on every request). */
-export const mediaUrl = (id: string | null | undefined): string | null => (id ? `/api/media/${id}` : null);
+export const mediaUrl = (id: string | null | undefined): string | null => (id ? `${API_BASE}/media/${id}` : null);
 
 export const getSettingsApi = async (): Promise<PublicSettings> => {
   const { data } = await api.get<Envelope<{ settings: PublicSettings }>>('/public/settings');

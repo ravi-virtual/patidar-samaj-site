@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Pin, Plus } from 'lucide-react';
 import {
   announcementActionApi,
@@ -8,7 +9,6 @@ import {
 } from '../../api/adminApi';
 import { ANNOUNCEMENT_CATEGORIES } from '../../api/types';
 import { RowMenu } from '../../components/admin/RowActions';
-import { AnnouncementFormDrawer } from '../../components/admin/AnnouncementFormDrawer';
 import { DataTable, type Column } from '../../components/admin/DataTable';
 import { StatusBadge } from '../../components/admin/StatusBadge';
 import { FilterSelect, Toolbar } from '../../components/admin/Toolbar';
@@ -29,6 +29,7 @@ const PAGE_SIZE = 20;
 
 export default function AdminAnnouncementsPage() {
   const can = useCan();
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [category, setCategory] = useState('');
@@ -39,7 +40,6 @@ export default function AdminAnnouncementsPage() {
     listAdminAnnouncementsApi({ search: term, status, category, page, limit: PAGE_SIZE }),
   );
   const { busy, run } = useRunner(list.retry);
-  const [editing, setEditing] = useState<AdminAnnouncement | null | 'new'>(null);
   const [deleting, setDeleting] = useState<AdminAnnouncement | null>(null);
 
   const reset = (setter: (v: string) => void) => (v: string) => {
@@ -89,7 +89,7 @@ export default function AdminAnnouncementsPage() {
         <RowMenu
           name={a.title}
           actions={[
-            { label: t('Edit'), kind: 'edit', show: canEdit(a), onSelect: () => setEditing(a) },
+            { label: t('Edit'), kind: 'edit', show: canEdit(a), onSelect: () => navigate(`/admin/announcements/${a.id}/edit`) },
             { label: t('Publish'), show: publisher && a.status !== 'published', onSelect: () => act(a, 'publish', t('Announcement published.')) },
             { label: t('Unpublish'), show: publisher && a.status === 'published', onSelect: () => act(a, 'unpublish', t('Announcement moved back to draft.')) },
             { label: a.pinned ? t('Unpin') : t('Pin to top'), show: publisher && a.status === 'published', onSelect: () => act(a, a.pinned ? 'unpin' : 'pin', a.pinned ? t('Unpinned.') : t('Pinned to the top.')) },
@@ -110,7 +110,7 @@ export default function AdminAnnouncementsPage() {
         searchLabel={t('Search announcements')}
         actions={
           can('announcements.create') && (
-            <Button onClick={() => setEditing('new')}>
+            <Button onClick={() => navigate('/admin/announcements/new')}>
               <Plus aria-hidden="true" className="h-4 w-4" />
               {t('New announcement')}
             </Button>
@@ -133,12 +133,6 @@ export default function AdminAnnouncementsPage() {
       />
       {list.data && <Pagination page={page} pageSize={PAGE_SIZE} totalCount={list.data.totalCount} onChange={setPage} />}
 
-      <AnnouncementFormDrawer
-        open={editing !== null}
-        item={editing === 'new' ? null : editing}
-        onClose={() => setEditing(null)}
-        onSaved={list.retry}
-      />
       <ConfirmDialog
         open={deleting !== null}
         title={t('Delete this announcement?')}

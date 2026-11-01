@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { createEventApi, updateEventApi, type AdminEvent, type EventInput } from '../../api/adminApi';
@@ -14,7 +14,7 @@ import { SelectField } from '../ui/FormFields';
 import { TextField } from '../ui/TextField';
 import { Toggle } from '../ui/Toggle';
 import { BilingualField, errText } from './BilingualField';
-import { FormDrawer, FullWidth } from './FormDrawer';
+import { FormPage, FullWidth } from './FormPage';
 import { MediaPicker } from './MediaPicker';
 
 const noAngle = (v: string) => !/[<>]/.test(v);
@@ -85,41 +85,25 @@ const toInput = (v: Form): EventInput => ({
   imageMediaId: v.imageMediaId || null,
 });
 
-/** Create or edit one event. `event` null means "new". */
-export function EventFormDrawer({
-  open,
-  event,
-  onClose,
-  onSaved,
-}: {
-  open: boolean;
-  event: AdminEvent | null;
-  onClose: () => void;
-  onSaved: () => void;
-}) {
+const BACK = '/admin/events';
+
+/** Create or edit one event on its own page. `event` null means "new". */
+export function EventForm({ event }: { event: AdminEvent | null }) {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const {
     register,
     handleSubmit,
-    reset,
     setError,
     formState: { errors, isDirty, isSubmitting },
-  } = useForm<Form>({ resolver: zodResolver(schema), defaultValues: blank });
-
-  // Load the chosen event (or a blank form) each time the drawer opens.
-  useEffect(() => {
-    if (open) {
-      reset(event ? fromEvent(event) : blank);
-    }
-  }, [open, event, reset]);
+  } = useForm<Form>({ resolver: zodResolver(schema), defaultValues: event ? fromEvent(event) : blank });
 
   const onSubmit = async (v: Form) => {
     try {
       if (event) await updateEventApi(event.id, toInput(v));
       else await createEventApi(toInput(v));
       dispatch(showToast(event ? t('Event updated.') : t('Event created as a draft.')));
-      onSaved();
-      onClose();
+      navigate(BACK);
     } catch (err) {
       let placed = false;
       for (const f of getFieldErrors(err)) {
@@ -133,10 +117,11 @@ export function EventFormDrawer({
   };
 
   return (
-    <FormDrawer
-      open={open}
+    <FormPage
       title={event ? t('Edit event') : t('New event')}
-      onClose={onClose}
+      description={t('Set the date, time and venue. New events start as drafts.')}
+      backTo={BACK}
+      backLabel={t('Back to events')}
       onSubmit={handleSubmit(onSubmit)}
       submitLabel={event ? t('Save changes') : t('Create draft')}
       submitting={isSubmitting}
@@ -191,6 +176,6 @@ export function EventFormDrawer({
       <FullWidth>
         <Toggle label={t('Feature on the home page')} {...register('featured')} />
       </FullWidth>
-    </FormDrawer>
+    </FormPage>
   );
 }

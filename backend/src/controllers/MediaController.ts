@@ -41,6 +41,7 @@ export const serveMedia = async (req: Request, res: Response, next: NextFunction
       // Public files: let the browser fetch them straight from Cloudinary (no function bandwidth).
       if (isPublic) {
         res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
         return res.redirect(302, url);
       }
       // Staff-only files: stream through the API so the signed URL is never exposed.

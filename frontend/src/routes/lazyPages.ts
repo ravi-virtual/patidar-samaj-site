@@ -14,3 +14,12 @@ export const AdminContentPage = lazy(() => import('../pages/admin/AdminContentPa
 export const AdminMediaPage = lazy(() => import('../pages/admin/AdminMediaPage'));
 export const AdminSettingsPage = lazy(() => import('../pages/admin/AdminSettingsPage'));
 export const AdminAuditPage = lazy(() => import('../pages/admin/AdminAuditPage'));
+export const AdminMemberFormPage = lazy(() => import('../pages/admin/AdminMemberFormPage'));
+export const AdminEventFormPage = lazy(() => import('../pages/admin/AdminEventFormPage'));
+export const AdminAnnouncementFormPage = lazy(() => import('../pages/admin/AdminAnnouncementFormPage'));
+export const AdminContentFormPage = lazy(() => import('../pages/admin/AdminContentFormPage'));
+export const AdminBlockFormPage = lazy(() => import('../pages/admin/AdminBlockFormPage'));
+export const AdminBlockPreviewPage = lazy(() => import('../pages/admin/AdminBlockPreviewPage'));
+export const AdminContentPreviewPage = lazy(() => import('../pages/admin/AdminContentPreviewPage'));
+export const AdminMediaUploadPage = lazy(() => import('../pages/admin/AdminMediaUploadPage'));
+export const AdminContactDetailPage = lazy(() => import('../pages/admin/AdminContactDetailPage'));

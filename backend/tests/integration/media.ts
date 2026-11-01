@@ -124,7 +124,7 @@ describe('what an upload may be', () => {
     expect(filesOnDisk()).toHaveLength(0);
   });
 
-  it('enforces size limits: images 5 MB, documents 10 MB', async () => {
+  it('enforces size limits: images 3 MB, documents 10 MB', async () => {
     const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
     const bigImage = Buffer.concat([PNG, Buffer.alloc(config.uploads.maxImageBytes)]);
     expect((await upload(client, bigImage, 'big.png', 'image/png')).status).toBe(413);

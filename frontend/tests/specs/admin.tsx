@@ -13,7 +13,7 @@ import { Breadcrumbs } from '../../src/components/ui/Breadcrumbs';
 import AdminUsersPage from '../../src/pages/admin/AdminUsersPage';
 import AdminMembersPage from '../../src/pages/admin/AdminMembersPage';
 import AdminUserCreatePage from '../../src/pages/admin/AdminUserCreatePage';
-import { ContactDrawer } from '../../src/components/admin/ContactDrawer';
+import AdminContactDetailPage from '../../src/pages/admin/AdminContactDetailPage';
 import { useCan, useCanAny } from '../../src/components/admin/usePermissions';
 import { ConfirmDialog } from '../../src/components/overlays/ConfirmDialog';
 import { apiError, makeStore, adminUser, renderWithApp } from '../helpers';
@@ -632,7 +632,7 @@ describe('Members page (directory management only)', () => {
   });
 });
 
-describe('ContactDrawer (permission-gated controls)', () => {
+describe('Contact message page (permission-gated controls)', () => {
   const message: adminApi.ContactMessage = {
     id: 'c1',
     reference: 'ABC123',
@@ -650,7 +650,7 @@ describe('ContactDrawer (permission-gated controls)', () => {
   const open = async (permissions: string[]) => {
     admin.getContactApi.mockResolvedValue(message);
     const store = await makeStore({ ...adminUser, id: 'staff1', permissions });
-    renderWithApp(<ContactDrawer id="c1" onClose={vi.fn()} onChanged={vi.fn()} />, { store });
+    renderWithApp(<Routes><Route path="/admin/contacts/:id" element={<AdminContactDetailPage />} /></Routes>, { store, path: '/admin/contacts/c1' });
     await screen.findByText('#ABC123');
     return { store, user: userEvent.setup() };
   };
@@ -658,7 +658,7 @@ describe('ContactDrawer (permission-gated controls)', () => {
   it('renders the message as plain text', async () => {
     await open([]);
     expect(screen.getByText('Hello <b>team</b>')).toBeInTheDocument();
-    expect(document.querySelector('dialog b')).toBeNull();
+    expect(document.querySelector('main b, #root b, body b')).toBeNull();
   });
 
   it('is read-only for staff who can only view', async () => {
@@ -692,7 +692,7 @@ describe('ContactDrawer (permission-gated controls)', () => {
 
   it('shows an error with retry when the message cannot load', async () => {
     admin.getContactApi.mockRejectedValue(apiError(404, 'Message not found'));
-    renderWithApp(<ContactDrawer id="c1" onClose={vi.fn()} onChanged={vi.fn()} />, { store: await makeStore({ ...adminUser, permissions: [] }) });
+    renderWithApp(<Routes><Route path="/admin/contacts/:id" element={<AdminContactDetailPage />} /></Routes>, { store: await makeStore({ ...adminUser, permissions: [] }), path: '/admin/contacts/c1' });
     expect(await screen.findByRole('alert')).toHaveTextContent('Message not found');
   });
 });
