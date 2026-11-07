@@ -147,7 +147,14 @@ function Field({
       );
     case 'term':
       return (
-        <SelectField label={label} required={f.required} error={error} {...reg}>
+        <SelectField
+          // Options arrive after mount; remount so the form re-applies the saved term.
+          key={terms.length ? 'loaded' : 'loading'}
+          label={label}
+          required={f.required}
+          error={error}
+          {...reg}
+        >
           <option value="">{t('Choose a term…')}</option>
           {terms.map((term) => (
             <option key={term.id} value={term.id}>

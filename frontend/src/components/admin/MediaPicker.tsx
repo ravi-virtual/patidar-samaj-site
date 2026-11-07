@@ -11,8 +11,14 @@ interface MediaPickerProps extends SelectHTMLAttributes<HTMLSelectElement> {
   ref?: Ref<HTMLSelectElement>;
 }
 
+/** Keeps dropdown rows short enough to scan; the full text is in the option's tooltip. */
+const MAX_LABEL_LENGTH = 60;
+const truncate = (s: string) =>
+  s.length > MAX_LABEL_LENGTH ? `${s.slice(0, MAX_LABEL_LENGTH - 1).trimEnd()}…` : s;
+
 /**
- * Chooses a file from the media library by name. Uploading happens in the Media library page,
+ * Chooses a file from the media library by its description (falling back to the file name when
+ * none is set). Uploading happens in the Media library page,
  * so a picture is always checked (type, size) before it can be attached to anything.
  */
 export function MediaPicker({ label, kind, error, ref, ...rest }: MediaPickerProps) {
@@ -21,6 +27,9 @@ export function MediaPicker({ label, kind, error, ref, ...rest }: MediaPickerPro
   );
   return (
     <SelectField
+      // The options arrive after mount; remounting once they are there lets the form re-apply
+      // the saved value, which a select without the matching <option> would have dropped.
+      key={data ? 'loaded' : 'loading'}
       label={label}
       ref={ref}
       error={error ?? loadError}
@@ -34,11 +43,14 @@ export function MediaPicker({ label, kind, error, ref, ...rest }: MediaPickerPro
       {...rest}
     >
       <option value="">{t('None')}</option>
-      {data?.media.map((m) => (
-        <option key={m.id} value={m.id}>
-          {m.name}
-        </option>
-      ))}
+      {data?.media.map((m) => {
+        const text = m.altText?.trim() || m.name;
+        return (
+          <option key={m.id} value={m.id} title={text}>
+            {truncate(text)}
+          </option>
+        );
+      })}
     </SelectField>
   );
 }
