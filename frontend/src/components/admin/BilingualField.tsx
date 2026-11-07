@@ -4,10 +4,12 @@ import { TextAreaField } from '../ui/FormFields';
 import { TextField } from '../ui/TextField';
 
 /** The hint under every Gujarati input. */
-export const GUJARATI_HINT = 'Optional. Shown to visitors who choose Gujarati; English is used when empty.';
+export const GUJARATI_HINT =
+  'Optional. Shown to visitors who choose Gujarati; English is used when empty.';
 
 /** Translates a validation message for display: the schemas keep English text, the screen shows the chosen language. */
-export const errText = (error?: { message?: string }): string | undefined => (error?.message ? t(error.message) : undefined);
+export const errText = (error?: { message?: string }): string | undefined =>
+  error?.message ? t(error.message) : undefined;
 
 interface BilingualFieldProps {
   /** English name of the field, such as "Title". The visible labels become "Title (English)" and "Title (Gujarati)". */
@@ -32,7 +34,18 @@ interface BilingualFieldProps {
  * The English input with its Gujarati twin directly beneath it. English keeps its required rule;
  * Gujarati is always optional (the public site falls back to English when it is empty).
  */
-export function BilingualField({ label, en, gu, required, multiline, rows, maxLength, hint, enError, guError }: BilingualFieldProps) {
+export function BilingualField({
+  label,
+  en,
+  gu,
+  required,
+  multiline,
+  rows,
+  maxLength,
+  hint,
+  enError,
+  guError,
+}: BilingualFieldProps) {
   const enLabel = `${t(label)} (${t('English')})`;
   const guLabel = `${t(label)} (${t('Gujarati')})`;
   const guHint = t(GUJARATI_HINT);
@@ -41,13 +54,43 @@ export function BilingualField({ label, en, gu, required, multiline, rows, maxLe
     <div className="space-y-3">
       {multiline ? (
         <>
-          <TextAreaField label={enLabel} rows={rows} required={required} maxLength={maxLength} hint={enHint} error={enError} {...en} />
-          <TextAreaField label={guLabel} lang="gu" rows={rows} maxLength={maxLength} hint={guHint} error={guError} {...gu} />
+          <TextAreaField
+            label={enLabel}
+            rows={rows}
+            required={required}
+            maxLength={maxLength}
+            hint={enHint}
+            error={enError}
+            {...en}
+          />
+          <TextAreaField
+            label={guLabel}
+            lang="gu"
+            rows={rows}
+            maxLength={maxLength}
+            hint={guHint}
+            error={guError}
+            {...gu}
+          />
         </>
       ) : (
         <>
-          <TextField label={enLabel} required={required} maxLength={maxLength} hint={enHint} error={enError} {...en} />
-          <TextField label={guLabel} lang="gu" maxLength={maxLength} hint={guHint} error={guError} {...gu} />
+          <TextField
+            label={enLabel}
+            required={required}
+            maxLength={maxLength}
+            hint={enHint}
+            error={enError}
+            {...en}
+          />
+          <TextField
+            label={guLabel}
+            lang="gu"
+            maxLength={maxLength}
+            hint={guHint}
+            error={guError}
+            {...gu}
+          />
         </>
       )}
     </div>

@@ -50,7 +50,12 @@ api.interceptors.response.use(
     if (axios.isAxiosError<ApiErrorBody>(error)) {
       const code = error.response?.data?.error?.code;
       const url = error.config?.url ?? '';
-      if (code && SESSION_CODES.has(code) && !PUBLIC_AUTH_PATHS.some((p) => url.startsWith(p)) && !isBootstrapUrl(url)) {
+      if (
+        code &&
+        SESSION_CODES.has(code) &&
+        !PUBLIC_AUTH_PATHS.some((p) => url.startsWith(p)) &&
+        !isBootstrapUrl(url)
+      ) {
         onSessionLost?.();
       }
     }

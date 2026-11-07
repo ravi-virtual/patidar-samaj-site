@@ -11,7 +11,11 @@ import { Roles, config } from '../../src/config/constants';
 
 interface Captured {
   status?: number;
-  body?: { success: boolean; message: string; error: { code: string; details: { field?: string; message: string }[] } };
+  body?: {
+    success: boolean;
+    message: string;
+    error: { code: string; details: { field?: string; message: string }[] };
+  };
 }
 
 const makeRes = () => {
@@ -44,21 +48,31 @@ describe('errorHandler', () => {
   const run = (err: Record<string, unknown>) => {
     const { res, out } = makeRes();
     const next = vi.fn();
-    errorHandler(Object.assign(new Error((err.message as string) ?? 'boom'), err), makeReq(), res, next as unknown as NextFunction);
+    errorHandler(
+      Object.assign(new Error((err.message as string) ?? 'boom'), err),
+      makeReq(),
+      res,
+      next as unknown as NextFunction,
+    );
     expect(next).not.toHaveBeenCalled();
     return out;
   };
 
   // Server errors are logged; keep test output quiet whatever the logger writes to.
   beforeEach(() => {
-    for (const m of ['log', 'info', 'warn', 'error', 'debug'] as const) vi.spyOn(console, m).mockImplementation(() => undefined);
+    for (const m of ['log', 'info', 'warn', 'error', 'debug'] as const)
+      vi.spyOn(console, m).mockImplementation(() => undefined);
   });
   afterEach(() => vi.restoreAllMocks());
 
   it('answers an unknown error with a generic 500 and no internals', () => {
     const out = run({ message: 'connect ECONNREFUSED 10.0.0.5:27017 password=hunter2' });
     expect(out.status).toBe(500);
-    expect(out.body).toEqual({ success: false, message: 'Something went wrong', error: { code: 'SERVER_ERROR', details: [] } });
+    expect(out.body).toEqual({
+      success: false,
+      message: 'Something went wrong',
+      error: { code: 'SERVER_ERROR', details: [] },
+    });
     expect(JSON.stringify(out.body)).not.toMatch(/ECONNREFUSED|hunter2|10\.0\.0\.5/);
   });
 
@@ -70,25 +84,39 @@ describe('errorHandler', () => {
   });
 
   it('maps body-parser size and parse errors', () => {
-    expect(run({ type: 'entity.too.large', status: 413 }).body?.error.code).toBe('PAYLOAD_TOO_LARGE');
+    expect(run({ type: 'entity.too.large', status: 413 }).body?.error.code).toBe(
+      'PAYLOAD_TOO_LARGE',
+    );
     const parse = run({ type: 'entity.parse.failed', status: 400 });
     expect([parse.status, parse.body?.message]).toEqual([400, 'Malformed request body']);
   });
 
   it('treats any SyntaxError as a malformed body', () => {
     const { res, out } = makeRes();
-    errorHandler(new SyntaxError('Unexpected token'), makeReq(), res, vi.fn() as unknown as NextFunction);
+    errorHandler(
+      new SyntaxError('Unexpected token'),
+      makeReq(),
+      res,
+      vi.fn() as unknown as NextFunction,
+    );
     expect(out.status).toBe(400);
     expect(out.body?.message).toBe('Malformed request body');
   });
 
   it('maps a Mongoose CastError to INVALID_ID', () => {
     const out = run({ name: 'CastError' });
-    expect([out.status, out.body?.error.code, out.body?.message]).toEqual([400, 'INVALID_ID', 'Invalid ID format']);
+    expect([out.status, out.body?.error.code, out.body?.message]).toEqual([
+      400,
+      'INVALID_ID',
+      'Invalid ID format',
+    ]);
   });
 
   it('maps a Mongoose ValidationError to field details', () => {
-    const out = run({ name: 'ValidationError', errors: { title: { path: 'title', message: 'Title is required' } } });
+    const out = run({
+      name: 'ValidationError',
+      errors: { title: { path: 'title', message: 'Title is required' } },
+    });
     expect(out.status).toBe(400);
     expect(out.body?.error.details).toEqual([{ field: 'title', message: 'Title is required' }]);
   });
@@ -102,14 +130,16 @@ describe('errorHandler', () => {
     expect(run({ code: 11000 }).body?.message).toBe('Record already exists');
   });
 
-  it.each(['MongoNetworkError', 'MongoServerSelectionError', 'MongoNotConnectedError', 'MongooseServerSelectionError'])(
-    'maps %s to 503',
-    (name) => {
-      const out = run({ name, message: 'getaddrinfo secret-host' });
-      expect([out.status, out.body?.error.code]).toEqual([503, 'DATABASE_UNAVAILABLE']);
-      expect(JSON.stringify(out.body)).not.toContain('secret-host');
-    },
-  );
+  it.each([
+    'MongoNetworkError',
+    'MongoServerSelectionError',
+    'MongoNotConnectedError',
+    'MongooseServerSelectionError',
+  ])('maps %s to 503', (name) => {
+    const out = run({ name, message: 'getaddrinfo secret-host' });
+    expect([out.status, out.body?.error.code]).toEqual([503, 'DATABASE_UNAVAILABLE']);
+    expect(JSON.stringify(out.body)).not.toContain('secret-host');
+  });
 
   it('keeps the message and status of deliberately thrown client errors', () => {
     const out = run({ statusCode: 418, message: 'I am a teapot' });
@@ -150,7 +180,11 @@ describe('hasPermission', () => {
 
     const { res, out } = makeRes();
     const denied = vi.fn();
-    hasPermission(Permissions.EVENTS_READ, Permissions.EVENTS_CREATE)(makeReq(user([Permissions.EVENTS_READ])), res, denied);
+    hasPermission(Permissions.EVENTS_READ, Permissions.EVENTS_CREATE)(
+      makeReq(user([Permissions.EVENTS_READ])),
+      res,
+      denied,
+    );
     expect(out.status).toBe(403);
     expect(out.body?.error.code).toBe('FORBIDDEN');
     expect(denied).not.toHaveBeenCalled();
@@ -171,12 +205,20 @@ describe('hasPermission', () => {
 
     it('passes with at least one permission and answers 403 with none', () => {
       const next = vi.fn();
-      hasAnyPermission(Permissions.CONTENT_MANAGE, Permissions.USERS_MANAGE)(makeReq(user([Permissions.USERS_MANAGE])), makeRes().res, next);
+      hasAnyPermission(Permissions.CONTENT_MANAGE, Permissions.USERS_MANAGE)(
+        makeReq(user([Permissions.USERS_MANAGE])),
+        makeRes().res,
+        next,
+      );
       expect(next).toHaveBeenCalledOnce();
 
       const { res, out } = makeRes();
       const denied = vi.fn();
-      hasAnyPermission(Permissions.CONTENT_MANAGE, Permissions.USERS_MANAGE)(makeReq(user([Permissions.EVENTS_READ])), res, denied);
+      hasAnyPermission(Permissions.CONTENT_MANAGE, Permissions.USERS_MANAGE)(
+        makeReq(user([Permissions.EVENTS_READ])),
+        res,
+        denied,
+      );
       expect(out.status).toBe(403);
       expect(denied).not.toHaveBeenCalled();
     });
@@ -195,7 +237,11 @@ describe('isAuthenticated', () => {
     isAuthenticated(makeReq({ user: { isAuthenticated: true } }), makeRes().res, next);
     expect(next).toHaveBeenCalledOnce();
 
-    for (const req of [makeReq(), makeReq({ user: {} }), makeReq({ user: { isAuthenticated: 'true' } })]) {
+    for (const req of [
+      makeReq(),
+      makeReq({ user: {} }),
+      makeReq({ user: { isAuthenticated: 'true' } }),
+    ]) {
       const { res, out } = makeRes();
       const blocked = vi.fn();
       isAuthenticated(req, res, blocked);
@@ -259,14 +305,19 @@ describe('originGuard', () => {
   const cookie = { [config.session.cookieName]: 'a-session-token' };
 
   it.each(['GET', 'HEAD', 'OPTIONS'])('never blocks safe %s requests', (method) => {
-    const { next } = guard(makeReq({ method, cookies: cookie }, { origin: 'https://evil.example' }));
+    const { next } = guard(
+      makeReq({ method, cookies: cookie }, { origin: 'https://evil.example' }),
+    );
     expect(next).toHaveBeenCalledOnce();
   });
 
-  it.each(['POST', 'PUT', 'PATCH', 'DELETE'])('accepts a %s from the front end origin', (method) => {
-    const { next } = guard(makeReq({ method, cookies: cookie }, { origin: ORIGIN }));
-    expect(next).toHaveBeenCalledOnce();
-  });
+  it.each(['POST', 'PUT', 'PATCH', 'DELETE'])(
+    'accepts a %s from the front end origin',
+    (method) => {
+      const { next } = guard(makeReq({ method, cookies: cookie }, { origin: ORIGIN }));
+      expect(next).toHaveBeenCalledOnce();
+    },
+  );
 
   it('refuses a foreign Origin with CSRF_INVALID, even without a cookie', () => {
     const { out, next } = guard(makeReq({}, { origin: 'https://evil.example' }));
@@ -276,7 +327,12 @@ describe('originGuard', () => {
   });
 
   it('does not accept look-alike origins', () => {
-    for (const origin of [`${ORIGIN}.evil.example`, `${ORIGIN}/`, ORIGIN.replace('http://', 'https://'), 'null']) {
+    for (const origin of [
+      `${ORIGIN}.evil.example`,
+      `${ORIGIN}/`,
+      ORIGIN.replace('http://', 'https://'),
+      'null',
+    ]) {
       expect(guard(makeReq({}, { origin })).out.status, origin).toBe(403);
     }
   });
@@ -300,7 +356,11 @@ describe('originGuard', () => {
   });
 
   it('ignores an empty or oversized cookie value when deciding it is a session', () => {
-    expect(guard(makeReq({ cookies: { [config.session.cookieName]: '' } })).next).toHaveBeenCalledOnce();
-    expect(guard(makeReq({ cookies: { [config.session.cookieName]: 'x'.repeat(129) } })).next).toHaveBeenCalledOnce();
+    expect(
+      guard(makeReq({ cookies: { [config.session.cookieName]: '' } })).next,
+    ).toHaveBeenCalledOnce();
+    expect(
+      guard(makeReq({ cookies: { [config.session.cookieName]: 'x'.repeat(129) } })).next,
+    ).toHaveBeenCalledOnce();
   });
 });

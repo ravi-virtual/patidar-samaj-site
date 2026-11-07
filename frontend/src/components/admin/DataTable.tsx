@@ -62,7 +62,10 @@ export function DataTable<T>({
           {rows.map((row) => (
             <tr key={rowKey(row)} className="border-b border-surface-muted last:border-b-0">
               {columns.map((c) => (
-                <td key={c.header} className={`px-4 py-2.5 align-middle text-text-secondary ${c.className ?? ''}`}>
+                <td
+                  key={c.header}
+                  className={`px-4 py-2.5 align-middle text-text-secondary ${c.className ?? ''}`}
+                >
                   {c.cell(row)}
                 </td>
               ))}

@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { ApiResponse } from '../../src/utils/apiResponse';
-import { toPublicAnnouncement, toAdminAnnouncement, visibleNowFilter } from '../../src/utils/announcementView';
 import {
-  timingError,
-  toAdminEvent,
-  toPublicEvent,
-} from '../../src/utils/eventView';
+  toPublicAnnouncement,
+  toAdminAnnouncement,
+  visibleNowFilter,
+} from '../../src/utils/announcementView';
+import { timingError, toAdminEvent, toPublicEvent } from '../../src/utils/eventView';
 import { toDirectoryEntry, toStaffMember } from '../../src/utils/memberView';
 import { toAdminUser, toSessionUser } from '../../src/utils/userView';
 import { ResponseCodes } from '../../src/config/constants';
@@ -34,7 +34,10 @@ describe('ApiResponse', () => {
       },
     };
     new ApiResponse(201, 'Created', { id: 1 }).send(res as never);
-    expect(sent).toEqual({ status: 201, body: { success: true, message: 'Created', data: { id: 1 } } });
+    expect(sent).toEqual({
+      status: 201,
+      body: { success: true, message: 'Created', data: { id: 1 } },
+    });
   });
 });
 
@@ -71,23 +74,41 @@ describe('announcementView', () => {
   it('includes the body only when asked and never leaks staff fields publicly', () => {
     expect(toPublicAnnouncement(base, false)).not.toHaveProperty('body');
     expect(toPublicAnnouncement(base, true).body).toBe('Body text');
-    const pub = toPublicAnnouncement(withFields({ createdBy: 'u1', updatedBy: 'u2', status: 'archived' }), true);
+    const pub = toPublicAnnouncement(
+      withFields({ createdBy: 'u1', updatedBy: 'u2', status: 'archived' }),
+      true,
+    );
     expect(pub).not.toHaveProperty('createdBy');
     expect(pub).not.toHaveProperty('status');
     expect(pub.archived).toBe(true);
   });
 
   it('picks the publish date from publishAt, then publishedAt, then createdAt', () => {
-    expect(toPublicAnnouncement(withFields({ publishAt: at(1), publishedAt: at(2) }), false).publishedAt).toEqual(at(1));
-    expect(toPublicAnnouncement(withFields({ publishedAt: at(2) }), false).publishedAt).toEqual(at(2));
+    expect(
+      toPublicAnnouncement(withFields({ publishAt: at(1), publishedAt: at(2) }), false).publishedAt,
+    ).toEqual(at(1));
+    expect(toPublicAnnouncement(withFields({ publishedAt: at(2) }), false).publishedAt).toEqual(
+      at(2),
+    );
     expect(toPublicAnnouncement(base, false).publishedAt).toEqual(new Date('2026-01-01'));
   });
 
   it('marks a published item with a future publishAt as scheduled in the admin view', () => {
-    expect(toAdminAnnouncement(withFields({ publishAt: new Date(Date.now() + DAY) })).scheduled).toBe(true);
-    expect(toAdminAnnouncement(withFields({ publishAt: new Date(Date.now() - DAY) })).scheduled).toBe(false);
-    expect(toAdminAnnouncement(withFields({ publishAt: new Date(Date.now() + DAY), status: 'draft' })).scheduled).toBe(false);
-    expect(toAdminAnnouncement(base)).toMatchObject({ summary: null, publishAt: null, createdBy: null });
+    expect(
+      toAdminAnnouncement(withFields({ publishAt: new Date(Date.now() + DAY) })).scheduled,
+    ).toBe(true);
+    expect(
+      toAdminAnnouncement(withFields({ publishAt: new Date(Date.now() - DAY) })).scheduled,
+    ).toBe(false);
+    expect(
+      toAdminAnnouncement(withFields({ publishAt: new Date(Date.now() + DAY), status: 'draft' }))
+        .scheduled,
+    ).toBe(false);
+    expect(toAdminAnnouncement(base)).toMatchObject({
+      summary: null,
+      publishAt: null,
+      createdBy: null,
+    });
   });
 });
 
@@ -108,9 +129,22 @@ describe('eventView', () => {
 
   it('builds the public view with timing and details only', () => {
     const pub = toPublicEvent(event({ createdBy: 'u1' }));
-    expect(pub).toMatchObject({ id: 'e1', title: 'Garba Night', venue: 'Hall', status: 'published', description: null });
+    expect(pub).toMatchObject({
+      id: 'e1',
+      title: 'Garba Night',
+      venue: 'Hall',
+      status: 'published',
+      description: null,
+    });
     expect(pub).not.toHaveProperty('createdBy');
-    for (const key of ['capacity', 'registeredCount', 'spotsLeft', 'registrationState', 'registrationClosesAt', 'myRegistration']) {
+    for (const key of [
+      'capacity',
+      'registeredCount',
+      'spotsLeft',
+      'registrationState',
+      'registrationClosesAt',
+      'myRegistration',
+    ]) {
       expect(pub).not.toHaveProperty(key);
     }
   });
@@ -156,13 +190,29 @@ describe('memberView', () => {
 
   it('exposes only allowlisted directory fields', () => {
     const entry = toDirectoryEntry(profile);
-    expect(entry).toMatchObject({ id: 'm1', name: 'Asha Patel', village: 'Unjha', city: null, highlighted: true });
-    for (const key of ['phone', 'familySize', 'kul', 'userId', 'internalNote', 'visibility']) expect(entry).not.toHaveProperty(key);
+    expect(entry).toMatchObject({
+      id: 'm1',
+      name: 'Asha Patel',
+      village: 'Unjha',
+      city: null,
+      highlighted: true,
+    });
+    for (const key of ['phone', 'familySize', 'kul', 'userId', 'internalNote', 'visibility'])
+      expect(entry).not.toHaveProperty(key);
   });
 
   it('gives staff private fields only with the private permission', () => {
     const without = toStaffMember(profile, { includePrivate: false });
-    for (const key of ['phone', 'familySize', 'kul', 'userId', 'hasAccount', 'accountStatus', 'internalNote']) expect(without).not.toHaveProperty(key);
+    for (const key of [
+      'phone',
+      'familySize',
+      'kul',
+      'userId',
+      'hasAccount',
+      'accountStatus',
+      'internalNote',
+    ])
+      expect(without).not.toHaveProperty(key);
     expect(without).toMatchObject({ visibility: 'public', anonymizedAt: null });
     const withPrivate = toStaffMember(profile, { includePrivate: true });
     expect(withPrivate).toMatchObject({ phone: '+911234567890', familySize: 4, kul: 'Kadva' });
@@ -171,7 +221,10 @@ describe('memberView', () => {
 
   it('treats any visibility other than public (including legacy "members") as hidden', () => {
     for (const visibility of ['hidden', 'members', undefined]) {
-      expect(toStaffMember({ ...(profile as object), visibility } as never, { includePrivate: false }).visibility).toBe('hidden');
+      expect(
+        toStaffMember({ ...(profile as object), visibility } as never, { includePrivate: false })
+          .visibility,
+      ).toBe('hidden');
     }
   });
 });
@@ -199,7 +252,12 @@ describe('userView', () => {
   });
 
   it('gives the Super Admin every permission and keeps an explicit theme', () => {
-    const view = toSessionUser({ ...(user as object), role: 'superadmin', permissions: [], themePreference: 'dark' } as never);
+    const view = toSessionUser({
+      ...(user as object),
+      role: 'superadmin',
+      permissions: [],
+      themePreference: 'dark',
+    } as never);
     expect(view.themePreference).toBe('dark');
     expect(view.permissions).toContain('users.manage');
     expect(view.permissions).toContain('events.publish');
@@ -207,7 +265,12 @@ describe('userView', () => {
 
   it('builds the admin list view from an allowlist, copying the selected permissions', () => {
     const view = toAdminUser(user);
-    expect(view).toMatchObject({ id: 'u1', role: 'admin', permissions: ['events.publish'], suspendedAt: null });
+    expect(view).toMatchObject({
+      id: 'u1',
+      role: 'admin',
+      permissions: ['events.publish'],
+      suspendedAt: null,
+    });
     expect(view).not.toHaveProperty('phone');
     expect(view).not.toHaveProperty('approvedAt');
     expect(JSON.stringify(view)).not.toMatch(/SECRET|passwordHash|failedLoginCount/);

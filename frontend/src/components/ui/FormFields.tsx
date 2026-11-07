@@ -1,4 +1,10 @@
-import { useId, type ReactNode, type Ref, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
+import {
+  useId,
+  type ReactNode,
+  type Ref,
+  type SelectHTMLAttributes,
+  type TextareaHTMLAttributes,
+} from 'react';
 import { t } from '../../i18n';
 
 const control =
@@ -23,7 +29,12 @@ function Frame({
     <div className="space-y-1.5">
       <label htmlFor={id} className="block text-[13px] font-medium text-text">
         {label}
-        {required && <span aria-hidden="true" className="text-danger"> *</span>}
+        {required && (
+          <span aria-hidden="true" className="text-danger">
+            {' '}
+            *
+          </span>
+        )}
       </label>
       {children}
       {hint && !error && (
@@ -41,7 +52,8 @@ function Frame({
 }
 
 const describedBy = (id: string, hint?: string, error?: string) =>
-  [hint && !error ? `${id}-hint` : '', error ? `${id}-error` : ''].filter(Boolean).join(' ') || undefined;
+  [hint && !error ? `${id}-hint` : '', error ? `${id}-error` : ''].filter(Boolean).join(' ') ||
+  undefined;
 
 interface SelectFieldProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label: string;
@@ -50,7 +62,16 @@ interface SelectFieldProps extends SelectHTMLAttributes<HTMLSelectElement> {
   ref?: Ref<HTMLSelectElement>;
 }
 
-export function SelectField({ label, error, hint, required, className = '', children, ref, ...rest }: SelectFieldProps) {
+export function SelectField({
+  label,
+  error,
+  hint,
+  required,
+  className = '',
+  children,
+  ref,
+  ...rest
+}: SelectFieldProps) {
   const id = useId();
   return (
     <Frame id={id} label={label} required={required} hint={hint} error={error}>
@@ -76,7 +97,15 @@ interface TextAreaFieldProps extends TextareaHTMLAttributes<HTMLTextAreaElement>
   ref?: Ref<HTMLTextAreaElement>;
 }
 
-export function TextAreaField({ label, error, hint, required, className = '', ref, ...rest }: TextAreaFieldProps) {
+export function TextAreaField({
+  label,
+  error,
+  hint,
+  required,
+  className = '',
+  ref,
+  ...rest
+}: TextAreaFieldProps) {
   const id = useId();
   return (
     <Frame id={id} label={label} required={required} hint={hint} error={error}>

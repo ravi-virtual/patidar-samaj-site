@@ -49,16 +49,32 @@ interface Row {
 }
 const columns: Column<Row>[] = [
   { header: 'Name', cell: (r) => r.name },
-  { header: 'Actions', srOnlyHeader: true, cell: (r) => <button type="button">Edit {r.name}</button> },
+  {
+    header: 'Actions',
+    srOnlyHeader: true,
+    cell: (r) => <button type="button">Edit {r.name}</button>,
+  },
 ];
 
 describe('DataTable', () => {
   const props = { caption: 'People', columns, rowKey: (r: Row) => r.id };
 
   it('renders a real table with a caption, column headers and one row per item', () => {
-    render(<DataTable {...props} rows={[{ id: '1', name: 'Asha' }, { id: '2', name: 'Ravi' }]} />);
+    render(
+      <DataTable
+        {...props}
+        rows={[
+          { id: '1', name: 'Asha' },
+          { id: '2', name: 'Ravi' },
+        ]}
+      />,
+    );
     const table = screen.getByRole('table', { name: 'People' });
-    expect(within(table).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['Name', 'Actions']);
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((h) => h.textContent),
+    ).toEqual(['Name', 'Actions']);
     expect(within(table).getAllByRole('row')).toHaveLength(3);
     expect(screen.getByRole('button', { name: 'Edit Ravi' })).toBeInTheDocument();
     // the action column header is visually hidden but stays for screen readers
@@ -89,7 +105,9 @@ describe('DataTable', () => {
   });
 
   it('keeps showing the old rows (dimmed) when a refresh fails or is loading', () => {
-    const { container, rerender } = render(<DataTable {...props} rows={[{ id: '1', name: 'Asha' }]} loading />);
+    const { container, rerender } = render(
+      <DataTable {...props} rows={[{ id: '1', name: 'Asha' }]} loading />,
+    );
     expect(container.firstElementChild).toHaveClass('opacity-60');
     rerender(<DataTable {...props} rows={[{ id: '1', name: 'Asha' }]} error="Refresh failed" />);
     expect(screen.getByRole('table')).toBeInTheDocument();
@@ -101,7 +119,16 @@ describe('RowMenu', () => {
   it('shows direct Edit and Delete icon buttons when there are no other actions', async () => {
     const onEdit = vi.fn();
     const user = userEvent.setup();
-    render(<RowMenu name="Welcome" actions={[{ label: 'Edit', kind: 'edit', onSelect: onEdit }, { label: 'Delete', kind: 'delete', onSelect: vi.fn(), show: false }, { label: 'Publish', onSelect: vi.fn(), show: false }]} />);
+    render(
+      <RowMenu
+        name="Welcome"
+        actions={[
+          { label: 'Edit', kind: 'edit', onSelect: onEdit },
+          { label: 'Delete', kind: 'delete', onSelect: vi.fn(), show: false },
+          { label: 'Publish', onSelect: vi.fn(), show: false },
+        ]}
+      />,
+    );
     expect(screen.queryByRole('button', { name: 'Actions for Welcome' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Delete Welcome' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Edit Welcome' }));
@@ -110,9 +137,22 @@ describe('RowMenu', () => {
 
   it('keeps the menu with fixed Edit and Delete labels when other actions exist', async () => {
     const user = userEvent.setup();
-    render(<RowMenu name="Welcome" actions={[{ label: 'Write', kind: 'edit', onSelect: vi.fn() }, { label: 'Publish', onSelect: vi.fn() }, { label: 'Remove', kind: 'delete', onSelect: vi.fn() }]} />);
+    render(
+      <RowMenu
+        name="Welcome"
+        actions={[
+          { label: 'Write', kind: 'edit', onSelect: vi.fn() },
+          { label: 'Publish', onSelect: vi.fn() },
+          { label: 'Remove', kind: 'delete', onSelect: vi.fn() },
+        ]}
+      />,
+    );
     await user.click(screen.getByRole('button', { name: 'Actions for Welcome' }));
-    expect(within(screen.getByRole('list', { name: 'Actions for Welcome' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Edit', 'Publish', 'Delete']);
+    expect(
+      within(screen.getByRole('list', { name: 'Actions for Welcome' }))
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(['Edit', 'Publish', 'Delete']);
   });
 });
 
@@ -120,14 +160,26 @@ describe('ActionMenu', () => {
   it('opens on click, runs the chosen action once, and closes', async () => {
     const onEdit = vi.fn();
     const user = userEvent.setup();
-    render(<ActionMenu label="Actions for Asha" actions={[{ label: 'Edit', onSelect: onEdit }, { label: 'Delete', onSelect: vi.fn(), danger: true }]} />);
+    render(
+      <ActionMenu
+        label="Actions for Asha"
+        actions={[
+          { label: 'Edit', onSelect: onEdit },
+          { label: 'Delete', onSelect: vi.fn(), danger: true },
+        ]}
+      />,
+    );
     const trigger = screen.getByRole('button', { name: 'Actions for Asha' });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
 
     await user.click(trigger);
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
-    expect(within(screen.getByRole('list', { name: 'Actions for Asha' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Edit', 'Delete']);
+    expect(
+      within(screen.getByRole('list', { name: 'Actions for Asha' }))
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(['Edit', 'Delete']);
     expect(screen.getByRole('button', { name: 'Delete' })).toHaveClass('text-danger');
 
     await user.click(screen.getByRole('button', { name: 'Edit' }));
@@ -137,16 +189,29 @@ describe('ActionMenu', () => {
 
   it('hides actions marked show=false and renders nothing when none remain', () => {
     const { container, rerender } = render(
-      <ActionMenu label="Row" actions={[{ label: 'Publish', onSelect: vi.fn(), show: false }, { label: 'View', onSelect: vi.fn() }]} />,
+      <ActionMenu
+        label="Row"
+        actions={[
+          { label: 'Publish', onSelect: vi.fn(), show: false },
+          { label: 'View', onSelect: vi.fn() },
+        ]}
+      />,
     );
     expect(screen.getByRole('button', { name: 'Row' })).toBeInTheDocument();
-    rerender(<ActionMenu label="Row" actions={[{ label: 'Publish', onSelect: vi.fn(), show: false }]} />);
+    rerender(
+      <ActionMenu label="Row" actions={[{ label: 'Publish', onSelect: vi.fn(), show: false }]} />,
+    );
     expect(container).toBeEmptyDOMElement();
   });
 
   it('closes on Escape (returning focus to the trigger) and on an outside click', async () => {
     const user = userEvent.setup();
-    render(<><ActionMenu label="Row" actions={[{ label: 'View', onSelect: vi.fn() }]} /><p>elsewhere</p></>);
+    render(
+      <>
+        <ActionMenu label="Row" actions={[{ label: 'View', onSelect: vi.fn() }]} />
+        <p>elsewhere</p>
+      </>,
+    );
     const trigger = screen.getByRole('button', { name: 'Row' });
     await user.click(trigger);
     await user.keyboard('{Escape}');
@@ -188,11 +253,17 @@ describe('permission-dependent actions', () => {
     const user = userEvent.setup();
     renderWithApp(<Probe />, { store });
     await user.click(screen.getByRole('button', { name: 'Event actions' }));
-    return within(screen.getByRole('list')).getAllByRole('button').map((b) => b.textContent);
+    return within(screen.getByRole('list'))
+      .getAllByRole('button')
+      .map((b) => b.textContent);
   };
 
   it('shows only the actions the signed-in user holds permissions for', async () => {
-    expect(await labelsFor(['events.publish', 'members.export'])).toEqual(['Publish', 'Export', 'View']);
+    expect(await labelsFor(['events.publish', 'members.export'])).toEqual([
+      'Publish',
+      'Export',
+      'View',
+    ]);
   });
 
   it('requires every permission for can() and any one for canAny()', async () => {
@@ -209,7 +280,15 @@ describe('ConfirmDialog', () => {
     const onConfirm = vi.fn();
     const onCancel = vi.fn();
     render(
-      <ConfirmDialog open title="Delete event?" confirmLabel="Delete" tone="danger" onConfirm={onConfirm} onCancel={onCancel} {...over}>
+      <ConfirmDialog
+        open
+        title="Delete event?"
+        confirmLabel="Delete"
+        tone="danger"
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+        {...over}
+      >
         This cannot be undone.
       </ConfirmDialog>,
     );
@@ -220,7 +299,9 @@ describe('ConfirmDialog', () => {
     setup();
     const dialog = screen.getByRole('alertdialog', { name: 'Delete event?' });
     expect(dialog).toHaveTextContent('This cannot be undone.');
-    const buttons = within(dialog).getAllByRole('button').map((b) => b.textContent);
+    const buttons = within(dialog)
+      .getAllByRole('button')
+      .map((b) => b.textContent);
     expect(buttons.indexOf('Cancel')).toBeLessThan(buttons.indexOf('Delete'));
   });
 
@@ -255,7 +336,13 @@ const SA_USER = {
   id: 'sa1',
   name: 'Super Boss',
   role: 'superadmin' as const,
-  permissions: [...adminUser.permissions, 'users.read', 'users.manage', 'users.reset_password', 'sessions.revoke'],
+  permissions: [
+    ...adminUser.permissions,
+    'users.read',
+    'users.manage',
+    'users.reset_password',
+    'sessions.revoke',
+  ],
 };
 
 describe('PermissionPicker', () => {
@@ -278,15 +365,29 @@ describe('PermissionPicker', () => {
       expect(box).toBeEnabled();
       expect(box).not.toBeChecked();
     }
-    for (const area of ['General', 'Members', 'Events', 'Announcements', 'Content & media', 'Contacts', 'Settings & audit']) {
+    for (const area of [
+      'General',
+      'Members',
+      'Events',
+      'Announcements',
+      'Content & media',
+      'Contacts',
+      'Settings & audit',
+    ]) {
       expect(screen.getByRole('region', { name: area })).toBeInTheDocument();
     }
-    expect(screen.queryByText(/included in role|can be granted|not available/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/included in role|can be granted|not available/i),
+    ).not.toBeInTheDocument();
   });
 
   it('never offers account, role, session or security management, nor removed registration permissions', () => {
     render(<Host />);
-    expect(screen.queryByRole('checkbox', { name: /admin accounts|staff accounts|password reset|sign users out|change roles|security|approve|suspend|register|rsvp/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('checkbox', {
+        name: /admin accounts|staff accounts|password reset|sign users out|change roles|security|approve|suspend|register|rsvp/i,
+      }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: /view audit log/i })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: /view dashboard/i })).toBeInTheDocument();
   });
@@ -305,7 +406,9 @@ describe('PermissionPicker', () => {
     const user = userEvent.setup();
     render(<Host initial={['members.read', 'content.read']} />);
     await user.click(screen.getByRole('button', { name: 'Select all Events' }));
-    expect(selected()).toBe('content.read,events.create,events.delete,events.publish,events.read,events.update,members.read');
+    expect(selected()).toBe(
+      'content.read,events.create,events.delete,events.publish,events.read,events.update,members.read',
+    );
     await user.click(screen.getByRole('button', { name: 'Clear Events' }));
     expect(selected()).toBe('content.read,members.read');
     await user.click(screen.getByRole('button', { name: 'Clear Members' }));
@@ -324,7 +427,10 @@ describe('Add admin page', () => {
     await user.type(screen.getByLabelText(/^email/i), 'admin@example.test');
     await user.type(screen.getByLabelText(/^password/i), 'Welcome-2026-x');
   };
-  const created = { user: { name: 'New Admin', email: 'admin@example.test' } as adminApi.AdminUser, email: { delivered: true } };
+  const created = {
+    user: { name: 'New Admin', email: 'admin@example.test' } as adminApi.AdminUser,
+    email: { delivered: true },
+  };
 
   it('is a full page that asks for name, email, password and permissions: no role choice', async () => {
     await setup();
@@ -363,7 +469,12 @@ describe('Add admin page', () => {
     await fill(user);
     await user.click(screen.getByRole('button', { name: 'Create admin' }));
     await waitFor(() =>
-      expect(admin.createAdminApi).toHaveBeenCalledWith({ name: 'New Admin', email: 'admin@example.test', password: 'Welcome-2026-x', permissions: [] }),
+      expect(admin.createAdminApi).toHaveBeenCalledWith({
+        name: 'New Admin',
+        email: 'admin@example.test',
+        password: 'Welcome-2026-x',
+        permissions: [],
+      }),
     );
   });
 
@@ -379,7 +490,12 @@ describe('Add admin page', () => {
         name: 'New Admin',
         email: 'admin@example.test',
         password: 'Welcome-2026-x',
-        permissions: expect.arrayContaining(['events.publish', 'contacts.read', 'contacts.assign', 'contacts.resolve']),
+        permissions: expect.arrayContaining([
+          'events.publish',
+          'contacts.read',
+          'contacts.assign',
+          'contacts.resolve',
+        ]),
       }),
     );
     expect(vi.mocked(admin.createAdminApi).mock.calls[0]![0].permissions).toHaveLength(4);
@@ -387,18 +503,24 @@ describe('Add admin page', () => {
 
   it('shows a server field error under the field', async () => {
     admin.createAdminApi.mockRejectedValue(
-      apiError(409, 'Duplicate', 'DUPLICATE_ERROR', [{ field: 'email', message: 'An account with this email already exists' }]),
+      apiError(409, 'Duplicate', 'DUPLICATE_ERROR', [
+        { field: 'email', message: 'An account with this email already exists' },
+      ]),
     );
     const user = await setup();
     await fill(user);
     await user.click(screen.getByRole('button', { name: 'Create admin' }));
-    expect(await screen.findByText('An account with this email already exists')).toBeInTheDocument();
+    expect(
+      await screen.findByText('An account with this email already exists'),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(/^email/i)).toHaveAttribute('aria-invalid', 'true');
   });
 
   it('shows an unmapped server error as a general alert, ignoring unknown field names', async () => {
     admin.createAdminApi.mockRejectedValue(
-      apiError(403, 'Only the Super Admin can do this', 'FORBIDDEN', [{ field: 'nonexistent', message: 'ignored' }]),
+      apiError(403, 'Only the Super Admin can do this', 'FORBIDDEN', [
+        { field: 'nonexistent', message: 'ignored' },
+      ]),
     );
     const user = await setup();
     await fill(user);
@@ -445,7 +567,12 @@ describe('Edit admin page', () => {
     await user.type(screen.getByLabelText(/full name/i), 'Nisha S. Shah');
     await user.click(screen.getByRole('checkbox', { name: /publish events/i }));
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
-    await waitFor(() => expect(admin.updateAdminApi).toHaveBeenCalledWith('a1', { name: 'Nisha S. Shah', permissions: ['events.read', 'events.publish'] }));
+    await waitFor(() =>
+      expect(admin.updateAdminApi).toHaveBeenCalledWith('a1', {
+        name: 'Nisha S. Shah',
+        permissions: ['events.read', 'events.publish'],
+      }),
+    );
     expect(await screen.findByText('Admins list page')).toBeInTheDocument();
   });
 
@@ -460,18 +587,47 @@ describe('Edit admin page', () => {
 
 describe('Breadcrumbs', () => {
   it('links earlier levels and marks the last one as the current page', () => {
-    renderWithApp(<Breadcrumbs crumbs={[{ label: 'Admin', to: '/admin' }, { label: 'Admins', to: '/admin/users' }, { label: 'Create admin' }]} />);
+    renderWithApp(
+      <Breadcrumbs
+        crumbs={[
+          { label: 'Admin', to: '/admin' },
+          { label: 'Admins', to: '/admin/users' },
+          { label: 'Create admin' },
+        ]}
+      />,
+    );
     const nav = screen.getByRole('navigation', { name: 'Breadcrumb' });
     expect(within(nav).getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin');
-    expect(within(nav).getByRole('link', { name: 'Admins' })).toHaveAttribute('href', '/admin/users');
+    expect(within(nav).getByRole('link', { name: 'Admins' })).toHaveAttribute(
+      'href',
+      '/admin/users',
+    );
     expect(within(nav).getByText('Create admin')).toHaveAttribute('aria-current', 'page');
   });
 });
 
 describe('Users page (Super Admin manages admins)', () => {
   const rows: adminApi.AdminUser[] = [
-    { id: 'a1', name: 'Nisha Shah', email: 'nisha@example.test', role: 'admin', status: 'active', permissions: ['events.read', 'events.publish'], lastLoginAt: null, suspendedAt: null },
-    { id: 'a2', name: 'Ravi Mehta', email: 'ravi@example.test', role: 'admin', status: 'suspended', permissions: [], lastLoginAt: '2030-01-01T10:00:00.000Z', suspendedAt: '2030-01-02T10:00:00.000Z' },
+    {
+      id: 'a1',
+      name: 'Nisha Shah',
+      email: 'nisha@example.test',
+      role: 'admin',
+      status: 'active',
+      permissions: ['events.read', 'events.publish'],
+      lastLoginAt: null,
+      suspendedAt: null,
+    },
+    {
+      id: 'a2',
+      name: 'Ravi Mehta',
+      email: 'ravi@example.test',
+      role: 'admin',
+      status: 'suspended',
+      permissions: [],
+      lastLoginAt: '2030-01-01T10:00:00.000Z',
+      suspendedAt: '2030-01-02T10:00:00.000Z',
+    },
   ];
   const open = async () => {
     admin.listUsersApi.mockResolvedValue({ users: rows, totalCount: 2 });
@@ -482,7 +638,9 @@ describe('Users page (Super Admin manages admins)', () => {
   };
   const menuLabels = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
     await user.click(screen.getByRole('button', { name: `Actions for ${name}` }));
-    return within(screen.getByRole('list', { name: `Actions for ${name}` })).getAllByRole('button').map((b) => b.textContent);
+    return within(screen.getByRole('list', { name: `Actions for ${name}` }))
+      .getAllByRole('button')
+      .map((b) => b.textContent);
   };
 
   it('lists admins with their permission count and an "Add admin" button', async () => {
@@ -504,9 +662,20 @@ describe('Users page (Super Admin manages admins)', () => {
 
   it('uses the row-menu convention: Edit (pencil) and Delete (trash) with the other actions in the ⋯ menu', async () => {
     const user = await open();
-    expect(await menuLabels(user, 'Nisha Shah')).toEqual(['Edit', 'Mark inactive…', 'Reset password…', 'Sign out everywhere', 'Delete']);
+    expect(await menuLabels(user, 'Nisha Shah')).toEqual([
+      'Edit',
+      'Mark inactive…',
+      'Reset password…',
+      'Sign out everywhere',
+      'Delete',
+    ]);
     await user.keyboard('{Escape}');
-    expect(await menuLabels(user, 'Ravi Mehta')).toEqual(['Edit', 'Mark active', 'Sign out everywhere', 'Delete']);
+    expect(await menuLabels(user, 'Ravi Mehta')).toEqual([
+      'Edit',
+      'Mark active',
+      'Sign out everywhere',
+      'Delete',
+    ]);
   });
 
   it('opens the edit page from Edit', async () => {
@@ -534,13 +703,21 @@ describe('Users page (Super Admin manages admins)', () => {
     await user.click(screen.getByRole('button', { name: 'Actions for Nisha Shah' }));
     await user.click(screen.getByRole('button', { name: 'Mark inactive…' }));
     await user.type(screen.getByLabelText(/reason/i), 'Misuse');
-    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Mark inactive' }));
-    await waitFor(() => expect(admin.userActionApi).toHaveBeenCalledWith('a1', 'suspend', { reason: 'Misuse' }));
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Mark inactive' }),
+    );
+    await waitFor(() =>
+      expect(admin.userActionApi).toHaveBeenCalledWith('a1', 'suspend', { reason: 'Misuse' }),
+    );
 
     await user.click(screen.getByRole('button', { name: 'Actions for Ravi Mehta' }));
     await user.click(screen.getByRole('button', { name: 'Mark active' }));
-    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Mark active' }));
-    await waitFor(() => expect(admin.userActionApi).toHaveBeenCalledWith('a2', 'reactivate', undefined));
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Mark active' }),
+    );
+    await waitFor(() =>
+      expect(admin.userActionApi).toHaveBeenCalledWith('a2', 'reactivate', undefined),
+    );
   });
 
   it('resets a password directly after typing a new one', async () => {
@@ -553,7 +730,9 @@ describe('Users page (Super Admin manages admins)', () => {
     expect(submit).toBeDisabled();
     await user.type(within(dialog).getByLabelText(/new password/i), 'Brand-New-2026');
     await user.click(submit);
-    await waitFor(() => expect(admin.resetAdminPasswordApi).toHaveBeenCalledWith('a1', 'Brand-New-2026'));
+    await waitFor(() =>
+      expect(admin.resetAdminPasswordApi).toHaveBeenCalledWith('a1', 'Brand-New-2026'),
+    );
   });
 
   it('shows only password reset to an admin who holds users.reset_password but cannot manage admins', async () => {
@@ -571,7 +750,9 @@ describe('Users page (Super Admin manages admins)', () => {
     const user = await open();
     await user.click(screen.getByRole('button', { name: 'Actions for Nisha Shah' }));
     await user.click(screen.getByRole('button', { name: 'Sign out everywhere' }));
-    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Sign out' }));
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Sign out' }),
+    );
     await waitFor(() => expect(admin.userActionApi).toHaveBeenCalledWith('a1', 'revoke-sessions'));
   });
 });
@@ -592,7 +773,10 @@ describe('Members page (directory management only)', () => {
     anonymizedAt: null,
   };
   const open = async (permissions: string[]) => {
-    admin.listStaffMembersApi.mockResolvedValue({ members: [member, { ...member, id: 'm2', name: 'Hidden Hari', visibility: 'hidden' }], totalCount: 2 });
+    admin.listStaffMembersApi.mockResolvedValue({
+      members: [member, { ...member, id: 'm2', name: 'Hidden Hari', visibility: 'hidden' }],
+      totalCount: 2,
+    });
     const store = await makeStore({ ...adminUser, permissions });
     renderWithApp(<AdminMembersPage />, { store });
     await screen.findByText('Asha Patel');
@@ -604,23 +788,40 @@ describe('Members page (directory management only)', () => {
     const table = screen.getByRole('table', { name: 'Members' });
     expect(within(table).getByText('Everyone')).toBeInTheDocument();
     expect(within(table).getByText('Office only')).toBeInTheDocument();
-    expect(screen.queryByText(/pending approval|has an account|directory entry only/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/pending approval|has an account|directory entry only/i),
+    ).not.toBeInTheDocument();
   });
 
   it('has no account filter and no "Members" visibility option', async () => {
     await open(['members.read']);
     expect(screen.queryByLabelText('Account')).not.toBeInTheDocument();
-    const options = within(screen.getByLabelText('Visibility')).getAllByRole('option').map((o) => o.textContent);
+    const options = within(screen.getByLabelText('Visibility'))
+      .getAllByRole('option')
+      .map((o) => o.textContent);
     expect(options).toEqual(['Any visibility', 'Office only', 'Everyone']);
-    expect(admin.listStaffMembersApi).toHaveBeenCalledWith(expect.not.objectContaining({ accountStatus: expect.anything(), hasAccount: expect.anything() }));
+    expect(admin.listStaffMembersApi).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        accountStatus: expect.anything(),
+        hasAccount: expect.anything(),
+      }),
+    );
   });
 
   it('offers Edit and Anonymise only; never approve, reject, suspend, reactivate or create sign-in', async () => {
-    const user = await open(['members.read', 'members.update', 'members.anonymize', 'members.create', 'members.export']);
+    const user = await open([
+      'members.read',
+      'members.update',
+      'members.anonymize',
+      'members.create',
+      'members.export',
+    ]);
     expect(screen.getByRole('button', { name: 'Add member' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Export CSV' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Actions for Asha Patel' }));
-    const labels = within(screen.getByRole('list', { name: 'Actions for Asha Patel' })).getAllByRole('button').map((b) => b.textContent);
+    const labels = within(screen.getByRole('list', { name: 'Actions for Asha Patel' }))
+      .getAllByRole('button')
+      .map((b) => b.textContent);
     expect(labels).toEqual(['Edit', 'Anonymise…']);
   });
 
@@ -628,7 +829,9 @@ describe('Members page (directory management only)', () => {
     await open(['members.read']);
     expect(screen.queryByRole('button', { name: 'Add member' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Export CSV' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Edit Asha Patel|Actions for Asha Patel/ })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Edit Asha Patel|Actions for Asha Patel/ }),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -650,7 +853,12 @@ describe('Contact message page (permission-gated controls)', () => {
   const open = async (permissions: string[]) => {
     admin.getContactApi.mockResolvedValue(message);
     const store = await makeStore({ ...adminUser, id: 'staff1', permissions });
-    renderWithApp(<Routes><Route path="/admin/contacts/:id" element={<AdminContactDetailPage />} /></Routes>, { store, path: '/admin/contacts/c1' });
+    renderWithApp(
+      <Routes>
+        <Route path="/admin/contacts/:id" element={<AdminContactDetailPage />} />
+      </Routes>,
+      { store, path: '/admin/contacts/c1' },
+    );
     await screen.findByText('#ABC123');
     return { store, user: userEvent.setup() };
   };
@@ -675,7 +883,9 @@ describe('Contact message page (permission-gated controls)', () => {
     const { user } = await open(['contacts.resolve']);
     expect(screen.queryByRole('button', { name: /assign to me/i })).not.toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText('Status'), 'resolved');
-    await waitFor(() => expect(admin.updateContactApi).toHaveBeenCalledWith('c1', { status: 'resolved' }));
+    await waitFor(() =>
+      expect(admin.updateContactApi).toHaveBeenCalledWith('c1', { status: 'resolved' }),
+    );
     await user.type(screen.getByLabelText('Add a note'), '  Called back  ');
     await user.click(screen.getByRole('button', { name: 'Add note' }));
     await waitFor(() => expect(admin.addContactNoteApi).toHaveBeenCalledWith('c1', 'Called back'));
@@ -686,13 +896,25 @@ describe('Contact message page (permission-gated controls)', () => {
     const { user, store } = await open(['contacts.assign']);
     expect(screen.queryByLabelText('Status')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /assign to me/i }));
-    await waitFor(() => expect(admin.updateContactApi).toHaveBeenCalledWith('c1', { assignedTo: 'staff1' }));
-    await waitFor(() => expect(store.getState().toast.at(-1)).toMatchObject({ tone: 'error', message: 'Already assigned to someone else' }));
+    await waitFor(() =>
+      expect(admin.updateContactApi).toHaveBeenCalledWith('c1', { assignedTo: 'staff1' }),
+    );
+    await waitFor(() =>
+      expect(store.getState().toast.at(-1)).toMatchObject({
+        tone: 'error',
+        message: 'Already assigned to someone else',
+      }),
+    );
   });
 
   it('shows an error with retry when the message cannot load', async () => {
     admin.getContactApi.mockRejectedValue(apiError(404, 'Message not found'));
-    renderWithApp(<Routes><Route path="/admin/contacts/:id" element={<AdminContactDetailPage />} /></Routes>, { store: await makeStore({ ...adminUser, permissions: [] }), path: '/admin/contacts/c1' });
+    renderWithApp(
+      <Routes>
+        <Route path="/admin/contacts/:id" element={<AdminContactDetailPage />} />
+      </Routes>,
+      { store: await makeStore({ ...adminUser, permissions: [] }), path: '/admin/contacts/c1' },
+    );
     expect(await screen.findByRole('alert')).toHaveTextContent('Message not found');
   });
 });

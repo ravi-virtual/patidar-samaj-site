@@ -18,12 +18,24 @@ export function RowActions({ name, onEdit, onDelete }: RowActionsProps) {
   return (
     <div className="inline-flex items-center gap-1.5">
       {onEdit && (
-        <button type="button" onClick={onEdit} aria-label={t('Edit {name}', { name })} title={t('Edit')} className={`${btn} text-text-secondary`}>
+        <button
+          type="button"
+          onClick={onEdit}
+          aria-label={t('Edit {name}', { name })}
+          title={t('Edit')}
+          className={`${btn} text-text-secondary`}
+        >
           <Pencil aria-hidden="true" className="h-4 w-4" />
         </button>
       )}
       {onDelete && (
-        <button type="button" onClick={onDelete} aria-label={t('Delete {name}', { name })} title={t('Delete')} className={`${btn} text-danger`}>
+        <button
+          type="button"
+          onClick={onDelete}
+          aria-label={t('Delete {name}', { name })}
+          title={t('Delete')}
+          className={`${btn} text-danger`}
+        >
           <Trash2 aria-hidden="true" className="h-4 w-4" />
         </button>
       )}

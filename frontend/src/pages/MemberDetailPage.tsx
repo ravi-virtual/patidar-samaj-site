@@ -27,12 +27,20 @@ export default function MemberDetailPage() {
   }
 
   return (
-    <Async data={data} loading={initialLoading} error={error} onRetry={retry} skeleton={<Skeleton className="h-72" />}>
+    <Async
+      data={data}
+      loading={initialLoading}
+      error={error}
+      onRetry={retry}
+      skeleton={<Skeleton className="h-72" />}
+    >
       {(m) => (
         <div className="grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
           <Card>
             <Avatar name={m.name} size="xl" />
-            <h1 className="mb-0.5 mt-3.5 text-[26px] font-semibold leading-tight tracking-tight">{m.name}</h1>
+            <h1 className="mb-0.5 mt-3.5 text-[26px] font-semibold leading-tight tracking-tight">
+              {m.name}
+            </h1>
             {m.occupation && <p className="text-text-muted">{m.occupation}</p>}
             {m.bio && <p className="mt-3.5 text-text-secondary">{m.bio}</p>}
           </Card>
@@ -45,8 +53,12 @@ export default function MemberDetailPage() {
                 [t('Member since'), m.joinedYear ? String(m.joinedYear) : null],
               ].map(([label, value]) => (
                 <div key={label} className="contents">
-                  <dt className="border-b border-surface-muted px-5 py-3 text-text-muted last:border-b-0">{label}</dt>
-                  <dd className="m-0 border-b border-surface-muted px-5 py-3 font-medium last:border-b-0">{value || '—'}</dd>
+                  <dt className="border-b border-surface-muted px-5 py-3 text-text-muted last:border-b-0">
+                    {label}
+                  </dt>
+                  <dd className="m-0 border-b border-surface-muted px-5 py-3 font-medium last:border-b-0">
+                    {value || '—'}
+                  </dd>
                 </div>
               ))}
             </dl>

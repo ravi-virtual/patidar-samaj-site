@@ -46,7 +46,9 @@ const portInUse = await new Promise((resolve) => {
 });
 if (portInUse) {
   console.error(`Port ${port} is already in use on 127.0.0.1 — another MongoDB may be running.`);
-  console.error('Stop it, or choose a free port with MONGO_PORT and update MONGO_URI in backend/.env.');
+  console.error(
+    'Stop it, or choose a free port with MONGO_PORT and update MONGO_URI in backend/.env.',
+  );
   process.exit(1);
 }
 

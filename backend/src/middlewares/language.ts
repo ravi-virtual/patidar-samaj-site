@@ -19,7 +19,8 @@ export const language = (req: Request, res: Response, next: NextFunction) => {
       const out = body as { message?: unknown; error?: { details?: { message?: unknown }[] } };
       if (typeof out.message === 'string') out.message = translateMessage(out.message, lang);
       for (const detail of out.error?.details ?? []) {
-        if (typeof detail?.message === 'string') detail.message = translateMessage(detail.message, lang);
+        if (typeof detail?.message === 'string')
+          detail.message = translateMessage(detail.message, lang);
       }
     }
     return json(body);

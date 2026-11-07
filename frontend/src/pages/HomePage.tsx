@@ -58,7 +58,9 @@ function NextEvent({ home }: { home: HomeData }) {
       <Card className="flex min-h-48 flex-col items-center justify-center gap-1 text-center lg:col-span-1">
         <CalendarDays aria-hidden="true" className="h-6 w-6 text-text-subtle" />
         <p className="font-semibold">{t('No upcoming events yet')}</p>
-        <p className="text-sm text-text-muted">{t('New events appear here as soon as they are announced.')}</p>
+        <p className="text-sm text-text-muted">
+          {t('New events appear here as soon as they are announced.')}
+        </p>
       </Card>
     );
   }
@@ -67,9 +69,17 @@ function NextEvent({ home }: { home: HomeData }) {
       aria-label={t('Next event')}
       className="relative flex min-h-72 overflow-hidden rounded-xl bg-zinc-900 text-white shadow-card"
     >
-      {image && <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-50" />}
+      {image && (
+        <img
+          src={image}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover opacity-50"
+        />
+      )}
       <div className="relative mt-auto w-full bg-gradient-to-t from-zinc-900/95 to-transparent p-6">
-        <p className="font-mono text-xs uppercase text-indigo-200">{t('Next event · {date}', { date: formatShortDate(e.startsAt) })}</p>
+        <p className="font-mono text-xs uppercase text-indigo-200">
+          {t('Next event · {date}', { date: formatShortDate(e.startsAt) })}
+        </p>
         <h2 className="my-1 text-2xl font-semibold tracking-tight">{e.title}</h2>
         <p className="mb-3.5 text-sm text-zinc-300">
           {formatTime(e.startsAt)} · {e.venue}
@@ -88,7 +98,9 @@ function NextEvent({ home }: { home: HomeData }) {
 function HomeContent({ home }: { home: HomeData }) {
   const settings = useAppSelector((s) => s.site.settings);
   const on = (tab: PublicTabKey) => isTabOn(settings, tab);
-  const upcoming = home.upcomingEvents.filter((e) => e.id !== (home.featuredEvent ?? home.upcomingEvents[0])?.id);
+  const upcoming = home.upcomingEvents.filter(
+    (e) => e.id !== (home.featuredEvent ?? home.upcomingEvents[0])?.id,
+  );
   return (
     <div className="grid gap-4 lg:grid-cols-3">
       <Hero home={home} />
@@ -121,17 +133,19 @@ function HomeContent({ home }: { home: HomeData }) {
 
       <Section title="Quick actions">
         <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
-          {quickLinks.filter((q) => !q.tab || on(q.tab)).map((q) => (
-            <li key={q.to}>
-              <Link
-                to={q.to}
-                className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5 text-sm font-medium text-text hover:bg-bg"
-              >
-                {t(q.label)}
-                <ArrowRight aria-hidden="true" className="h-4 w-4 text-text-subtle" />
-              </Link>
-            </li>
-          ))}
+          {quickLinks
+            .filter((q) => !q.tab || on(q.tab))
+            .map((q) => (
+              <li key={q.to}>
+                <Link
+                  to={q.to}
+                  className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5 text-sm font-medium text-text hover:bg-bg"
+                >
+                  {t(q.label)}
+                  <ArrowRight aria-hidden="true" className="h-4 w-4 text-text-subtle" />
+                </Link>
+              </li>
+            ))}
         </ul>
       </Section>
 
@@ -159,7 +173,12 @@ function HomeContent({ home }: { home: HomeData }) {
       )}
 
       {on('directory') && home.memberHighlights.length > 0 && (
-        <Section title="Member highlights" to="/members" linkLabel="Directory" className="lg:col-span-2">
+        <Section
+          title="Member highlights"
+          to="/members"
+          linkLabel="Directory"
+          className="lg:col-span-2"
+        >
           <ul className="m-0 grid list-none gap-2.5 p-0 [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))]">
             {home.memberHighlights.map((m) => (
               <li key={m.id}>
@@ -170,7 +189,9 @@ function HomeContent({ home }: { home: HomeData }) {
                   <Avatar name={m.name} />
                   <span className="min-w-0 leading-tight">
                     <span className="block truncate text-sm font-medium">{m.name}</span>
-                    <span className="block truncate text-xs text-text-muted">{place(m.city, m.country)}</span>
+                    <span className="block truncate text-xs text-text-muted">
+                      {place(m.city, m.country)}
+                    </span>
                   </span>
                 </Link>
               </li>
@@ -205,7 +226,13 @@ function HomeContent({ home }: { home: HomeData }) {
 export default function HomePage() {
   const { data, initialLoading, error, retry } = useFetch('home', getHomeApi);
   return (
-    <Async data={data} loading={initialLoading} error={error} onRetry={retry} skeleton={<HomeSkeleton />}>
+    <Async
+      data={data}
+      loading={initialLoading}
+      error={error}
+      onRetry={retry}
+      skeleton={<HomeSkeleton />}
+    >
       {(home) => <HomeContent home={home} />}
     </Async>
   );

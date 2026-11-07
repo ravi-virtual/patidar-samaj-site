@@ -1,6 +1,10 @@
 import mongoose, { Schema } from 'mongoose';
 import { randomUUID as uuidv4 } from 'node:crypto';
-import { AnnouncementCategories, PublishStatus, type PublishStatusValue } from '../config/constants';
+import {
+  AnnouncementCategories,
+  PublishStatus,
+  type PublishStatusValue,
+} from '../config/constants';
 
 export interface IAnnouncement {
   _id: string;

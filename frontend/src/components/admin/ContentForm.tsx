@@ -29,7 +29,14 @@ const initialValues = (def: ResourceDef, row: ContentRow | null): Values =>
       const raw = record?.[f.name];
       if (f.type === 'checkbox') return [[f.name, Boolean(raw)]];
       const entries: [string, string | boolean][] = [
-        [f.name, raw === null || raw === undefined ? (f.type === 'select' ? (f.options?.[0] ?? '') : '') : String(raw)],
+        [
+          f.name,
+          raw === null || raw === undefined
+            ? f.type === 'select'
+              ? (f.options?.[0] ?? '')
+              : ''
+            : String(raw),
+        ],
       ];
       if (f.translatable) {
         const gu = record?.[guName(f)];
@@ -48,22 +55,30 @@ const check = (f: FieldDef, value: string | boolean): string | null => {
   if (!v) return null;
   if (f.type === 'number') {
     const n = Number(v);
-    if (!Number.isInteger(n) || (f.min !== undefined && n < f.min) || (f.max !== undefined && n > f.max)) {
+    if (
+      !Number.isInteger(n) ||
+      (f.min !== undefined && n < f.min) ||
+      (f.max !== undefined && n > f.max)
+    ) {
       return t('Enter a year between {min} and {max}', { min: f.min ?? '', max: f.max ?? '' });
     }
     return null;
   }
   if (f.type === 'text' || f.type === 'textarea') {
-    if (f.min && v.length < f.min) return t('{label} must be at least {min} characters', { label, min: f.min });
-    if (f.max && v.length > f.max) return t('{label} must be at most {max} characters', { label, max: f.max });
+    if (f.min && v.length < f.min)
+      return t('{label} must be at least {min} characters', { label, min: f.min });
+    if (f.max && v.length > f.max)
+      return t('{label} must be at most {max} characters', { label, max: f.max });
     if (/[<>]/.test(v)) return t('Contains invalid characters');
-    if (f.name === 'url' && !/^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(v)) return t('Enter a full web address starting with http:// or https://');
+    if (f.name === 'url' && !/^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(v))
+      return t('Enter a full web address starting with http:// or https://');
   }
   return null;
 };
 
 /** The Gujarati input is optional and has no minimum, but keeps the same maximum and character rules. */
-const checkGu = (f: FieldDef, value: string | boolean): string | null => check({ ...f, required: false, min: undefined }, value);
+const checkGu = (f: FieldDef, value: string | boolean): string | null =>
+  check({ ...f, required: false, min: undefined }, value);
 
 const toBody = (def: ResourceDef, v: Values): Record<string, unknown> =>
   Object.fromEntries(
@@ -78,7 +93,17 @@ const toBody = (def: ResourceDef, v: Values): Record<string, unknown> =>
     }),
   );
 
-function Field({ f, form, errors, terms }: { f: FieldDef; form: ReturnType<typeof useForm<Values>>; errors: Record<string, { message?: string } | undefined>; terms: ContentRow[] }) {
+function Field({
+  f,
+  form,
+  errors,
+  terms,
+}: {
+  f: FieldDef;
+  form: ReturnType<typeof useForm<Values>>;
+  errors: Record<string, { message?: string } | undefined>;
+  terms: ContentRow[];
+}) {
   const reg = form.register(f.name);
   const error = errText(errors[f.name]);
   if (f.translatable && (f.type === 'text' || f.type === 'textarea')) {
@@ -100,29 +125,60 @@ function Field({ f, form, errors, terms }: { f: FieldDef; form: ReturnType<typeo
   const hint = f.hint ? t(f.hint) : undefined;
   switch (f.type) {
     case 'textarea':
-      return <TextAreaField label={label} rows={4} required={f.required} hint={hint} error={error} {...reg} />;
+      return (
+        <TextAreaField
+          label={label}
+          rows={4}
+          required={f.required}
+          hint={hint}
+          error={error}
+          {...reg}
+        />
+      );
     case 'select':
       return (
         <SelectField label={label} hint={hint} error={error} {...reg}>
-          {f.options?.map((o) => <option key={o} value={o}>{t(o)}</option>)}
+          {f.options?.map((o) => (
+            <option key={o} value={o}>
+              {t(o)}
+            </option>
+          ))}
         </SelectField>
       );
     case 'term':
       return (
         <SelectField label={label} required={f.required} error={error} {...reg}>
           <option value="">{t('Choose a term…')}</option>
-          {terms.map((term) => <option key={term.id} value={term.id}>{term.label}</option>)}
+          {terms.map((term) => (
+            <option key={term.id} value={term.id}>
+              {term.label}
+            </option>
+          ))}
         </SelectField>
       );
     case 'image':
     case 'document':
-      return <MediaPicker label={label} kind={f.type === 'image' ? 'image' : 'document'} error={error} {...reg} />;
-    case 'checkbox':
       return (
-        <Toggle label={label} {...reg} />
+        <MediaPicker
+          label={label}
+          kind={f.type === 'image' ? 'image' : 'document'}
+          error={error}
+          {...reg}
+        />
       );
+    case 'checkbox':
+      return <Toggle label={label} {...reg} />;
     default:
-      return <TextField label={label} required={f.required} hint={hint} inputMode={f.type === 'number' ? 'numeric' : undefined} error={error} {...reg} />;
+      return (
+        <TextField
+          label={label}
+          required={f.required}
+          hint={hint}
+          inputMode={f.type === 'number' ? 'numeric' : undefined}
+          error={error}
+          {...reg}
+        />
+      );
   }
 }
 
@@ -136,7 +192,9 @@ export function ContentForm({ def, row }: { def: ResourceDef; row: ContentRow | 
   const form = useForm<Values>({ defaultValues: defaults });
   const { handleSubmit, setError, formState, control, reset } = form;
   const values = useWatch({ control }) as Values;
-  const editPath = row ? `/admin/content/${def.key}/${row.id}/edit` : `/admin/content/${def.key}/new`;
+  const editPath = row
+    ? `/admin/content/${def.key}/${row.id}/edit`
+    : `/admin/content/${def.key}/new`;
 
   // Coming back from the preview page: put the typed values back, still compared with the saved ones.
   const draft = (location.state as DraftState<Values> | null)?.draft;
@@ -145,9 +203,14 @@ export function ContentForm({ def, row }: { def: ResourceDef; row: ContentRow | 
   }, [draft, reset]);
   const needsTerms = def.fields.some((f) => f.type === 'term');
   // Coming back from the preview page the terms are handed over, so nothing is fetched again.
-  const cachedTerms = (location.state as DraftState<Values> | null)?.cache?.terms as Awaited<ReturnType<typeof listContentApi>> | undefined;
+  const cachedTerms = (location.state as DraftState<Values> | null)?.cache?.terms as
+    Awaited<ReturnType<typeof listContentApi>> | undefined;
   const terms = useFetch(`terms:${needsTerms}`, () =>
-    needsTerms ? (cachedTerms ? Promise.resolve(cachedTerms) : listContentApi('committee-terms', { limit: 100 })) : Promise.resolve(null),
+    needsTerms
+      ? cachedTerms
+        ? Promise.resolve(cachedTerms)
+        : listContentApi('committee-terms', { limit: 100 })
+      : Promise.resolve(null),
   );
 
   const onSubmit = async (v: Values) => {
@@ -174,7 +237,10 @@ export function ContentForm({ def, row }: { def: ResourceDef; row: ContentRow | 
     } catch (err) {
       let placed = false;
       for (const f of getFieldErrors(err)) {
-        if (f.field && def.fields.some((d) => d.name === f.field || (d.translatable && guName(d) === f.field))) {
+        if (
+          f.field &&
+          def.fields.some((d) => d.name === f.field || (d.translatable && guName(d) === f.field))
+        ) {
           setError(f.field, { message: f.message });
           placed = true;
         }
@@ -197,7 +263,11 @@ export function ContentForm({ def, row }: { def: ResourceDef; row: ContentRow | 
 
   return (
     <FormPage
-      title={row ? t('Edit {item}', { item: t(def.singular) }) : t('New {item}', { item: t(def.singular) })}
+      title={
+        row
+          ? t('Edit {item}', { item: t(def.singular) })
+          : t('New {item}', { item: t(def.singular) })
+      }
       description={t('Nothing appears on the site until it is published.')}
       backTo={back}
       backLabel={t('Back to {items}', { items: t(def.plural) })}
@@ -217,8 +287,19 @@ export function ContentForm({ def, row }: { def: ResourceDef; row: ContentRow | 
         </FullWidth>
       )}
       {def.fields.map((f) => {
-        const node = <Field f={f} form={form} errors={formState.errors as Record<string, { message?: string } | undefined>} terms={terms.data?.items ?? []} />;
-        return f.wide || f.type === 'checkbox' ? <FullWidth key={f.name}>{node}</FullWidth> : <div key={f.name}>{node}</div>;
+        const node = (
+          <Field
+            f={f}
+            form={form}
+            errors={formState.errors as Record<string, { message?: string } | undefined>}
+            terms={terms.data?.items ?? []}
+          />
+        );
+        return f.wide || f.type === 'checkbox' ? (
+          <FullWidth key={f.name}>{node}</FullWidth>
+        ) : (
+          <div key={f.name}>{node}</div>
+        );
       })}
     </FormPage>
   );

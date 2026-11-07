@@ -2,7 +2,14 @@ import type { MouseEvent, ReactNode } from 'react';
 import { ArrowLeft, Eye } from 'lucide-react';
 import type { AdminBlock } from '../../api/adminApi';
 import { mediaUrl } from '../../api/siteApi';
-import type { CommitteeMember, ContentBlock, ContentItem, Faq, ImportantLink, Milestone } from '../../api/types';
+import type {
+  CommitteeMember,
+  ContentBlock,
+  ContentItem,
+  Faq,
+  ImportantLink,
+  Milestone,
+} from '../../api/types';
 import { t } from '../../i18n';
 import { useAppSelector } from '../../store/hooks';
 import {
@@ -80,9 +87,15 @@ function PreviewPanel({
       <div className="space-y-5">
         <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface-muted px-4 py-2.5 text-[13px] text-text-muted">
           <StatusBadge status={status} />
-          <span>{note ?? t('Shown as it will look on the public site. Nothing has been saved or published.')}</span>
+          <span>
+            {note ??
+              t('Shown as it will look on the public site. Nothing has been saved or published.')}
+          </span>
         </div>
-        <div className="rounded-lg border border-border bg-surface p-4 sm:p-5" onClickCapture={stopLinks}>
+        <div
+          className="rounded-lg border border-border bg-surface p-4 sm:p-5"
+          onClickCapture={stopLinks}
+        >
           {children}
         </div>
       </div>
@@ -105,7 +118,13 @@ const blockFromValues = (
   body: def.body ? (v.body ?? '').trim() || null : null,
   items: def.itemFields
     ? (v.items ?? []).map((item) => {
-        const out: ContentItem = { title: null, text: null, value: null, label: null, imageMediaId: null };
+        const out: ContentItem = {
+          title: null,
+          text: null,
+          value: null,
+          label: null,
+          imageMediaId: null,
+        };
         for (const k of ITEM_KEYS) out[k] = (item[k] ?? '').trim() || null;
         return out;
       })
@@ -145,30 +164,53 @@ function BlockPreviewBody({
     );
   }
   if (def.key === 'home.stats') {
-    return <div className="flex flex-col gap-4">{block.items.length ? <StatsCard items={block.items} /> : <p className="text-sm text-text-muted">{t('Nothing to show yet. Add a figure.')}</p>}</div>;
+    return (
+      <div className="flex flex-col gap-4">
+        {block.items.length ? (
+          <StatsCard items={block.items} />
+        ) : (
+          <p className="text-sm text-text-muted">{t('Nothing to show yet. Add a figure.')}</p>
+        )}
+      </div>
+    );
   }
   if (def.key === 'history.intro') {
     return <HistoryIntro intro={block} />;
   }
   // about.*
   const blocks: Record<string, ContentBlock> = {};
-  for (const b of others) if (b.status !== 'empty' && b.key.startsWith('about.')) blocks[b.key] = asBlock(b);
+  for (const b of others)
+    if (b.status !== 'empty' && b.key.startsWith('about.')) blocks[b.key] = asBlock(b);
   blocks[def.key] = block;
   return <AboutContent blocks={blocks} />;
 }
 
 const blockPreviewNote = (def: BlockDef): string | undefined =>
-  def.key.startsWith('about.') ? t('The other sections show their latest saved text, drafts included.') : undefined;
+  def.key.startsWith('about.')
+    ? t('The other sections show their latest saved text, drafts included.')
+    : undefined;
 
 // ─── Lists (FAQs, links, milestones, committee) ──────────────────────────────
 
 type Values = Record<string, string | boolean>;
 const str = (v: Values, k: string): string => String(v[k] ?? '').trim();
 
-function ResourcePreviewBody({ def, values, termLabel }: { def: ResourceDef; values: Values; termLabel?: string }) {
+function ResourcePreviewBody({
+  def,
+  values,
+  termLabel,
+}: {
+  def: ResourceDef;
+  values: Values;
+  termLabel?: string;
+}) {
   switch (def.key) {
     case 'faqs': {
-      const faq: Faq = { id: 'preview', question: str(values, 'question'), answer: str(values, 'answer') };
+      const faq: Faq = {
+        id: 'preview',
+        question: str(values, 'question'),
+        answer: str(values, 'answer'),
+      };
       return (
         <Card padded={false}>
           <FaqItem f={faq} open />
@@ -186,7 +228,10 @@ function ResourcePreviewBody({ def, values, termLabel }: { def: ResourceDef; val
       };
       return (
         <section aria-labelledby="preview-cat">
-          <h2 id="preview-cat" className="mb-2.5 text-[13px] font-semibold uppercase tracking-wider text-text-subtle">
+          <h2
+            id="preview-cat"
+            className="mb-2.5 text-[13px] font-semibold uppercase tracking-wider text-text-subtle"
+          >
             {t(link.category)}
           </h2>
           <LinkCard link={link} />
@@ -219,7 +264,10 @@ function ResourcePreviewBody({ def, values, termLabel }: { def: ResourceDef; val
       };
       return (
         <div className="space-y-4">
-          <PageHeader eyebrow={t('Committee')} title={termLabel ? t('Committee {term}', { term: termLabel }) : t('Committee')} />
+          <PageHeader
+            eyebrow={t('Committee')}
+            title={termLabel ? t('Committee {term}', { term: termLabel }) : t('Committee')}
+          />
           <MemberCard m={m} />
         </div>
       );

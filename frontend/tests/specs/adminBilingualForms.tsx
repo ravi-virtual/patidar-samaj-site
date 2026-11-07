@@ -91,7 +91,11 @@ describe('Event form', () => {
     fireEvent.change(screen.getByLabelText(/^Starts/), { target: { value: '2030-10-01T19:00' } });
     await user.click(screen.getByRole('button', { name: 'Create draft' }));
     await waitFor(() => expect(admin.createEventApi).toHaveBeenCalled());
-    expect(admin.createEventApi.mock.calls[0]![0]).toMatchObject({ titleGu: '', venueGu: '', descriptionGu: '' });
+    expect(admin.createEventApi.mock.calls[0]![0]).toMatchObject({
+      titleGu: '',
+      venueGu: '',
+      descriptionGu: '',
+    });
   });
 
   it('fills the Gujarati inputs from the saved event when editing and saves changes to them', async () => {
@@ -124,11 +128,19 @@ describe('Event form', () => {
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     await waitFor(() => expect(admin.updateEventApi).toHaveBeenCalledTimes(1));
     expect(admin.updateEventApi.mock.calls[0]![0]).toBe('e1');
-    expect(admin.updateEventApi.mock.calls[0]![1]).toMatchObject({ title: 'Garba', titleGu: 'નવરાત્રી', venueGu: 'સમાજ ભવન' });
+    expect(admin.updateEventApi.mock.calls[0]![1]).toMatchObject({
+      title: 'Garba',
+      titleGu: 'નવરાત્રી',
+      venueGu: 'સમાજ ભવન',
+    });
   });
 
   it('shows a server error for a Gujarati field under that field', async () => {
-    admin.createEventApi.mockRejectedValue(apiError(400, 'Check the form', 'VALIDATION_ERROR', [{ field: 'titleGu', message: 'Contains invalid characters' }]));
+    admin.createEventApi.mockRejectedValue(
+      apiError(400, 'Check the form', 'VALIDATION_ERROR', [
+        { field: 'titleGu', message: 'Contains invalid characters' },
+      ]),
+    );
     const user = userEvent.setup();
     open();
     await user.type(screen.getByLabelText(/^Title \(English\)/), 'Garba');
@@ -150,7 +162,10 @@ describe('Announcement form', () => {
     await user.type(screen.getByLabelText(/^Title \(English\)/), 'Office closed');
     await user.type(screen.getByLabelText('Title (Gujarati)'), 'કચેરી બંધ');
     await user.type(screen.getByLabelText('Summary (Gujarati)'), 'ટૂંકમાં');
-    await user.type(screen.getByLabelText(/^Announcement \(English\)/), 'The office is closed on Sunday.');
+    await user.type(
+      screen.getByLabelText(/^Announcement \(English\)/),
+      'The office is closed on Sunday.',
+    );
     await user.type(screen.getByLabelText('Announcement (Gujarati)'), 'રવિવારે કચેરી બંધ રહેશે.');
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
     await waitFor(() => expect(admin.createAnnouncementApi).toHaveBeenCalledTimes(1));
@@ -167,7 +182,13 @@ describe('Announcement form', () => {
 
 describe('Content form (FAQs, links, history, committee)', () => {
   const def = (key: string) => resources.find((r) => r.key === key)!;
-  const row = (over: Partial<adminApi.ContentRow>): adminApi.ContentRow => ({ id: 'r1', status: 'draft', order: 1, updatedAt: '2030-01-01T00:00:00.000Z', ...over });
+  const row = (over: Partial<adminApi.ContentRow>): adminApi.ContentRow => ({
+    id: 'r1',
+    status: 'draft',
+    order: 1,
+    updatedAt: '2030-01-01T00:00:00.000Z',
+    ...over,
+  });
 
   it('shows a Gujarati input beside each translatable FAQ field and sends it', async () => {
     admin.saveContentApi.mockResolvedValue(row({}));
@@ -194,16 +215,32 @@ describe('Content form (FAQs, links, history, committee)', () => {
     renderWithApp(<ContentForm def={def('faqs')} row={null} />);
     await user.type(screen.getByLabelText(/^Question \(English\)/), 'How do I join?');
     await user.type(screen.getByLabelText(/^Answer \(English\)/), 'Ask at the office.');
-    fireEvent.change(screen.getByLabelText('Question (Gujarati)'), { target: { value: 'ક'.repeat(201) } });
+    fireEvent.change(screen.getByLabelText('Question (Gujarati)'), {
+      target: { value: 'ક'.repeat(201) },
+    });
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
     expect(await screen.findByText('Question must be at most 200 characters')).toBeInTheDocument();
     expect(admin.saveContentApi).not.toHaveBeenCalled();
   });
 
   it('prefills the Gujarati text when editing and keeps non-translated fields single', async () => {
-    admin.listContentApi.mockResolvedValue({ items: [row({ id: 't1', label: '2025–2027' })], totalCount: 1 });
+    admin.listContentApi.mockResolvedValue({
+      items: [row({ id: 't1', label: '2025–2027' })],
+      totalCount: 1,
+    });
     renderWithApp(
-      <ContentForm def={def('committee-members')} row={row({ termId: 't1', name: 'Asha Patel', nameGu: 'આશા પટેલ', position: 'President', positionGu: 'પ્રમુખ', bio: null, bioGu: null })} />,
+      <ContentForm
+        def={def('committee-members')}
+        row={row({
+          termId: 't1',
+          name: 'Asha Patel',
+          nameGu: 'આશા પટેલ',
+          position: 'President',
+          positionGu: 'પ્રમુખ',
+          bio: null,
+          bioGu: null,
+        })}
+      />,
     );
     await waitFor(() => expect(screen.getByLabelText('Name (Gujarati)')).toHaveValue('આશા પટેલ'));
     expect(screen.getByLabelText('Position (Gujarati)')).toHaveValue('પ્રમુખ');
@@ -218,7 +255,8 @@ describe('Content form (FAQs, links, history, committee)', () => {
     expect(screen.queryByLabelText('Web address (Gujarati)')).not.toBeInTheDocument();
     unmount();
     renderWithApp(<ContentForm def={def('milestones')} row={null} />);
-    for (const label of ['Year or era', 'Title', 'Text', 'Source']) expect(screen.getByLabelText(`${label} (Gujarati)`)).toBeInTheDocument();
+    for (const label of ['Year or era', 'Title', 'Text', 'Source'])
+      expect(screen.getByLabelText(`${label} (Gujarati)`)).toBeInTheDocument();
   });
 });
 
@@ -230,7 +268,21 @@ describe('Page text block form', () => {
     renderWithApp(
       <BlockForm
         def={def}
-        block={{ key: 'about.values', status: 'draft', items: [{ title: 'Unity', text: 'Together.', value: null, label: null, imageMediaId: null, titleGu: 'એકતા', textGu: null }] }}
+        block={{
+          key: 'about.values',
+          status: 'draft',
+          items: [
+            {
+              title: 'Unity',
+              text: 'Together.',
+              value: null,
+              label: null,
+              imageMediaId: null,
+              titleGu: 'એકતા',
+              textGu: null,
+            },
+          ],
+        }}
         allBlocks={[]}
       />,
     );
@@ -257,7 +309,12 @@ describe('Page text block form', () => {
     await user.type(screen.getByLabelText('Text (Gujarati)'), 'નમસ્તે.');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(admin.saveBlockApi).toHaveBeenCalledTimes(1));
-    expect(admin.saveBlockApi).toHaveBeenCalledWith('about.intro', { title: 'Welcome', titleGu: 'સ્વાગત', body: 'Hello.', bodyGu: 'નમસ્તે.' });
+    expect(admin.saveBlockApi).toHaveBeenCalledWith('about.intro', {
+      title: 'Welcome',
+      titleGu: 'સ્વાગત',
+      body: 'Hello.',
+      bodyGu: 'નમસ્તે.',
+    });
   });
 });
 
@@ -269,9 +326,24 @@ describe('Settings form', () => {
     invocation: '',
     tagline: 'Together',
     footerNote: '',
-    contact: { email: 'office@example.test', phone: '', address: 'Main road', addressGu: 'મુખ્ય રસ્તો', officeHours: '' },
+    contact: {
+      email: 'office@example.test',
+      phone: '',
+      address: 'Main road',
+      addressGu: 'મુખ્ય રસ્તો',
+      officeHours: '',
+    },
     socialLinks: [],
-    publicTabs: { about: true, committee: true, faq: true, links: true, directory: true, events: true, news: true, contact: true },
+    publicTabs: {
+      about: true,
+      committee: true,
+      faq: true,
+      links: true,
+      directory: true,
+      events: true,
+      news: true,
+      contact: true,
+    },
     themeDefault: 'system',
   };
 
@@ -282,15 +354,32 @@ describe('Settings form', () => {
     renderWithApp(<AdminSettingsPage />);
     const name = await screen.findByLabelText('Full name (Gujarati)');
     expect(name).toHaveValue('પાટીદાર સમાજ');
-    for (const label of ['Short name', 'Invocation', 'Tagline', 'Office hours', 'Address', 'Footer note']) expectGujarati(`${label} (Gujarati)`);
+    for (const label of [
+      'Short name',
+      'Invocation',
+      'Tagline',
+      'Office hours',
+      'Address',
+      'Footer note',
+    ])
+      expectGujarati(`${label} (Gujarati)`);
     expect(screen.getByLabelText('Address (Gujarati)')).toHaveValue('મુખ્ય રસ્તો');
     expect(screen.queryByLabelText('Email (Gujarati)')).not.toBeInTheDocument();
     await user.type(screen.getByLabelText('Tagline (Gujarati)'), 'સાથે મળીને');
     await user.click(screen.getByRole('button', { name: 'Save settings' }));
     await waitFor(() => expect(admin.updateAdminSettingsApi).toHaveBeenCalledTimes(1));
     const body = admin.updateAdminSettingsApi.mock.calls[0]![0];
-    expect(body).toMatchObject({ name: 'Patidar Samaj', nameGu: 'પાટીદાર સમાજ', taglineGu: 'સાથે મળીને', shortNameGu: '' });
-    expect(body.contact).toMatchObject({ address: 'Main road', addressGu: 'મુખ્ય રસ્તો', officeHoursGu: '' });
+    expect(body).toMatchObject({
+      name: 'Patidar Samaj',
+      nameGu: 'પાટીદાર સમાજ',
+      taglineGu: 'સાથે મળીને',
+      shortNameGu: '',
+    });
+    expect(body.contact).toMatchObject({
+      address: 'Main road',
+      addressGu: 'મુખ્ય રસ્તો',
+      officeHoursGu: '',
+    });
   });
 
   it('still lists the public tabs with their English names', async () => {

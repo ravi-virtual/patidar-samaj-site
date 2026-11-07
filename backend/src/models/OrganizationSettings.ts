@@ -9,7 +9,12 @@ const organizationSettingsSchema = new Schema(
     _id: { type: String, default: () => uuidv4() },
     key: { type: String, default: 'main', unique: true, immutable: true },
 
-    name: { type: String, default: 'Uttar Gujarat Kadva Patidar Samaj', maxlength: 150, trim: true },
+    name: {
+      type: String,
+      default: 'Uttar Gujarat Kadva Patidar Samaj',
+      maxlength: 150,
+      trim: true,
+    },
     shortName: { type: String, default: 'Kadva Patidar Samaj', maxlength: 80, trim: true },
     invocation: { type: String, default: 'Jay Umiya Maa', maxlength: 80, trim: true },
     tagline: { type: String, default: '', maxlength: 200, trim: true },
@@ -36,7 +41,9 @@ const organizationSettingsSchema = new Schema(
     footerNoteGu: { type: String, default: '', maxlength: 400, trim: true },
 
     // One on/off switch per public tab. A missing key counts as on (see config/publicTabs.ts).
-    publicTabs: Object.fromEntries(PublicTabs.map((tab) => [tab, { type: Boolean, default: true }])),
+    publicTabs: Object.fromEntries(
+      PublicTabs.map((tab) => [tab, { type: Boolean, default: true }]),
+    ),
     themeDefault: { type: String, enum: ['system', 'light', 'dark'], default: 'system' },
   },
   { timestamps: true, _id: false },

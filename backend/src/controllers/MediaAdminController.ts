@@ -21,7 +21,11 @@ const bad = (res: Response, message: string, field = 'file') =>
   });
 
 const notFound = (res: Response) =>
-  sendError(res, { statusCode: ResponseCodes.NOT_FOUND, message: 'File not found', code: ErrorCodes.NOT_FOUND });
+  sendError(res, {
+    statusCode: ResponseCodes.NOT_FOUND,
+    message: 'File not found',
+    code: ErrorCodes.NOT_FOUND,
+  });
 
 /** Display name only. Never used to build a path: files are stored under a generated name. */
 const cleanOriginalName = (name: string): string =>
@@ -64,7 +68,8 @@ export const uploadMedia = async (req: Request, res: Response, next: NextFunctio
     if (file.mimetype !== detected.mime) {
       return bad(res, 'The file’s content does not match its type, so it was not accepted');
     }
-    const limit = detected.kind === 'image' ? config.uploads.maxImageBytes : config.uploads.maxDocumentBytes;
+    const limit =
+      detected.kind === 'image' ? config.uploads.maxImageBytes : config.uploads.maxDocumentBytes;
     if (file.size > limit) {
       return sendError(res, {
         statusCode: ResponseCodes.PAYLOAD_TOO_LARGE,
@@ -73,7 +78,10 @@ export const uploadMedia = async (req: Request, res: Response, next: NextFunctio
       });
     }
 
-    const { altText, visibility } = matchedData<{ altText?: string; visibility?: 'public' | 'private' }>(req, {
+    const { altText, visibility } = matchedData<{
+      altText?: string;
+      visibility?: 'public' | 'private';
+    }>(req, {
       locations: ['body'],
     });
     const storedName = `${randomUUID()}.${detected.ext}`;
@@ -98,7 +106,9 @@ export const uploadMedia = async (req: Request, res: Response, next: NextFunctio
       targetId: asset._id,
       metadata: { kind: detected.kind, size: file.size },
     });
-    return new ApiResponse(ResponseCodes.CREATED, 'File uploaded', { media: toView(asset.toObject()) }).send(res);
+    return new ApiResponse(ResponseCodes.CREATED, 'File uploaded', {
+      media: toView(asset.toObject()),
+    }).send(res);
   } catch (err) {
     if (stored) await removeFile(stored.name, stored.kind); // no orphan file if the record failed
     return next(err);
@@ -154,8 +164,15 @@ export const updateMedia = async (req: Request, res: Response, next: NextFunctio
     if (!asset) return notFound(res);
     asset.set(data);
     await asset.save();
-    await writeAudit(req, { action: 'media.updated', targetType: 'media', targetId: asset._id, metadata: { fields: Object.keys(data) } });
-    return new ApiResponse(ResponseCodes.OK, 'File updated', { media: toView(asset.toObject()) }).send(res);
+    await writeAudit(req, {
+      action: 'media.updated',
+      targetType: 'media',
+      targetId: asset._id,
+      metadata: { fields: Object.keys(data) },
+    });
+    return new ApiResponse(ResponseCodes.OK, 'File updated', {
+      media: toView(asset.toObject()),
+    }).send(res);
   } catch (err) {
     return next(err);
   }

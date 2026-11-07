@@ -9,9 +9,12 @@ import { useFetch } from '../../lib/useFetch';
 export default function AdminMemberFormPage() {
   const can = useCan();
   const { id } = useParams();
-  const query = useFetch(`admin-member:${id ?? 'new'}`, () => (id ? getMemberApi(id) : Promise.resolve(null)));
+  const query = useFetch(`admin-member:${id ?? 'new'}`, () =>
+    id ? getMemberApi(id) : Promise.resolve(null),
+  );
 
-  if (!can(id ? 'members.update' : 'members.create')) return <Navigate to="/admin/members" replace />;
+  if (!can(id ? 'members.update' : 'members.create'))
+    return <Navigate to="/admin/members" replace />;
 
   return (
     <Async data={query.data} loading={query.loading} error={query.error} onRetry={query.retry}>

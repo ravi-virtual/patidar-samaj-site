@@ -51,7 +51,10 @@ export const makeStore = async (user: SessionUser | null = null) => {
 
 export const renderWithApp = (
   ui: ReactElement,
-  { store = createStore(), path = '/' }: { store?: ReturnType<typeof createStore>; path?: string } = {},
+  {
+    store = createStore(),
+    path = '/',
+  }: { store?: ReturnType<typeof createStore>; path?: string } = {},
 ) => {
   const utils = render(
     <Provider store={store}>

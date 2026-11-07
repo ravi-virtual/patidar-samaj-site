@@ -33,7 +33,12 @@ interface AdminItem {
 const items: AdminItem[] = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true, anyOf: ['dashboard.view'] },
   { to: '/admin/members', label: 'Members', icon: UsersRound, anyOf: ['members.read'] },
-  { to: '/admin/users', label: 'Admins', icon: ShieldUser, anyOf: ['users.read', 'users.reset_password'] },
+  {
+    to: '/admin/users',
+    label: 'Admins',
+    icon: ShieldUser,
+    anyOf: ['users.read', 'users.reset_password'],
+  },
   { to: '/admin/events', label: 'Events', icon: CalendarDays, anyOf: ['events.read'] },
   { to: '/admin/announcements', label: 'Announcements', icon: Bell, anyOf: ['announcements.read'] },
   { to: '/admin/content', label: 'Content', icon: FileText, anyOf: ['content.read'] },
@@ -44,7 +49,10 @@ const items: AdminItem[] = [
 ];
 
 const labelFor = (pathname: string) =>
-  t([...items].reverse().find((i) => (i.end ? pathname === i.to : pathname.startsWith(i.to)))?.label ?? 'Admin');
+  t(
+    [...items].reverse().find((i) => (i.end ? pathname === i.to : pathname.startsWith(i.to)))
+      ?.label ?? 'Admin',
+  );
 
 const subPageLabel = (pathname: string): string | undefined => {
   const path = pathname.replace(/\/+$/, '');
@@ -59,7 +67,11 @@ const crumbsFor = (pathname: string): Crumb[] => {
   if (!section) return [{ label: t('Admin'), to: '/admin' }, { label: labelFor(pathname) }];
   const sub = subPageLabel(pathname);
   return sub
-    ? [{ label: t('Admin'), to: '/admin' }, { label: t(section.label), to: section.to }, { label: sub }]
+    ? [
+        { label: t('Admin'), to: '/admin' },
+        { label: t(section.label), to: section.to },
+        { label: sub },
+      ]
     : [{ label: t('Admin'), to: '/admin' }, { label: t(section.label) }];
 };
 
@@ -72,7 +84,10 @@ export function AdminLayout() {
   usePageTitle(`${crumbs[crumbs.length - 1]!.label} · ${t('Admin')}`);
 
   const sections: NavSection[] = [
-    { heading: t('Administration'), items: items.filter((i) => i.anyOf.some((p) => permissions.includes(p))) },
+    {
+      heading: t('Administration'),
+      items: items.filter((i) => i.anyOf.some((p) => permissions.includes(p))),
+    },
   ];
 
   return (

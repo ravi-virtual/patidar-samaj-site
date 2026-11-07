@@ -1,6 +1,15 @@
-import { useId, type InputHTMLAttributes, type KeyboardEvent, type ReactNode, type Ref } from 'react';
+import {
+  useId,
+  type InputHTMLAttributes,
+  type KeyboardEvent,
+  type ReactNode,
+  type Ref,
+} from 'react';
 
-interface ToggleProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'role' | 'children'> {
+interface ToggleProps extends Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  'type' | 'role' | 'children'
+> {
   label?: ReactNode;
   description?: ReactNode;
   ref?: Ref<HTMLInputElement>;
@@ -12,7 +21,15 @@ interface ToggleProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'
  * works with react-hook-form's `register`. The track and knob are drawn from its checked, focus
  * and disabled state. Without a `label`, pass `aria-label`.
  */
-export function Toggle({ label, description, className = '', id: idProp, ref, onKeyDown, ...rest }: ToggleProps) {
+export function Toggle({
+  label,
+  description,
+  className = '',
+  id: idProp,
+  ref,
+  onKeyDown,
+  ...rest
+}: ToggleProps) {
   const autoId = useId();
   const id = idProp ?? autoId;
   const descId = description ? `${id}-desc` : undefined;
@@ -65,7 +82,10 @@ export function Toggle({ label, description, className = '', id: idProp, ref, on
   return (
     <div className={`flex items-start justify-between gap-4 ${className}`}>
       <div className="min-w-0 text-sm leading-snug">
-        <label htmlFor={id} className={`block font-medium ${disabled ? 'cursor-not-allowed text-text-muted' : 'cursor-pointer text-text'}`}>
+        <label
+          htmlFor={id}
+          className={`block font-medium ${disabled ? 'cursor-not-allowed text-text-muted' : 'cursor-pointer text-text'}`}
+        >
           {label}
         </label>
         {description && (

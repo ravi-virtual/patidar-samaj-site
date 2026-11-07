@@ -4,7 +4,15 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { ADMIN_PERMISSIONS_WITHOUT_USER_RESET, ORIGIN, anon, connectTestDb, disconnectTestDb, resetDb, signInAs } from '../helpers';
+import {
+  ADMIN_PERMISSIONS_WITHOUT_USER_RESET,
+  ORIGIN,
+  anon,
+  connectTestDb,
+  disconnectTestDb,
+  resetDb,
+  signInAs,
+} from '../helpers';
 import { Roles } from '../../src/config/constants';
 
 beforeAll(connectTestDb);
@@ -15,7 +23,10 @@ const routesDir = join(__dirname, '..', '..', 'src', 'routes');
 const indexSource = readFileSync(join(routesDir, 'index.ts'), 'utf8');
 
 // "router.use('/members', memberRoutes)" → memberRoutes mounted at /members
-const mounts = [...indexSource.matchAll(/router\.use\('([^']+)',\s*(\w+)\)/g)].map((m) => ({ prefix: m[1]!, file: m[2]! }));
+const mounts = [...indexSource.matchAll(/router\.use\('([^']+)',\s*(\w+)\)/g)].map((m) => ({
+  prefix: m[1]!,
+  file: m[2]!,
+}));
 
 interface Route {
   method: 'get' | 'post' | 'put' | 'patch' | 'delete';
@@ -71,7 +82,9 @@ const protectedRoutes = discovered.filter((r) => !PUBLIC.has(key(r)));
 describe('route inventory', () => {
   it('finds the routes (guards against the scanner silently finding nothing)', () => {
     expect(discovered.length).toBeGreaterThan(80);
-    expect(readdirSync(routesDir).filter((f) => f.endsWith('Routes.ts')).length).toBeGreaterThanOrEqual(17);
+    expect(
+      readdirSync(routesDir).filter((f) => f.endsWith('Routes.ts')).length,
+    ).toBeGreaterThanOrEqual(17);
   });
 
   it('every entry on the public list still exists (no stale exemptions)', () => {
@@ -124,7 +137,9 @@ describe('routes that are not public', () => {
 
 describe('admin account management', () => {
   it('every /users route refuses an admin without users.reset_password, even with every other selectable permission', async () => {
-    const { client } = await signInAs(Roles.ADMIN, { permissions: ADMIN_PERMISSIONS_WITHOUT_USER_RESET });
+    const { client } = await signInAs(Roles.ADMIN, {
+      permissions: ADMIN_PERMISSIONS_WITHOUT_USER_RESET,
+    });
     const failures: string[] = [];
     const userRoutes = protectedRoutes.filter((x) => x.path.startsWith('/users'));
     expect(userRoutes.length).toBeGreaterThanOrEqual(8);

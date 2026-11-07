@@ -21,7 +21,8 @@ export function PermissionPicker({
 }) {
   const selected = new Set(value);
 
-  const toggle = (key: string, on: boolean) => onChange(on ? [...value, key] : value.filter((x) => x !== key));
+  const toggle = (key: string, on: boolean) =>
+    onChange(on ? [...value, key] : value.filter((x) => x !== key));
   const setGroup = (keys: string[], on: boolean) =>
     onChange(on ? [...new Set([...value, ...keys])] : value.filter((x) => !keys.includes(x)));
 
@@ -29,9 +30,17 @@ export function PermissionPicker({
     <fieldset className="space-y-3">
       <legend className="text-[13px] font-medium">{t('Permissions')}</legend>
       <p className="text-xs text-text-muted">
-        {t('An admin can do only what is ticked here. Creating, editing and deleting admin accounts is always reserved for the Super Admin.')}
+        {t(
+          'An admin can do only what is ticked here. Creating, editing and deleting admin accounts is always reserved for the Super Admin.',
+        )}
       </p>
-      <div className={layout === 'page' ? 'grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3' : 'max-h-[48vh] space-y-3 overflow-y-auto pr-1'}>
+      <div
+        className={
+          layout === 'page'
+            ? 'grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3'
+            : 'max-h-[48vh] space-y-3 overflow-y-auto pr-1'
+        }
+      >
         {groups.map((g) => {
           const on = g.permissions.filter((p) => selected.has(p)).length;
           return (

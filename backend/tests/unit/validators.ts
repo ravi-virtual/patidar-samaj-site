@@ -16,7 +16,13 @@ import {
   updateAdminRules,
   userIdRules,
 } from '../../src/validators/userValidator';
-import { contactIdRules, contactListRules, contactNoteRules, submitContactRules, updateContactRules } from '../../src/validators/contactValidator';
+import {
+  contactIdRules,
+  contactListRules,
+  contactNoteRules,
+  submitContactRules,
+  updateContactRules,
+} from '../../src/validators/contactValidator';
 import {
   cancelEventRules,
   createEventRules,
@@ -39,9 +45,22 @@ import {
   reorderItemRules,
   updateItemRules,
 } from '../../src/validators/contentValidator';
-import { mediaIdRules, mediaListRules, mediaUpdateRules } from '../../src/validators/mediaValidator';
-import { createMemberRules, directoryQueryRules, memberIdRules, updateMemberRules } from '../../src/validators/memberValidator';
-import { auditListRules, searchRules, updateSettingsRules } from '../../src/validators/settingsValidator';
+import {
+  mediaIdRules,
+  mediaListRules,
+  mediaUpdateRules,
+} from '../../src/validators/mediaValidator';
+import {
+  createMemberRules,
+  directoryQueryRules,
+  memberIdRules,
+  updateMemberRules,
+} from '../../src/validators/memberValidator';
+import {
+  auditListRules,
+  searchRules,
+  updateSettingsRules,
+} from '../../src/validators/settingsValidator';
 import { paginationRules } from '../../src/utils/pagination';
 import { validateRequest } from '../../src/validators/validateRequest';
 import { SELECTABLE_PERMISSIONS } from '../../src/config/permissions';
@@ -59,7 +78,9 @@ const probe = (rules: Rules, pattern = '/t') => {
 };
 
 const fields = (res: request.Response) =>
-  (res.body.error?.details ?? []).map((d: { field?: string }) => d.field).filter(Boolean) as string[];
+  (res.body.error?.details ?? [])
+    .map((d: { field?: string }) => d.field)
+    .filter(Boolean) as string[];
 
 const ID = '11111111-1111-4111-8111-111111111111';
 const FUTURE = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString();
@@ -73,7 +94,11 @@ describe('validateRequest', () => {
   it('answers 400 in the standard shape and names each failing field', async () => {
     const res = await probe(loginRules).post('/t').send({});
     expect(res.status).toBe(400);
-    expect(res.body).toMatchObject({ success: false, message: 'Validation failed', error: { code: 'VALIDATION_ERROR' } });
+    expect(res.body).toMatchObject({
+      success: false,
+      message: 'Validation failed',
+      error: { code: 'VALIDATION_ERROR' },
+    });
     expect([...new Set(fields(res))].sort()).toEqual(['email', 'password']);
   });
 });
@@ -83,7 +108,15 @@ describe('paginationRules', () => {
     const app = probe([...paginationRules(20), validateRequest]);
     expect((await app.get('/t')).status).toBe(200);
     expect((await app.get('/t?page=2&limit=20')).status).toBe(200);
-    for (const q of ['page=0', 'page=-1', 'page=abc', 'page=100001', 'limit=0', 'limit=21', 'limit=1.5']) {
+    for (const q of [
+      'page=0',
+      'page=-1',
+      'page=abc',
+      'page=100001',
+      'limit=0',
+      'limit=21',
+      'limit=1.5',
+    ]) {
       expect((await app.get(`/t?${q}`)).status, q).toBe(400);
     }
   });
@@ -98,23 +131,43 @@ describe('paginationRules', () => {
 describe('auth validators', () => {
   describe('loginRules', () => {
     it('needs a non-empty email and password, and does not apply password strength rules', async () => {
-      expect((await probe(loginRules).post('/t').send({ email: 'a@b.co', password: 'x' })).status).toBe(200);
-      expect((await probe(loginRules).post('/t').send({ email: '', password: 'x' })).status).toBe(400);
-      expect((await probe(loginRules).post('/t').send({ email: 'a@b.co', password: '' })).status).toBe(400);
-      expect((await probe(loginRules).post('/t').send({ email: ['a@b.co'], password: 'x' })).status).toBe(400);
+      expect(
+        (await probe(loginRules).post('/t').send({ email: 'a@b.co', password: 'x' })).status,
+      ).toBe(200);
+      expect((await probe(loginRules).post('/t').send({ email: '', password: 'x' })).status).toBe(
+        400,
+      );
+      expect(
+        (await probe(loginRules).post('/t').send({ email: 'a@b.co', password: '' })).status,
+      ).toBe(400);
+      expect(
+        (
+          await probe(loginRules)
+            .post('/t')
+            .send({ email: ['a@b.co'], password: 'x' })
+        ).status,
+      ).toBe(400);
     });
   });
 
   describe('forgotPasswordRules', () => {
     it('needs a valid email', async () => {
-      expect((await probe(forgotPasswordRules).post('/t').send({ email: 'a@example.com' })).status).toBe(200);
-      expect((await probe(forgotPasswordRules).post('/t').send({ email: 'nope' })).status).toBe(400);
+      expect(
+        (await probe(forgotPasswordRules).post('/t').send({ email: 'a@example.com' })).status,
+      ).toBe(200);
+      expect((await probe(forgotPasswordRules).post('/t').send({ email: 'nope' })).status).toBe(
+        400,
+      );
       expect((await probe(forgotPasswordRules).post('/t').send({})).status).toBe(400);
     });
   });
 
   describe('resetPasswordRules', () => {
-    const body = { token: 't'.repeat(43), password: 'Fresh-Start-2026', confirmPassword: 'Fresh-Start-2026' };
+    const body = {
+      token: 't'.repeat(43),
+      password: 'Fresh-Start-2026',
+      confirmPassword: 'Fresh-Start-2026',
+    };
 
     it('accepts a well-formed request', async () => {
       expect((await probe(resetPasswordRules).post('/t').send(body)).status).toBe(200);
@@ -122,36 +175,80 @@ describe('auth validators', () => {
 
     it('rejects tokens that are too short, too long or not text', async () => {
       for (const token of ['short', 'x'.repeat(129), 1234567890123, undefined]) {
-        const res = await probe(resetPasswordRules).post('/t').send({ ...body, token });
+        const res = await probe(resetPasswordRules)
+          .post('/t')
+          .send({ ...body, token });
         expect(res.status, String(token)).toBe(400);
       }
     });
 
     it('rejects weak or mismatched passwords', async () => {
-      expect((await probe(resetPasswordRules).post('/t').send({ ...body, password: 'weak', confirmPassword: 'weak' })).status).toBe(400);
-      expect((await probe(resetPasswordRules).post('/t').send({ ...body, confirmPassword: 'Different-One-1' })).status).toBe(400);
+      expect(
+        (
+          await probe(resetPasswordRules)
+            .post('/t')
+            .send({ ...body, password: 'weak', confirmPassword: 'weak' })
+        ).status,
+      ).toBe(400);
+      expect(
+        (
+          await probe(resetPasswordRules)
+            .post('/t')
+            .send({ ...body, confirmPassword: 'Different-One-1' })
+        ).status,
+      ).toBe(400);
     });
   });
 
   describe('changePasswordRules', () => {
-    const body = { currentPassword: 'old', newPassword: 'Brand-New-Pass-42', confirmPassword: 'Brand-New-Pass-42' };
+    const body = {
+      currentPassword: 'old',
+      newPassword: 'Brand-New-Pass-42',
+      confirmPassword: 'Brand-New-Pass-42',
+    };
 
     it('accepts a valid change', async () => {
       expect((await probe(changePasswordRules).post('/t').send(body)).status).toBe(200);
     });
 
     it('needs the current password and a strong, confirmed new one', async () => {
-      expect((await probe(changePasswordRules).post('/t').send({ ...body, currentPassword: '' })).status).toBe(400);
-      expect((await probe(changePasswordRules).post('/t').send({ ...body, newPassword: 'weak', confirmPassword: 'weak' })).status).toBe(400);
-      expect((await probe(changePasswordRules).post('/t').send({ ...body, confirmPassword: 'nope' })).status).toBe(400);
+      expect(
+        (
+          await probe(changePasswordRules)
+            .post('/t')
+            .send({ ...body, currentPassword: '' })
+        ).status,
+      ).toBe(400);
+      expect(
+        (
+          await probe(changePasswordRules)
+            .post('/t')
+            .send({ ...body, newPassword: 'weak', confirmPassword: 'weak' })
+        ).status,
+      ).toBe(400);
+      expect(
+        (
+          await probe(changePasswordRules)
+            .post('/t')
+            .send({ ...body, confirmPassword: 'nope' })
+        ).status,
+      ).toBe(400);
     });
   });
 
   describe('themeRules', () => {
     it('accepts system, light and dark only', async () => {
-      for (const t of ['system', 'light', 'dark']) expect((await probe(themeRules, '/t/:id').patch(`/t/${ID}`).send({ themePreference: t })).status).toBe(200);
-      for (const t of ['neon', '', null, 1]) expect((await probe(themeRules, '/t/:id').patch(`/t/${ID}`).send({ themePreference: t })).status).toBe(400);
-      expect((await probe(themeRules, '/t/:id').patch('/t/me').send({ themePreference: 'dark' })).status).toBe(400);
+      for (const t of ['system', 'light', 'dark'])
+        expect(
+          (await probe(themeRules, '/t/:id').patch(`/t/${ID}`).send({ themePreference: t })).status,
+        ).toBe(200);
+      for (const t of ['neon', '', null, 1])
+        expect(
+          (await probe(themeRules, '/t/:id').patch(`/t/${ID}`).send({ themePreference: t })).status,
+        ).toBe(400);
+      expect(
+        (await probe(themeRules, '/t/:id').patch('/t/me').send({ themePreference: 'dark' })).status,
+      ).toBe(400);
     });
   });
 });
@@ -165,30 +262,66 @@ describe('user validators', () => {
   it('limits the user list filters', async () => {
     const app = probe(listUsersRules);
     expect((await app.get('/t?status=suspended&search=asha&page=1&limit=100')).status).toBe(200);
-    for (const q of [ 'status=gone', 'limit=101', 'page=0', `search=${'x'.repeat(101)}`]) {
+    for (const q of ['status=gone', 'limit=101', 'page=0', `search=${'x'.repeat(101)}`]) {
       expect((await app.get(`/t?${q}`)).status, q).toBe(400);
     }
   });
 
   describe('createAdminRules', () => {
-    const body = { name: 'New Admin', email: 'new@example.com', password: 'Strong-Pass-2026', permissions: ['events.read', 'events.publish'] };
+    const body = {
+      name: 'New Admin',
+      email: 'new@example.com',
+      password: 'Strong-Pass-2026',
+      permissions: ['events.read', 'events.publish'],
+    };
 
     it('accepts a name, email and selectable permissions (also an empty or missing list)', async () => {
       expect((await probe(createAdminRules).post('/t').send(body)).status).toBe(200);
-      expect((await probe(createAdminRules).post('/t').send({ ...body, permissions: [] })).status).toBe(200);
-      expect((await probe(createAdminRules).post('/t').send({ name: body.name, email: body.email, password: body.password })).status).toBe(200);
-      expect((await probe(createAdminRules).post('/t').send({ ...body, permissions: [...SELECTABLE_PERMISSIONS] })).status).toBe(200);
+      expect(
+        (
+          await probe(createAdminRules)
+            .post('/t')
+            .send({ ...body, permissions: [] })
+        ).status,
+      ).toBe(200);
+      expect(
+        (
+          await probe(createAdminRules)
+            .post('/t')
+            .send({ name: body.name, email: body.email, password: body.password })
+        ).status,
+      ).toBe(200);
+      expect(
+        (
+          await probe(createAdminRules)
+            .post('/t')
+            .send({ ...body, permissions: [...SELECTABLE_PERMISSIONS] })
+        ).status,
+      ).toBe(200);
     });
 
     it.each(['superadmin', 'member', 'editor', 'root', ''])('refuses the role %j', async (role) => {
-      const res = await probe(createAdminRules).post('/t').send({ ...body, role });
+      const res = await probe(createAdminRules)
+        .post('/t')
+        .send({ ...body, role });
       expect(res.status).toBe(400);
       expect(fields(res)).toContain('role');
     });
 
     it('rejects permissions outside the selectable catalog, duplicates and non-lists', async () => {
-      for (const permissions of [['users.manage'], ['roles.manage'], ['sessions.revoke'], ['settings.security'], ['events.fly'], ['events.read', 'events.read'], 'events.read', [5]]) {
-        const res = await probe(createAdminRules).post('/t').send({ ...body, permissions });
+      for (const permissions of [
+        ['users.manage'],
+        ['roles.manage'],
+        ['sessions.revoke'],
+        ['settings.security'],
+        ['events.fly'],
+        ['events.read', 'events.read'],
+        'events.read',
+        [5],
+      ]) {
+        const res = await probe(createAdminRules)
+          .post('/t')
+          .send({ ...body, permissions });
         expect(res.status, JSON.stringify(permissions)).toBe(400);
         expect(fields(res)).toContain('permissions');
       }
@@ -196,15 +329,29 @@ describe('user validators', () => {
 
     it('requires a strong password ', async () => {
       for (const password of [undefined, 'short1', 'onlyletterspassword', 'password123']) {
-        const res = await probe(createAdminRules).post('/t').send({ ...body, password });
+        const res = await probe(createAdminRules)
+          .post('/t')
+          .send({ ...body, password });
         expect(res.status, String(password)).toBe(400);
         expect(fields(res)).toContain('password');
       }
     });
 
     it('validates name and email', async () => {
-      expect((await probe(createAdminRules).post('/t').send({ ...body, name: '<x>' })).status).toBe(400);
-      expect((await probe(createAdminRules).post('/t').send({ ...body, email: 'bad' })).status).toBe(400);
+      expect(
+        (
+          await probe(createAdminRules)
+            .post('/t')
+            .send({ ...body, name: '<x>' })
+        ).status,
+      ).toBe(400);
+      expect(
+        (
+          await probe(createAdminRules)
+            .post('/t')
+            .send({ ...body, email: 'bad' })
+        ).status,
+      ).toBe(400);
     });
   });
 
@@ -213,16 +360,32 @@ describe('user validators', () => {
 
     it('accepts a name and/or permissions', async () => {
       expect((await app().patch(`/t/${ID}`).send({ name: 'Renamed Admin' })).status).toBe(200);
-      expect((await app().patch(`/t/${ID}`).send({ permissions: ['events.read'] })).status).toBe(200);
-      expect((await app().patch(`/t/${ID}`).send({ name: 'Renamed Admin', permissions: [] })).status).toBe(200);
+      expect(
+        (
+          await app()
+            .patch(`/t/${ID}`)
+            .send({ permissions: ['events.read'] })
+        ).status,
+      ).toBe(200);
+      expect(
+        (await app().patch(`/t/${ID}`).send({ name: 'Renamed Admin', permissions: [] })).status,
+      ).toBe(200);
     });
 
     it('rejects an empty change, bad names, unselectable permissions and bad ids', async () => {
       expect((await app().patch(`/t/${ID}`).send({})).status).toBe(400);
       expect((await app().patch(`/t/${ID}`).send({ name: 'A' })).status).toBe(400);
-      expect((await app().patch(`/t/${ID}`).send({ permissions: ['users.manage'] })).status).toBe(400);
+      expect(
+        (
+          await app()
+            .patch(`/t/${ID}`)
+            .send({ permissions: ['users.manage'] })
+        ).status,
+      ).toBe(400);
       expect((await app().patch(`/t/${ID}`).send({ permissions: 'events.read' })).status).toBe(400);
-      expect((await app().patch(`/t/${ID}`).send({ role: 'superadmin', name: 'Ok Name' })).status).toBe(200); // role is simply never read
+      expect(
+        (await app().patch(`/t/${ID}`).send({ role: 'superadmin', name: 'Ok Name' })).status,
+      ).toBe(200); // role is simply never read
       expect((await app().patch('/t/nope').send({ name: 'Ok Name' })).status).toBe(400);
     });
   });
@@ -236,12 +399,28 @@ describe('user validators', () => {
 });
 
 describe('contact validators', () => {
-  const body = { name: 'Asha Patel', email: 'asha@example.com', message: 'I would like to know more about membership.' };
+  const body = {
+    name: 'Asha Patel',
+    email: 'asha@example.com',
+    message: 'I would like to know more about membership.',
+  };
 
   it('accepts a message, a listed topic and a filled honeypot (handled by the controller)', async () => {
     expect((await probe(submitContactRules).post('/t').send(body)).status).toBe(200);
-    expect((await probe(submitContactRules).post('/t').send({ ...body, topic: 'Membership' })).status).toBe(200);
-    expect((await probe(submitContactRules).post('/t').send({ ...body, website: 'http://spam.example' })).status).toBe(200);
+    expect(
+      (
+        await probe(submitContactRules)
+          .post('/t')
+          .send({ ...body, topic: 'Membership' })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await probe(submitContactRules)
+          .post('/t')
+          .send({ ...body, website: 'http://spam.example' })
+      ).status,
+    ).toBe(200);
   });
 
   it.each([
@@ -253,7 +432,13 @@ describe('contact validators', () => {
     ['a bad email', { email: 'x' }],
     ['an oversized honeypot', { website: 'x'.repeat(501) }],
   ])('rejects %s', async (_label, over) => {
-    expect((await probe(submitContactRules).post('/t').send({ ...body, ...over })).status).toBe(400);
+    expect(
+      (
+        await probe(submitContactRules)
+          .post('/t')
+          .send({ ...body, ...over })
+      ).status,
+    ).toBe(400);
   });
 
   it('validates ids, list filters, updates and notes', async () => {
@@ -262,16 +447,20 @@ describe('contact validators', () => {
 
     const list = probe(contactListRules);
     expect((await list.get(`/t?status=new&assignedTo=${ID}&mine=true&limit=100`)).status).toBe(200);
-    for (const q of ['status=bogus', 'assignedTo=x', 'mine=maybe', 'limit=101']) expect((await list.get(`/t?${q}`)).status, q).toBe(400);
+    for (const q of ['status=bogus', 'assignedTo=x', 'mine=maybe', 'limit=101'])
+      expect((await list.get(`/t?${q}`)).status, q).toBe(400);
 
     const update = probe(updateContactRules, '/t/:id');
-    expect((await update.patch(`/t/${ID}`).send({ status: 'resolved', assignedTo: null })).status).toBe(200);
+    expect(
+      (await update.patch(`/t/${ID}`).send({ status: 'resolved', assignedTo: null })).status,
+    ).toBe(200);
     expect((await update.patch(`/t/${ID}`).send({ status: 'nonsense' })).status).toBe(400);
     expect((await update.patch(`/t/${ID}`).send({ assignedTo: 'someone' })).status).toBe(400);
 
     const note = probe(contactNoteRules, '/t/:id');
     expect((await note.post(`/t/${ID}`).send({ text: 'Called back.' })).status).toBe(200);
-    for (const text of ['', 'x'.repeat(1001), '<b>', 5]) expect((await note.post(`/t/${ID}`).send({ text })).status).toBe(400);
+    for (const text of ['', 'x'.repeat(1001), '<b>', 5])
+      expect((await note.post(`/t/${ID}`).send({ text })).status).toBe(400);
   });
 });
 
@@ -295,7 +484,9 @@ describe('event validators', () => {
     const inspect: RequestHandler = (req, res) => {
       res.json({ startsAt: req.body.startsAt instanceof Date, featured: req.body.featured });
     };
-    const res = await probe([...createEventRules.slice(0, -1), inspect]).post('/t').send({ ...body, featured: 'true' });
+    const res = await probe([...createEventRules.slice(0, -1), inspect])
+      .post('/t')
+      .send({ ...body, featured: 'true' });
     expect(res.body).toEqual({ startsAt: true, featured: true });
   });
 
@@ -309,7 +500,9 @@ describe('event validators', () => {
     ['an unknown category', { category: 'Party' }, 'category'],
     ['a non-UUID image', { imageMediaId: 'x' }, 'imageMediaId'],
   ])('rejects %s', async (_label, over, field) => {
-    const res = await probe(createEventRules).post('/t').send({ ...body, ...over });
+    const res = await probe(createEventRules)
+      .post('/t')
+      .send({ ...body, ...over });
     expect(res.status).toBe(400);
     expect(fields(res)).toContain(field);
   });
@@ -318,7 +511,15 @@ describe('event validators', () => {
     const bad = [
       { endsAt: FUTURE(9) }, // ends before it starts
     ];
-    for (const over of bad) expect((await probe(createEventRules).post('/t').send({ ...body, ...over })).status, JSON.stringify(over)).toBe(400);
+    for (const over of bad)
+      expect(
+        (
+          await probe(createEventRules)
+            .post('/t')
+            .send({ ...body, ...over })
+        ).status,
+        JSON.stringify(over),
+      ).toBe(400);
   });
 
   it('allows partial updates, but still checks any field that is sent', async () => {
@@ -335,7 +536,8 @@ describe('event validators', () => {
 
     const list = probe(publicEventListRules);
     expect((await list.get('/t?when=upcoming&category=Seva&search=garba')).status).toBe(200);
-    for (const q of ['when=sometime', 'category=Nope', 'limit=51']) expect((await list.get(`/t?${q}`)).status, q).toBe(400);
+    for (const q of ['when=sometime', 'category=Nope', 'limit=51'])
+      expect((await list.get(`/t?${q}`)).status, q).toBe(400);
 
     const cancel = probe(cancelEventRules, '/t/:id');
     expect((await cancel.post(`/t/${ID}`).send({ reason: 'Rain' })).status).toBe(200);
@@ -348,7 +550,13 @@ describe('announcement validators', () => {
 
   it('accepts a minimal and a full announcement', async () => {
     expect((await probe(createAnnouncementRules).post('/t').send(body)).status).toBe(200);
-    const full = { ...body, summary: 'Timings', category: 'Notice', publishAt: FUTURE(1), featured: true };
+    const full = {
+      ...body,
+      summary: 'Timings',
+      category: 'Notice',
+      publishAt: FUTURE(1),
+      featured: true,
+    };
     expect((await probe(createAnnouncementRules).post('/t').send(full)).status).toBe(200);
   });
 
@@ -362,7 +570,13 @@ describe('announcement validators', () => {
     ['an unknown category', { category: 'Gossip' }],
     ['an invalid publishAt', { publishAt: 'next week' }],
   ])('rejects %s', async (_label, over) => {
-    expect((await probe(createAnnouncementRules).post('/t').send({ ...body, ...over })).status).toBe(400);
+    expect(
+      (
+        await probe(createAnnouncementRules)
+          .post('/t')
+          .send({ ...body, ...over })
+      ).status,
+    ).toBe(400);
   });
 
   it('allows partial updates and null publishAt', async () => {
@@ -381,45 +595,112 @@ describe('announcement validators', () => {
     const reorder = probe(reorderRules);
     expect((await reorder.patch('/t').send({ ids: [ID] })).status).toBe(200);
     for (const ids of [[], 'abc', ['nope'], [ID, 5], Array(201).fill(ID)]) {
-      expect((await reorder.patch('/t').send({ ids })).status, JSON.stringify(ids).slice(0, 40)).toBe(400);
+      expect(
+        (await reorder.patch('/t').send({ ids })).status,
+        JSON.stringify(ids).slice(0, 40),
+      ).toBe(400);
     }
   });
 });
 
 describe('content validators', () => {
   it('rejects unknown resource names before reading the body', async () => {
-    expect((await probe(createItemRules, '/t/:resource').post('/t/passwords').send({})).status).toBe(400);
+    expect(
+      (await probe(createItemRules, '/t/:resource').post('/t/passwords').send({})).status,
+    ).toBe(400);
     expect((await probe(publicListRules, '/t/:resource').get('/t/users')).status).toBe(400);
     expect((await probe(publicListRules, '/t/:resource').get('/t/faqs')).status).toBe(200);
   });
 
   it('applies the rule set of the named resource', async () => {
     const create = probe(createItemRules, '/t/:resource');
-    expect((await create.post('/t/faqs').send({ question: 'How do I join?', answer: 'Register on the site.' })).status).toBe(200);
+    expect(
+      (
+        await create
+          .post('/t/faqs')
+          .send({ question: 'How do I join?', answer: 'Register on the site.' })
+      ).status,
+    ).toBe(200);
     expect((await create.post('/t/faqs').send({ question: 'Hi', answer: 'x' })).status).toBe(400);
-    expect((await create.post('/t/faqs').send({ question: 'How do I join?', answer: '<b>x</b>' })).status).toBe(400);
+    expect(
+      (await create.post('/t/faqs').send({ question: 'How do I join?', answer: '<b>x</b>' }))
+        .status,
+    ).toBe(400);
     // The FAQ rules do not apply to links.
-    expect((await create.post('/t/links').send({ label: 'Membership form', url: 'https://example.com/form' })).status).toBe(200);
+    expect(
+      (
+        await create
+          .post('/t/links')
+          .send({ label: 'Membership form', url: 'https://example.com/form' })
+      ).status,
+    ).toBe(200);
   });
 
   it('only accepts web addresses for links', async () => {
     const create = probe(createItemRules, '/t/:resource');
-    for (const url of ['javascript:alert(1)', 'data:text/html,x', 'ftp://example.com/a', 'https://user:pw@example.com', '//example.com', 'example']) {
+    for (const url of [
+      'javascript:alert(1)',
+      'data:text/html,x',
+      'ftp://example.com/a',
+      'https://user:pw@example.com',
+      '//example.com',
+      'example',
+    ]) {
       expect((await create.post('/t/links').send({ label: 'A link', url })).status, url).toBe(400);
     }
-    expect((await create.post('/t/links').send({ label: 'A link', fileMediaId: ID })).status).toBe(200);
-    expect((await create.post('/t/links').send({ label: 'A link', category: 'Nope' })).status).toBe(400);
+    expect((await create.post('/t/links').send({ label: 'A link', fileMediaId: ID })).status).toBe(
+      200,
+    );
+    expect((await create.post('/t/links').send({ label: 'A link', category: 'Nope' })).status).toBe(
+      400,
+    );
   });
 
   it('checks milestone, term and member rules', async () => {
     const create = probe(createItemRules, '/t/:resource');
-    expect((await create.post('/t/milestones').send({ periodLabel: '1990s', title: 'Founded', text: 'The society was founded.' })).status).toBe(200);
-    expect((await create.post('/t/milestones').send({ periodLabel: '', title: 'Founded', text: 'x' })).status).toBe(400);
-    expect((await create.post('/t/committee-terms').send({ label: '2024-26', startYear: 2024, endYear: 2026 })).status).toBe(200);
-    expect((await create.post('/t/committee-terms').send({ label: '2024-26', startYear: 2026, endYear: 2024 })).status).toBe(400);
-    expect((await create.post('/t/committee-terms').send({ label: 'x', startYear: 1800, endYear: 2000 })).status).toBe(400);
-    expect((await create.post('/t/committee-members').send({ termId: ID, name: 'Ravi Patel', position: 'President' })).status).toBe(200);
-    expect((await create.post('/t/committee-members').send({ termId: 'x', name: 'Ravi Patel', position: 'President' })).status).toBe(400);
+    expect(
+      (
+        await create
+          .post('/t/milestones')
+          .send({ periodLabel: '1990s', title: 'Founded', text: 'The society was founded.' })
+      ).status,
+    ).toBe(200);
+    expect(
+      (await create.post('/t/milestones').send({ periodLabel: '', title: 'Founded', text: 'x' }))
+        .status,
+    ).toBe(400);
+    expect(
+      (
+        await create
+          .post('/t/committee-terms')
+          .send({ label: '2024-26', startYear: 2024, endYear: 2026 })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await create
+          .post('/t/committee-terms')
+          .send({ label: '2024-26', startYear: 2026, endYear: 2024 })
+      ).status,
+    ).toBe(400);
+    expect(
+      (await create.post('/t/committee-terms').send({ label: 'x', startYear: 1800, endYear: 2000 }))
+        .status,
+    ).toBe(400);
+    expect(
+      (
+        await create
+          .post('/t/committee-members')
+          .send({ termId: ID, name: 'Ravi Patel', position: 'President' })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await create
+          .post('/t/committee-members')
+          .send({ termId: 'x', name: 'Ravi Patel', position: 'President' })
+      ).status,
+    ).toBe(400);
   });
 
   it('allows partial updates and still checks the id', async () => {
@@ -443,13 +724,23 @@ describe('content validators', () => {
     expect((await probe(blockKeyRules, '/t/:key').get('/t/made.up')).status).toBe(400);
 
     const block = probe(blockBodyRules, '/t/:key');
-    const ok = { title: 'Mission', body: 'Serve the community.', items: [{ title: 'One', text: 'First', value: '5', label: 'Things' }] };
+    const ok = {
+      title: 'Mission',
+      body: 'Serve the community.',
+      items: [{ title: 'One', text: 'First', value: '5', label: 'Things' }],
+    };
     expect((await block.put('/t/about.mission').send(ok)).status).toBe(200);
     expect((await block.put('/t/about.mission').send({})).status).toBe(200);
     expect((await block.put('/t/about.mission').send({ body: '<img src=x>' })).status).toBe(400);
-    expect((await block.put('/t/about.mission').send({ items: Array(21).fill({}) })).status).toBe(400);
-    expect((await block.put('/t/about.mission').send({ items: [{ text: 'x'.repeat(601) }] })).status).toBe(400);
-    expect((await block.put('/t/about.mission').send({ items: [{ imageMediaId: 'x' }] })).status).toBe(400);
+    expect((await block.put('/t/about.mission').send({ items: Array(21).fill({}) })).status).toBe(
+      400,
+    );
+    expect(
+      (await block.put('/t/about.mission').send({ items: [{ text: 'x'.repeat(601) }] })).status,
+    ).toBe(400);
+    expect(
+      (await block.put('/t/about.mission').send({ items: [{ imageMediaId: 'x' }] })).status,
+    ).toBe(400);
     expect((await block.put('/t/unknown.key').send({})).status).toBe(400);
   });
 });
@@ -461,10 +752,13 @@ describe('media validators', () => {
 
     const list = probe(mediaListRules);
     expect((await list.get('/t?kind=image&search=logo&limit=100')).status).toBe(200);
-    for (const q of ['kind=exe', 'limit=101', `search=${'x'.repeat(101)}`]) expect((await list.get(`/t?${q}`)).status, q).toBe(400);
+    for (const q of ['kind=exe', 'limit=101', `search=${'x'.repeat(101)}`])
+      expect((await list.get(`/t?${q}`)).status, q).toBe(400);
 
     const update = probe(mediaUpdateRules, '/t/:id');
-    expect((await update.patch(`/t/${ID}`).send({ altText: 'A logo', visibility: 'private' })).status).toBe(200);
+    expect(
+      (await update.patch(`/t/${ID}`).send({ altText: 'A logo', visibility: 'private' })).status,
+    ).toBe(200);
     expect((await update.patch(`/t/${ID}`).send({ altText: null })).status).toBe(200);
     expect((await update.patch(`/t/${ID}`).send({ visibility: 'secret' })).status).toBe(400);
     expect((await update.patch(`/t/${ID}`).send({ altText: '<b>' })).status).toBe(400);
@@ -477,14 +771,37 @@ describe('member validators', () => {
   it('validates ids and directory queries', async () => {
     expect((await probe(memberIdRules, '/t/:id').get('/t/nope')).status).toBe(400);
     const dir = probe(directoryQueryRules);
-    expect((await dir.get('/t?search=patel&village=Unjha&city=Kadi&country=India&sort=-name&limit=50')).status).toBe(200);
-    for (const q of ['sort=password', 'limit=51', `village=${'x'.repeat(81)}`, 'page=0']) expect((await dir.get(`/t?${q}`)).status, q).toBe(400);
+    expect(
+      (await dir.get('/t?search=patel&village=Unjha&city=Kadi&country=India&sort=-name&limit=50'))
+        .status,
+    ).toBe(200);
+    for (const q of ['sort=password', 'limit=51', `village=${'x'.repeat(81)}`, 'page=0'])
+      expect((await dir.get(`/t?${q}`)).status, q).toBe(400);
   });
 
   it('validates staff-created and staff-edited entries', async () => {
     const create = probe(createMemberRules);
-    expect((await create.post('/t').send({ displayName: 'Asha Patel', joinedYear: 2010, membershipStatus: 'inactive', highlighted: true, visibility: 'public' })).status).toBe(200);
-    expect((await create.post('/t').send({ displayName: 'Asha Patel', visibility: 'hidden', familySize: '5', phone: '+91 98765 43210' })).status).toBe(200);
+    expect(
+      (
+        await create.post('/t').send({
+          displayName: 'Asha Patel',
+          joinedYear: 2010,
+          membershipStatus: 'inactive',
+          highlighted: true,
+          visibility: 'public',
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await create.post('/t').send({
+          displayName: 'Asha Patel',
+          visibility: 'hidden',
+          familySize: '5',
+          phone: '+91 98765 43210',
+        })
+      ).status,
+    ).toBe(200);
     for (const body of [
       {},
       { displayName: 'A' },
@@ -509,17 +826,24 @@ describe('settings validators', () => {
   const update = () => probe(updateSettingsRules);
 
   it('accepts a full valid update', async () => {
-    const res = await update().patch('/t').send({
-      name: 'Samaj',
-      shortName: 'S',
-      invocation: 'Jai',
-      tagline: 'Together',
-      footerNote: 'Footer',
-      contact: { email: 'office@example.com', phone: '+91 1', address: 'Unjha', officeHours: '9-5' },
-      socialLinks: [{ label: 'Facebook', url: 'https://facebook.com/samaj' }],
-      publicTabs: { events: false, news: true },
-      themeDefault: 'dark',
-    });
+    const res = await update()
+      .patch('/t')
+      .send({
+        name: 'Samaj',
+        shortName: 'S',
+        invocation: 'Jai',
+        tagline: 'Together',
+        footerNote: 'Footer',
+        contact: {
+          email: 'office@example.com',
+          phone: '+91 1',
+          address: 'Unjha',
+          officeHours: '9-5',
+        },
+        socialLinks: [{ label: 'Facebook', url: 'https://facebook.com/samaj' }],
+        publicTabs: { events: false, news: true },
+        themeDefault: 'dark',
+      });
     expect(res.status).toBe(200);
     expect(res.body.body.publicTabs).toEqual({ events: false, news: true });
   });
@@ -529,9 +853,15 @@ describe('settings validators', () => {
     ['a name over 150 characters', { name: 'x'.repeat(151) }],
     ['a bad contact email', { contact: { email: 'nope' } }],
     ['a non-object contact', { contact: 'nope' }],
-    ['nine social links', { socialLinks: Array(9).fill({ label: 'L', url: 'https://example.com' }) }],
+    [
+      'nine social links',
+      { socialLinks: Array(9).fill({ label: 'L', url: 'https://example.com' }) },
+    ],
     ['a javascript: social link', { socialLinks: [{ label: 'L', url: 'javascript:alert(1)' }] }],
-    ['a social link with credentials', { socialLinks: [{ label: 'L', url: 'https://u:p@example.com' }] }],
+    [
+      'a social link with credentials',
+      { socialLinks: [{ label: 'L', url: 'https://u:p@example.com' }] },
+    ],
     ['a social link with no label', { socialLinks: [{ label: '', url: 'https://example.com' }] }],
     ['a non-boolean tab switch', { publicTabs: { events: 'maybe' } }],
     ['an unknown public tab', { publicTabs: { registration: true } }],
@@ -545,13 +875,34 @@ describe('settings validators', () => {
 
   it('accepts an empty body, null text fields and a cleared contact email', async () => {
     expect((await update().patch('/t').send({})).status).toBe(200);
-    expect((await update().patch('/t').send({ tagline: null, logoMediaId: null, contact: { email: '' } })).status).toBe(200);
+    expect(
+      (
+        await update()
+          .patch('/t')
+          .send({ tagline: null, logoMediaId: null, contact: { email: '' } })
+      ).status,
+    ).toBe(200);
   });
 
   it('validates audit filters', async () => {
     const audit = probe(auditListRules);
-    expect((await audit.get(`/t?action=announcement.*&actorId=${ID}&outcome=failure&targetType=user&from=2026-01-01&to=2026-12-31T00:00:00Z`)).status).toBe(200);
-    for (const q of ['actorId=x', 'outcome=maybe', 'from=yesterday', 'to=2026-13-45', 'action=a%20b', 'action=a%24', 'targetType=a%20b', 'limit=101']) {
+    expect(
+      (
+        await audit.get(
+          `/t?action=announcement.*&actorId=${ID}&outcome=failure&targetType=user&from=2026-01-01&to=2026-12-31T00:00:00Z`,
+        )
+      ).status,
+    ).toBe(200);
+    for (const q of [
+      'actorId=x',
+      'outcome=maybe',
+      'from=yesterday',
+      'to=2026-13-45',
+      'action=a%20b',
+      'action=a%24',
+      'targetType=a%20b',
+      'limit=101',
+    ]) {
       expect((await audit.get(`/t?${q}`)).status, q).toBe(400);
     }
   });
@@ -559,6 +910,7 @@ describe('settings validators', () => {
   it('validates search text', async () => {
     const search = probe(searchRules);
     expect((await search.get('/t?q=diwali')).status).toBe(200);
-    for (const q of ['', 'q=', 'q=a', `q=${'x'.repeat(101)}`]) expect((await search.get(`/t?${q}`)).status, q).toBe(400);
+    for (const q of ['', 'q=', 'q=a', `q=${'x'.repeat(101)}`])
+      expect((await search.get(`/t?${q}`)).status, q).toBe(400);
   });
 });

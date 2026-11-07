@@ -12,9 +12,17 @@ export const mediaListRules = [
 ];
 
 export const mediaFieldRules = [
-  body('altText').optional({ values: 'null' }).isString().trim().isLength({ max: 200 }).matches(/^[^<>]*$/),
+  body('altText')
+    .optional({ values: 'null' })
+    .isString()
+    .trim()
+    .isLength({ max: 200 })
+    .matches(/^[^<>]*$/),
   body('visibility').optional().isIn(['public', 'private']),
   validateRequest,
 ];
 
-export const mediaUpdateRules = [param('id').isUUID().withMessage('Invalid media id'), ...mediaFieldRules];
+export const mediaUpdateRules = [
+  param('id').isUUID().withMessage('Invalid media id'),
+  ...mediaFieldRules,
+];

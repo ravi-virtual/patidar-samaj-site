@@ -28,7 +28,10 @@ export const forgotPasswordSchema = z.object({ email: emailRule });
 export type ForgotPasswordForm = z.infer<typeof forgotPasswordSchema>;
 
 export const resetPasswordSchema = z
-  .object({ password: passwordRule, confirmPassword: z.string().min(1, 'Please confirm your password') })
+  .object({
+    password: passwordRule,
+    confirmPassword: z.string().min(1, 'Please confirm your password'),
+  })
   .refine((v) => v.password === v.confirmPassword, {
     path: ['confirmPassword'],
     message: 'Passwords do not match',

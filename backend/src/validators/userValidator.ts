@@ -13,8 +13,9 @@ const permissionsRule = (optional: boolean) => {
     .bail()
     .custom(
       (list: unknown[]) =>
-        list.every((p) => typeof p === 'string' && (SELECTABLE_PERMISSIONS as readonly string[]).includes(p)) &&
-        new Set(list).size === list.length,
+        list.every(
+          (p) => typeof p === 'string' && (SELECTABLE_PERMISSIONS as readonly string[]).includes(p),
+        ) && new Set(list).size === list.length,
     )
     .withMessage('Permissions must come from the selectable list and be listed once');
 };
@@ -50,13 +51,19 @@ export const createAdminRules = [
     .withMessage('Enter a valid email address')
     .normalizeEmail({ gmail_remove_dots: false, gmail_remove_subaddress: false }),
   // The role is always "admin". Anything else (the Super Admin in particular) is refused.
-  body('role').optional().equals(Roles.ADMIN).withMessage('Only admin accounts can be created here'),
+  body('role')
+    .optional()
+    .equals(Roles.ADMIN)
+    .withMessage('Only admin accounts can be created here'),
   body('password')
     .isString()
     .withMessage('Password is required')
     .bail()
     .custom((value: string, { req }) => {
-      const problem = validatePasswordStrength(value, typeof req.body?.email === 'string' ? req.body.email : undefined);
+      const problem = validatePasswordStrength(
+        value,
+        typeof req.body?.email === 'string' ? req.body.email : undefined,
+      );
       if (problem) throw new Error(problem);
       return true;
     }),
@@ -70,7 +77,8 @@ export const updateAdminRules = [
   nameRule(true),
   permissionsRule(true),
   body().custom((value: Record<string, unknown>) => {
-    if (value?.name === undefined && value?.permissions === undefined) throw new Error('Send a name or permissions to change');
+    if (value?.name === undefined && value?.permissions === undefined)
+      throw new Error('Send a name or permissions to change');
     return true;
   }),
   validateRequest,

@@ -31,8 +31,15 @@ function Body({ user, onClose }: { user: AdminUser; onClose: () => void }) {
       const mail = await resetAdminPasswordApi(user.id, password);
       dispatch(
         mail.delivered
-          ? showToast(t('Password reset. The new password was emailed to {email}.', { email: user.email }))
-          : showToast(t('Password reset, but the email could not be sent. Share the password with them yourself.'), 'info'),
+          ? showToast(
+              t('Password reset. The new password was emailed to {email}.', { email: user.email }),
+            )
+          : showToast(
+              t(
+                'Password reset, but the email could not be sent. Share the password with them yourself.',
+              ),
+              'info',
+            ),
       );
       onClose();
     } catch (err) {
@@ -47,7 +54,10 @@ function Body({ user, onClose }: { user: AdminUser; onClose: () => void }) {
       <div className="space-y-4 px-5 py-4">
         {error && <Alert tone="danger">{error}</Alert>}
         <Alert tone="info">
-          {t('{name} is signed out everywhere and receives an email with the new password, and is asked to change it after signing in.', { name: user.name })}
+          {t(
+            '{name} is signed out everywhere and receives an email with the new password, and is asked to change it after signing in.',
+            { name: user.name },
+          )}
         </Alert>
         <PasswordField
           label={t('New password')}
@@ -67,7 +77,11 @@ function Body({ user, onClose }: { user: AdminUser; onClose: () => void }) {
         <Button variant="secondary" onClick={onClose} disabled={busy}>
           {t('Cancel')}
         </Button>
-        <Button onClick={() => void save()} loading={busy} disabled={password.length === 0 || Boolean(problem)}>
+        <Button
+          onClick={() => void save()}
+          loading={busy}
+          disabled={password.length === 0 || Boolean(problem)}
+        >
           {t('Reset password')}
         </Button>
       </div>
@@ -76,9 +90,19 @@ function Body({ user, onClose }: { user: AdminUser; onClose: () => void }) {
 }
 
 /** Sets a new password for an admin directly. The server emails it to them; no link is passed around. */
-export function ResetPasswordDialog({ user, onClose }: { user: AdminUser | null; onClose: () => void }) {
+export function ResetPasswordDialog({
+  user,
+  onClose,
+}: {
+  user: AdminUser | null;
+  onClose: () => void;
+}) {
   return (
-    <Modal open={user !== null} onClose={onClose} title={user ? t('Reset password · {name}', { name: user.name }) : t('Reset password')}>
+    <Modal
+      open={user !== null}
+      onClose={onClose}
+      title={user ? t('Reset password · {name}', { name: user.name }) : t('Reset password')}
+    >
       {user && <Body key={user.id} user={user} onClose={onClose} />}
     </Modal>
   );

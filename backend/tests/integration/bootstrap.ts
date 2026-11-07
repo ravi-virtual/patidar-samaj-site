@@ -23,9 +23,9 @@ describe('first Super Admin bootstrap', () => {
 
   it('refuses to run once any Super Admin exists, so it cannot become a back door', async () => {
     await createFirstSuperAdmin(input);
-    await expect(
-      createFirstSuperAdmin({ ...input, email: 'second@example.test' }),
-    ).rejects.toThrow(/already exists/i);
+    await expect(createFirstSuperAdmin({ ...input, email: 'second@example.test' })).rejects.toThrow(
+      /already exists/i,
+    );
     expect(await User.countDocuments({ role: 'superadmin' })).toBe(1);
   });
 
@@ -40,7 +40,9 @@ describe('first Super Admin bootstrap', () => {
     ['invalid email', { email: 'nope' }],
     ['markup in the name', { name: '<b>x</b>' }],
   ])('rejects %s', async (_label, patch) => {
-    await expect(createFirstSuperAdmin({ ...input, ...patch })).rejects.toBeInstanceOf(BootstrapError);
+    await expect(createFirstSuperAdmin({ ...input, ...patch })).rejects.toBeInstanceOf(
+      BootstrapError,
+    );
     expect(await User.countDocuments()).toBe(0);
   });
 

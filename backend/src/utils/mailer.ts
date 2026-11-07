@@ -27,7 +27,11 @@ export const sendMail = async (message: MailMessage): Promise<MailResult> => {
   if (config.mail.driver === 'outbox' && !config.isProduction) {
     const dir = join(process.cwd(), '.outbox');
     await mkdir(dir, { recursive: true });
-    await writeFile(join(dir, `${Date.now()}-${randomUUID()}.txt`), `To: ${message.to}\nSubject: ${message.subject}\n\n${message.text}\n`, 'utf8');
+    await writeFile(
+      join(dir, `${Date.now()}-${randomUUID()}.txt`),
+      `To: ${message.to}\nSubject: ${message.subject}\n\n${message.text}\n`,
+      'utf8',
+    );
     return { delivered: true, driver: 'outbox' };
   }
   if (config.mail.driver === 'smtp') {
@@ -37,7 +41,12 @@ export const sendMail = async (message: MailMessage): Promise<MailResult> => {
       return { delivered: false, driver: 'smtp' };
     }
     try {
-      await getTransport(host, port, secure, user, pass).sendMail({ from, to: message.to, subject: message.subject, text: message.text });
+      await getTransport(host, port, secure, user, pass).sendMail({
+        from,
+        to: message.to,
+        subject: message.subject,
+        text: message.text,
+      });
       return { delivered: true, driver: 'smtp' };
     } catch (err) {
       console.error('Mail: could not send message:', err instanceof Error ? err.message : err);

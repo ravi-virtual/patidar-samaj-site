@@ -78,8 +78,14 @@ describe('the single sign-in (/auth/admin-login)', () => {
 
 describe('login', () => {
   it('signs in an active user, sets an HTTP-only SameSite cookie and returns permissions', async () => {
-    const user = await makeUser({ role: Roles.ADMIN, permissions: ['events.create', 'events.read'] });
-    const res = await anon().post('/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: PASSWORD });
+    const user = await makeUser({
+      role: Roles.ADMIN,
+      permissions: ['events.create', 'events.read'],
+    });
+    const res = await anon()
+      .post('/auth/admin-login')
+      .set('Origin', ORIGIN)
+      .send({ email: user.email, password: PASSWORD });
     expect(res.status).toBe(200);
     expect(res.body.data.user.role).toBe('admin');
     expect([...res.body.data.user.permissions].sort()).toEqual(['events.create', 'events.read']);
@@ -104,8 +110,14 @@ describe('login', () => {
 
   it('gives the same generic error for a wrong password and an unknown email', async () => {
     const user = await makeUser();
-    const wrong = await anon().post('/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: 'Wrong-Pass-123' });
-    const unknown = await anon().post('/auth/admin-login').set('Origin', ORIGIN).send({ email: 'nobody@example.test', password: 'Wrong-Pass-123' });
+    const wrong = await anon()
+      .post('/auth/admin-login')
+      .set('Origin', ORIGIN)
+      .send({ email: user.email, password: 'Wrong-Pass-123' });
+    const unknown = await anon()
+      .post('/auth/admin-login')
+      .set('Origin', ORIGIN)
+      .send({ email: 'nobody@example.test', password: 'Wrong-Pass-123' });
     expect(wrong.status).toBe(401);
     expect(unknown.status).toBe(401);
     expect(wrong.body).toEqual(unknown.body);
@@ -115,11 +127,17 @@ describe('login', () => {
   it('blocks inactive accounts with a clear message — only after the password is right', async () => {
     const message = /inactive/i;
     const user = await makeUser({ status: AccountStatus.SUSPENDED });
-    const bad = await anon().post('/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: 'Wrong-Pass-123' });
+    const bad = await anon()
+      .post('/auth/admin-login')
+      .set('Origin', ORIGIN)
+      .send({ email: user.email, password: 'Wrong-Pass-123' });
     expect(bad.status).toBe(401); // status is not revealed to someone who does not know the password
     expect(bad.body.message).toBe('Invalid email or password');
 
-    const good = await anon().post('/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: PASSWORD });
+    const good = await anon()
+      .post('/auth/admin-login')
+      .set('Origin', ORIGIN)
+      .send({ email: user.email, password: PASSWORD });
     expect(good.status).toBe(403);
     expect(good.body.error.code).toBe('ACCOUNT_NOT_ACTIVE');
     expect(good.body.message).toMatch(message);
@@ -129,15 +147,25 @@ describe('login', () => {
   it('locks the account after repeated failures, even for the right password', async () => {
     const user = await makeUser();
     for (let i = 0; i < config.auth.maxFailedLogins; i += 1) {
-      await anon().post('/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: 'Wrong-Pass-123' });
+      await anon()
+        .post('/auth/admin-login')
+        .set('Origin', ORIGIN)
+        .send({ email: user.email, password: 'Wrong-Pass-123' });
     }
-    const locked = await anon().post('/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: PASSWORD });
-    expect(locked.status).toBe(429);
-    expect(locked.body.error.code).toBe('RATE_LIMITED');
+    const locked = await anon()
+      .post('/auth/admin-login')
+      .set('Origin', ORIGIN)
+      .send({ email: user.email, password: PASSWORD });
+    // Indistinguishable from a wrong password, so a lock never reveals that the account exists.
+    expect(locked.status).toBe(401);
+    expect(locked.body.message).toBe('Invalid email or password');
 
     // Once the lock expires the user can sign in again and the counter is cleared.
     await User.updateOne({ _id: user._id }, { $set: { lockUntil: new Date(Date.now() - 1000) } });
-    const ok = await anon().post('/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: PASSWORD });
+    const ok = await anon()
+      .post('/auth/admin-login')
+      .set('Origin', ORIGIN)
+      .send({ email: user.email, password: PASSWORD });
     expect(ok.status).toBe(200);
   });
 
@@ -159,7 +187,10 @@ describe('login', () => {
 
   it('records failures in the audit log without storing the password or the email', async () => {
     const user = await makeUser();
-    await anon().post('/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: 'Wrong-Pass-123' });
+    await anon()
+      .post('/auth/admin-login')
+      .set('Origin', ORIGIN)
+      .send({ email: user.email, password: 'Wrong-Pass-123' });
     const entry = await AuditLog.findOne({ action: 'auth.login_failed' }).lean();
     expect(entry?.outcome).toBe('failure');
     const dump = JSON.stringify(entry);
@@ -179,11 +210,13 @@ describe('session lifecycle', () => {
     expect(me.body.data.csrfToken).toBe(client.csrf);
   });
 
-  it('refuses another user\'s id and a malformed id', async () => {
+  it("refuses another user's id and a malformed id", async () => {
     const client = await signIn((await makeUser()).email);
     const other = await makeUser();
     expect((await client.get(`/auth/${other.id}`)).status).toBe(403);
-    expect((await client.patch(`/auth/${other.id}/theme`).send({ themePreference: 'dark' })).status).toBe(403);
+    expect(
+      (await client.patch(`/auth/${other.id}/theme`).send({ themePreference: 'dark' })).status,
+    ).toBe(403);
     expect((await User.findById(other._id).lean())?.themePreference).not.toBe('dark');
     expect((await client.get('/auth/me')).status).toBe(400);
   });
@@ -202,7 +235,10 @@ describe('session lifecycle', () => {
   it('expires sessions past their absolute lifetime', async () => {
     const user = await makeUser();
     const client = await signIn(user.email);
-    await Session.updateMany({ userId: user._id }, { $set: { expiresAt: new Date(Date.now() - 1000) } });
+    await Session.updateMany(
+      { userId: user._id },
+      { $set: { expiresAt: new Date(Date.now() - 1000) } },
+    );
     const res = await client.get(`/auth/${client.userId}`);
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('SESSION_EXPIRED');
@@ -266,19 +302,28 @@ describe('CSRF protection', () => {
   it('rejects a wrong CSRF token', async () => {
     const user = await makeUser();
     const client = await signIn(user.email);
-    const res = await client.agent.post('/auth/logout').set('Origin', ORIGIN).set('X-CSRF-Token', 'x'.repeat(43));
+    const res = await client.agent
+      .post('/auth/logout')
+      .set('Origin', ORIGIN)
+      .set('X-CSRF-Token', 'x'.repeat(43));
     expect(res.status).toBe(403);
   });
 
   it('rejects a CSRF token from a different session', async () => {
     const a = await signIn((await makeUser()).email);
     const b = await signIn((await makeUser()).email);
-    const res = await a.agent.post('/auth/logout').set('Origin', ORIGIN).set('X-CSRF-Token', b.csrf);
+    const res = await a.agent
+      .post('/auth/logout')
+      .set('Origin', ORIGIN)
+      .set('X-CSRF-Token', b.csrf);
     expect(res.status).toBe(403);
   });
 
   it('blocks requests from another origin, including anonymous ones', async () => {
-    const res = await anon().post('/auth/admin-login').set('Origin', 'https://evil.example').send({ email: 'a@b.co', password: 'x' });
+    const res = await anon()
+      .post('/auth/admin-login')
+      .set('Origin', 'https://evil.example')
+      .send({ email: 'a@b.co', password: 'x' });
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('CSRF_INVALID');
   });
@@ -286,7 +331,10 @@ describe('CSRF protection', () => {
   it('blocks a cookie-bearing mutation that carries no Origin or Referer', async () => {
     const user = await makeUser();
     const client = await signIn(user.email);
-    const res = await request(app).post('/auth/logout').set('Cookie', client.cookie).set('X-CSRF-Token', client.csrf);
+    const res = await request(app)
+      .post('/auth/logout')
+      .set('Cookie', client.cookie)
+      .set('X-CSRF-Token', client.csrf);
     expect(res.status).toBe(403);
   });
 });
@@ -295,9 +343,13 @@ describe('theme preference', () => {
   it('defaults to system, persists per user and is restored on another device', async () => {
     const user = await makeUser();
     const laptop = await signIn(user.email);
-    expect((await laptop.get(`/auth/${laptop.userId}`)).body.data.user.themePreference).toBe('system');
+    expect((await laptop.get(`/auth/${laptop.userId}`)).body.data.user.themePreference).toBe(
+      'system',
+    );
 
-    const saved = await laptop.patch(`/auth/${laptop.userId}/theme`).send({ themePreference: 'dark' });
+    const saved = await laptop
+      .patch(`/auth/${laptop.userId}/theme`)
+      .send({ themePreference: 'dark' });
     expect(saved.status).toBe(200);
 
     const phone = await signIn(user.email); // a brand-new session on "another device"
@@ -313,8 +365,13 @@ describe('theme preference', () => {
 
   it('rejects unknown values and requires sign-in', async () => {
     const client = await signIn((await makeUser()).email);
-    expect((await client.patch(`/auth/${client.userId}/theme`).send({ themePreference: 'neon' })).status).toBe(400);
-    const anonRes = await anon().patch(`/auth/${ANON_ID}/theme`).set('Origin', ORIGIN).send({ themePreference: 'dark' });
+    expect(
+      (await client.patch(`/auth/${client.userId}/theme`).send({ themePreference: 'neon' })).status,
+    ).toBe(400);
+    const anonRes = await anon()
+      .patch(`/auth/${ANON_ID}/theme`)
+      .set('Origin', ORIGIN)
+      .send({ themePreference: 'dark' });
     expect(anonRes.status).toBe(401);
   });
 });
@@ -332,7 +389,14 @@ describe('password change and reset', () => {
     expect(res.status).toBe(200);
     expect((await phone.get(`/auth/${phone.userId}`)).status).toBe(401);
     expect((await laptop.get(`/auth/${laptop.userId}`)).status).toBe(200);
-    expect((await anon().post('/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: PASSWORD })).status).toBe(401);
+    expect(
+      (
+        await anon()
+          .post('/auth/admin-login')
+          .set('Origin', ORIGIN)
+          .send({ email: user.email, password: PASSWORD })
+      ).status,
+    ).toBe(401);
     expect((await signIn(user.email, 'Brand-New-Pass-42')).userId).toBe(user._id);
   });
 
@@ -349,18 +413,27 @@ describe('password change and reset', () => {
 
   it('forgot-password answers identically for known and unknown emails', async () => {
     const user = await makeUser();
-    const known = await anon().post('/auth/forgot-password').set('Origin', ORIGIN).send({ email: user.email });
-    const unknown = await anon().post('/auth/forgot-password').set('Origin', ORIGIN).send({ email: 'ghost@example.test' });
+    const known = await anon()
+      .post('/auth/forgot-password')
+      .set('Origin', ORIGIN)
+      .send({ email: user.email });
+    const unknown = await anon()
+      .post('/auth/forgot-password')
+      .set('Origin', ORIGIN)
+      .send({ email: 'ghost@example.test' });
     expect(known.status).toBe(200);
     expect(known.body).toEqual(unknown.body);
   });
 
   it('rejects an invalid or expired reset token', async () => {
-    const res = await anon().post('/auth/reset-password').set('Origin', ORIGIN).send({
-      token: 'a'.repeat(43),
-      password: 'Another-Pass-77',
-      confirmPassword: 'Another-Pass-77',
-    });
+    const res = await anon()
+      .post('/auth/reset-password')
+      .set('Origin', ORIGIN)
+      .send({
+        token: 'a'.repeat(43),
+        password: 'Another-Pass-77',
+        confirmPassword: 'Another-Pass-77',
+      });
     expect(res.status).toBe(400);
     expect(res.body.message).toMatch(/invalid or has expired/i);
   });

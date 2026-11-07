@@ -21,7 +21,11 @@ const canSeePrivate = (req: Request) =>
   req.user?.permissions.includes(Permissions.MEMBERS_READ_PRIVATE) ?? false;
 
 const notFound = (res: Response) =>
-  sendError(res, { statusCode: ResponseCodes.NOT_FOUND, message: 'Member not found', code: ErrorCodes.NOT_FOUND });
+  sendError(res, {
+    statusCode: ResponseCodes.NOT_FOUND,
+    message: 'Member not found',
+    code: ErrorCodes.NOT_FOUND,
+  });
 
 interface ListQuery {
   page?: number;
@@ -37,7 +41,8 @@ const buildFilter = (q: ListQuery) => {
   if (q.membershipStatus) filter.membershipStatus = q.membershipStatus;
   // Anything that is not "public" counts as office-only, including a legacy "members" value.
   if (q.visibility === MemberVisibility.PUBLIC) filter.visibility = MemberVisibility.PUBLIC;
-  if (q.visibility === MemberVisibility.HIDDEN) filter.visibility = { $ne: MemberVisibility.PUBLIC };
+  if (q.visibility === MemberVisibility.HIDDEN)
+    filter.visibility = { $ne: MemberVisibility.PUBLIC };
   if (q.village) filter.village = new RegExp(`^${escapeRegex(q.village)}$`, 'i');
   if (q.search) {
     const rx = new RegExp(escapeRegex(q.search), 'i');
@@ -126,7 +131,8 @@ export const createMember = async (req: Request, res: Response, next: NextFuncti
     if (!canSeePrivate(req) && (data.phone || data.familySize || data.kul)) {
       return sendError(res, {
         statusCode: ResponseCodes.FORBIDDEN,
-        message: 'Only staff authorized for private member data can record phone, family size or kul',
+        message:
+          'Only staff authorized for private member data can record phone, family size or kul',
         code: ErrorCodes.FORBIDDEN,
       });
     }
@@ -137,7 +143,11 @@ export const createMember = async (req: Request, res: Response, next: NextFuncti
       visibility: data.visibility ?? MemberVisibility.HIDDEN,
     });
 
-    await writeAudit(req, { action: 'member.created', targetType: 'member', targetId: profile._id });
+    await writeAudit(req, {
+      action: 'member.created',
+      targetType: 'member',
+      targetId: profile._id,
+    });
     return new ApiResponse(ResponseCodes.CREATED, 'Member added', {
       member: toStaffMember(profile.toObject(), { includePrivate: canSeePrivate(req) }),
     }).send(res);
@@ -167,11 +177,13 @@ export const updateMember = async (req: Request, res: Response, next: NextFuncti
     const profile = await MemberProfile.findOne({ _id: req.params.id, isDeleted: false });
     if (!profile) return notFound(res);
 
-    const touchesPrivate = data.phone !== undefined || data.familySize !== undefined || data.kul !== undefined;
+    const touchesPrivate =
+      data.phone !== undefined || data.familySize !== undefined || data.kul !== undefined;
     if (touchesPrivate && !canSeePrivate(req)) {
       return sendError(res, {
         statusCode: ResponseCodes.FORBIDDEN,
-        message: 'Only staff authorized for private member data can change phone, family size or kul',
+        message:
+          'Only staff authorized for private member data can change phone, family size or kul',
         code: ErrorCodes.FORBIDDEN,
       });
     }
@@ -226,7 +238,11 @@ export const anonymizeMember = async (req: Request, res: Response, next: NextFun
     });
     await profile.save();
 
-    await writeAudit(req, { action: 'member.anonymized', targetType: 'member', targetId: profile._id });
+    await writeAudit(req, {
+      action: 'member.anonymized',
+      targetType: 'member',
+      targetId: profile._id,
+    });
     return new ApiResponse(ResponseCodes.OK, 'Member anonymised').send(res);
   } catch (err) {
     return next(err);
@@ -249,7 +265,16 @@ export const exportMembers = async (req: Request, res: Response, next: NextFunct
     const profiles = await MemberProfile.find(filter).sort({ displayName: 1 }).limit(10_000).lean();
     const includePrivate = canSeePrivate(req);
 
-    const headers = ['Name', 'Village', 'City', 'Country', 'Occupation', 'Joined', 'Membership', 'Visibility'];
+    const headers = [
+      'Name',
+      'Village',
+      'City',
+      'Country',
+      'Occupation',
+      'Joined',
+      'Membership',
+      'Visibility',
+    ];
     if (includePrivate) headers.push('Phone', 'Family size', 'Kul');
     const rows = profiles.map((p) => {
       const base = [
@@ -269,7 +294,11 @@ export const exportMembers = async (req: Request, res: Response, next: NextFunct
       action: 'members.exported',
       metadata: { count: rows.length, includedPrivate: includePrivate, filters: Object.keys(q) },
     });
-    return sendCsv(res, `members-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(headers, rows));
+    return sendCsv(
+      res,
+      `members-${new Date().toISOString().slice(0, 10)}.csv`,
+      toCsv(headers, rows),
+    );
   } catch (err) {
     return next(err);
   }

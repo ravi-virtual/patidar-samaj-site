@@ -47,8 +47,19 @@ export default function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <AuthCard title={t('Reset link needed')} footer={<Link to="/forgot-password" className="font-medium text-accent hover:underline">{t('Request a new link')}</Link>}>
-        <Alert tone="warning">{t('This page needs a valid reset link. Open the link you were given, or request a new one.')}</Alert>
+      <AuthCard
+        title={t('Reset link needed')}
+        footer={
+          <Link to="/forgot-password" className="font-medium text-accent hover:underline">
+            {t('Request a new link')}
+          </Link>
+        }
+      >
+        <Alert tone="warning">
+          {t(
+            'This page needs a valid reset link. Open the link you were given, or request a new one.',
+          )}
+        </Alert>
       </AuthCard>
     );
   }
@@ -68,10 +79,19 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <AuthCard title={t('Choose a new password')} description={t('Use at least 10 characters, with a letter and a number.')}>
+    <AuthCard
+      title={t('Choose a new password')}
+      description={t('Use at least 10 characters, with a letter and a number.')}
+    >
       <form noValidate onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {error && <Alert tone="danger">{error}</Alert>}
-        <PasswordField label={t('New password')} autoComplete="new-password" required error={errors.password?.message} {...register('password')} />
+        <PasswordField
+          label={t('New password')}
+          autoComplete="new-password"
+          required
+          error={errors.password?.message}
+          {...register('password')}
+        />
         <PasswordField
           label={t('Confirm new password')}
           autoComplete="new-password"

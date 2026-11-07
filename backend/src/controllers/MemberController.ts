@@ -63,7 +63,11 @@ export const listDirectory = async (req: Request, res: Response, next: NextFunct
     const { limit, skip } = pageParams(q, 20);
 
     const [profiles, totalCount] = await Promise.all([
-      MemberProfile.find(filter).sort(sorts[q.sort ?? 'name']).skip(skip).limit(limit).lean(),
+      MemberProfile.find(filter)
+        .sort(sorts[q.sort ?? 'name'])
+        .skip(skip)
+        .limit(limit)
+        .lean(),
       MemberProfile.countDocuments(filter),
     ]);
 
@@ -92,8 +96,8 @@ export const listDirectoryFilters = async (req: Request, res: Response, next: Ne
       MemberProfile.distinct('city', filter),
     ]);
     const clean = (list: unknown[]) =>
-      (list.filter((v): v is string => typeof v === 'string' && v.length > 0) as string[]).sort((a, b) =>
-        a.localeCompare(b),
+      (list.filter((v): v is string => typeof v === 'string' && v.length > 0) as string[]).sort(
+        (a, b) => a.localeCompare(b),
       );
     return new ApiResponse(ResponseCodes.OK, 'Filters fetched successfully', {
       villages: clean(villages),

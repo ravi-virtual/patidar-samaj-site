@@ -34,19 +34,40 @@ beforeEach(resetDb);
 
 describe('public home', () => {
   it('assembles published content and nothing else', async () => {
-    await ContentBlock.create({ key: 'home.welcome', title: 'Welcome', body: 'Hello families.', status: 'published' });
-    await ContentBlock.create({ key: 'home.stats', items: [{ value: '1,146', label: 'Families' }], status: 'published' });
+    await ContentBlock.create({
+      key: 'home.welcome',
+      title: 'Welcome',
+      body: 'Hello families.',
+      status: 'published',
+    });
+    await ContentBlock.create({
+      key: 'home.stats',
+      items: [{ value: '1,146', label: 'Families' }],
+      status: 'published',
+    });
     await ContentBlock.create({ key: 'about.mission', body: 'Not on home.', status: 'published' });
     await ContentBlock.create({ key: 'about.intro', body: 'Draft intro', status: 'draft' });
-    await makeEvent({ title: 'Featured Raas', featured: true, startsAt: new Date(Date.now() + 3 * DAY) });
+    await makeEvent({
+      title: 'Featured Raas',
+      featured: true,
+      startsAt: new Date(Date.now() + 3 * DAY),
+    });
     await makeEvent({ title: 'Plain Event', startsAt: new Date(Date.now() + 5 * DAY) });
     await makeEvent({ title: 'Draft Event', status: 'draft' });
     await makeEvent({ title: 'Past Event', startsAt: new Date(Date.now() - DAY) });
     await makeAnnouncement({ title: 'Pinned News', pinned: true });
     await makeAnnouncement({ title: 'Draft News', status: 'draft' });
     await makeAnnouncement({ title: 'Later News', publishAt: new Date(Date.now() + DAY) });
-    await ImportantLink.create({ label: 'Public form', url: 'https://example.org', status: 'published' });
-    await ImportantLink.create({ label: 'Draft link', url: 'https://example.org', status: 'draft' });
+    await ImportantLink.create({
+      label: 'Public form',
+      url: 'https://example.org',
+      status: 'published',
+    });
+    await ImportantLink.create({
+      label: 'Draft link',
+      url: 'https://example.org',
+      status: 'draft',
+    });
     await makeProfile({ displayName: 'Highlight Public', highlighted: true, visibility: 'public' });
     await makeProfile({ displayName: 'Highlight Hidden', highlighted: true, visibility: 'hidden' });
     await makeProfile({ displayName: 'Not Highlighted', highlighted: false });
@@ -56,7 +77,10 @@ describe('public home', () => {
     const d = res.body.data;
     expect(Object.keys(d.blocks).sort()).toEqual(['home.stats', 'home.welcome']);
     expect(d.featuredEvent.title).toBe('Featured Raas');
-    expect(d.upcomingEvents.map((e: { title: string }) => e.title)).toEqual(['Featured Raas', 'Plain Event']);
+    expect(d.upcomingEvents.map((e: { title: string }) => e.title)).toEqual([
+      'Featured Raas',
+      'Plain Event',
+    ]);
     expect(d.announcements.map((a: { title: string }) => a.title)).toEqual(['Pinned News']);
     expect(d.links.map((l: { label: string }) => l.label)).toEqual(['Public form']);
     expect(d.memberHighlights.map((m: { name: string }) => m.name)).toEqual(['Highlight Public']);
@@ -64,10 +88,24 @@ describe('public home', () => {
   });
 
   it('shows only public highlights to everyone, and no private fields', async () => {
-    await makeProfile({ displayName: 'Highlight Hidden', highlighted: true, visibility: 'hidden', phone: '+91 98250 12345', familySize: 5 });
-    await makeProfile({ displayName: 'Highlight Public', highlighted: true, visibility: 'public', phone: '+91 98250 54321', familySize: 3 });
+    await makeProfile({
+      displayName: 'Highlight Hidden',
+      highlighted: true,
+      visibility: 'hidden',
+      phone: '+91 98250 12345',
+      familySize: 5,
+    });
+    await makeProfile({
+      displayName: 'Highlight Public',
+      highlighted: true,
+      visibility: 'public',
+      phone: '+91 98250 54321',
+      familySize: 3,
+    });
     const res = await anon().get('/public/home');
-    expect(res.body.data.memberHighlights.map((m: { name: string }) => m.name)).toEqual(['Highlight Public']);
+    expect(res.body.data.memberHighlights.map((m: { name: string }) => m.name)).toEqual([
+      'Highlight Public',
+    ]);
     expect(JSON.stringify(res.body.data.memberHighlights)).not.toMatch(/98250|familySize|phone/);
     expect(JSON.stringify(res.body)).not.toContain('98250');
     const { client } = await signInAs(Roles.SUPER_ADMIN);
@@ -77,7 +115,14 @@ describe('public home', () => {
   it('works on an empty site', async () => {
     const res = await anon().get('/public/home');
     expect(res.status).toBe(200);
-    expect(res.body.data).toMatchObject({ blocks: {}, featuredEvent: null, upcomingEvents: [], announcements: [], memberHighlights: [], links: [] });
+    expect(res.body.data).toMatchObject({
+      blocks: {},
+      featuredEvent: null,
+      upcomingEvents: [],
+      announcements: [],
+      memberHighlights: [],
+      links: [],
+    });
   });
 
   it('does not expose internal fields in any section', async () => {
@@ -93,7 +138,14 @@ describe('organisation settings', () => {
     const res = await anon().get('/public/settings');
     expect(res.body.data.settings).toMatchObject({ themeDefault: 'system', logoUrl: null });
     expect(res.body.data.settings.publicTabs).toEqual({
-      about: true, committee: true, faq: true, links: true, directory: true, events: true, news: true, contact: true,
+      about: true,
+      committee: true,
+      faq: true,
+      links: true,
+      directory: true,
+      events: true,
+      news: true,
+      contact: true,
     });
     expect(JSON.stringify(res.body)).not.toMatch(/registrationOpen|directoryPublic/);
     expect(JSON.stringify(res.body)).not.toMatch(/_id|createdAt|key/);
@@ -117,12 +169,20 @@ describe('organisation settings', () => {
       name: 'Uttar Gujarat Kadva Patidar Samaj',
       tagline: 'One family of Maa Umiya',
       footerNote: 'Run by volunteers.',
-      contact: { email: 'office@example.org', phone: '+91 2767 000000', address: 'Unjha, Mehsana', officeHours: 'Mon–Sat 10:00–18:00' },
+      contact: {
+        email: 'office@example.org',
+        phone: '+91 2767 000000',
+        address: 'Unjha, Mehsana',
+        officeHours: 'Mon–Sat 10:00–18:00',
+      },
       socialLinks: [{ label: 'Facebook', url: 'https://facebook.com/example' }],
     });
     expect(res.status).toBe(200);
     const pub = (await anon().get('/public/settings')).body.data.settings;
-    expect(pub).toMatchObject({ tagline: 'One family of Maa Umiya', contact: { email: 'office@example.org', officeHours: 'Mon–Sat 10:00–18:00' } });
+    expect(pub).toMatchObject({
+      tagline: 'One family of Maa Umiya',
+      contact: { email: 'office@example.org', officeHours: 'Mon–Sat 10:00–18:00' },
+    });
     expect(pub.socialLinks).toEqual([{ label: 'Facebook', url: 'https://facebook.com/example' }]);
 
     // A partial update leaves the rest alone.
@@ -138,30 +198,60 @@ describe('organisation settings', () => {
       { contact: { email: 'not-an-email' } },
       { socialLinks: [{ label: 'Bad', url: 'javascript:alert(1)' }] },
       { socialLinks: [{ label: 'Bad', url: 'data:text/html,x' }] },
-      { socialLinks: Array.from({ length: 9 }, () => ({ label: 'x', url: 'https://example.org' })) },
+      {
+        socialLinks: Array.from({ length: 9 }, () => ({ label: 'x', url: 'https://example.org' })),
+      },
       { themeDefault: 'neon' },
       { publicTabs: { events: 'maybe' } },
       { publicTabs: { registration: true } },
       { logoMediaId: 'not-an-id' },
     ]) {
-      expect((await client.patch('/admin/settings').send(body)).status, JSON.stringify(body)).toBe(400);
+      expect((await client.patch('/admin/settings').send(body)).status, JSON.stringify(body)).toBe(
+        400,
+      );
     }
   });
 
   it('checks the logo is an existing image', async () => {
     const { client } = await signInAs(Roles.ADMIN, { permissions: [Permissions.SETTINGS_MANAGE] });
-    const doc = await MediaAsset.create({ storedName: 'a.pdf', originalName: 'a.pdf', mimeType: 'application/pdf', size: 1, kind: 'document' });
-    const img = await MediaAsset.create({ storedName: 'a.png', originalName: 'a.png', mimeType: 'image/png', size: 1, kind: 'image' });
+    const doc = await MediaAsset.create({
+      storedName: 'a.pdf',
+      originalName: 'a.pdf',
+      mimeType: 'application/pdf',
+      size: 1,
+      kind: 'document',
+    });
+    const img = await MediaAsset.create({
+      storedName: 'a.png',
+      originalName: 'a.png',
+      mimeType: 'image/png',
+      size: 1,
+      kind: 'image',
+    });
     expect((await client.patch('/admin/settings').send({ logoMediaId: doc._id })).status).toBe(400);
-    expect((await client.patch('/admin/settings').send({ logoMediaId: '11111111-1111-4111-8111-111111111111' })).status).toBe(400);
+    expect(
+      (
+        await client
+          .patch('/admin/settings')
+          .send({ logoMediaId: '11111111-1111-4111-8111-111111111111' })
+      ).status,
+    ).toBe(400);
     const ok = await client.patch('/admin/settings').send({ logoMediaId: img._id });
     expect(ok.status).toBe(200);
-    expect((await anon().get('/public/settings')).body.data.settings.logoUrl).toBe(`/media/${img._id}`);
+    expect((await anon().get('/public/settings')).body.data.settings.logoUrl).toBe(
+      `/media/${img._id}`,
+    );
   });
 
   it('ignores fields it does not own', async () => {
     const { client } = await signInAs(Roles.ADMIN, { permissions: [Permissions.SETTINGS_MANAGE] });
-    await client.patch('/admin/settings').send({ key: 'other', _id: 'x', mongoUri: 'mongodb://evil', sessionSecret: 'x', tagline: 'Fine' });
+    await client.patch('/admin/settings').send({
+      key: 'other',
+      _id: 'x',
+      mongoUri: 'mongodb://evil',
+      sessionSecret: 'x',
+      tagline: 'Fine',
+    });
     const docs = await OrganizationSettings.find().lean();
     expect(docs).toHaveLength(1);
     expect(docs[0]).toMatchObject({ key: 'main', tagline: 'Fine' });
@@ -172,17 +262,33 @@ describe('organisation settings', () => {
     const { client } = await signInAs(Roles.ADMIN, { permissions: [Permissions.SETTINGS_MANAGE] });
     const tabs = async () => (await anon().get('/public/settings')).body.data.settings.publicTabs;
 
-    expect((await client.patch('/admin/settings').send({ publicTabs: { events: false } })).status).toBe(200);
+    expect(
+      (await client.patch('/admin/settings').send({ publicTabs: { events: false } })).status,
+    ).toBe(200);
     expect(await tabs()).toMatchObject({ events: false, news: true, directory: true });
-    const res = await client.patch('/admin/settings').send({ publicTabs: { news: false, events: false } });
-    expect(res.body.data.settings.publicTabs).toMatchObject({ events: false, news: false, about: true });
+    const res = await client
+      .patch('/admin/settings')
+      .send({ publicTabs: { news: false, events: false } });
+    expect(res.body.data.settings.publicTabs).toMatchObject({
+      events: false,
+      news: false,
+      about: true,
+    });
     expect((await client.get('/admin/settings')).body.data.settings.publicTabs.news).toBe(false);
-    expect((await client.patch('/admin/settings').send({ publicTabs: { registration: false } })).status).toBe(400);
-    expect((await client.patch('/admin/settings').send({ publicTabs: { faq: 'no' } })).status).toBe(400);
+    expect(
+      (await client.patch('/admin/settings').send({ publicTabs: { registration: false } })).status,
+    ).toBe(400);
+    expect((await client.patch('/admin/settings').send({ publicTabs: { faq: 'no' } })).status).toBe(
+      400,
+    );
 
-    const entries = await AuditLog.find({ action: 'settings.updated' }).sort({ createdAt: 1 }).lean();
+    const entries = await AuditLog.find({ action: 'settings.updated' })
+      .sort({ createdAt: 1 })
+      .lean();
     expect(entries).toHaveLength(2);
-    expect(entries[0]?.metadata).toMatchObject({ publicTabs: { events: { from: true, to: false } } });
+    expect(entries[0]?.metadata).toMatchObject({
+      publicTabs: { events: { from: true, to: false } },
+    });
     // Only tabs that actually changed are recorded.
     expect(entries[1]?.metadata?.publicTabs).toEqual({ news: { from: true, to: false } });
   });
@@ -199,8 +305,18 @@ describe('dashboard', () => {
     await makeEvent({ startsAt: new Date(Date.now() - DAY) });
     await makeAnnouncement();
     await makeAnnouncement({ status: 'draft' });
-    await ContactMessage.create({ name: 'A B', email: 'a@b.co', message: 'A message long enough.', status: 'new' });
-    await ContactMessage.create({ name: 'C D', email: 'c@d.co', message: 'Another message long enough.', status: 'resolved' });
+    await ContactMessage.create({
+      name: 'A B',
+      email: 'a@b.co',
+      message: 'A message long enough.',
+      status: 'new',
+    });
+    await ContactMessage.create({
+      name: 'C D',
+      email: 'c@d.co',
+      message: 'Another message long enough.',
+      status: 'resolved',
+    });
   };
 
   it('requires the dashboard.view permission', async () => {
@@ -237,7 +353,12 @@ describe('dashboard', () => {
     const s = (await client.get('/admin/dashboard')).body.data.stats;
     expect(s).toHaveProperty('upcomingEvents');
     expect(s).toHaveProperty('publishedAnnouncements');
-    for (const key of ['totalMembers', 'pendingRegistrations', 'unreadContactMessages', 'recentActivity']) {
+    for (const key of [
+      'totalMembers',
+      'pendingRegistrations',
+      'unreadContactMessages',
+      'recentActivity',
+    ]) {
       expect(s).not.toHaveProperty(key);
     }
   });
@@ -276,7 +397,10 @@ describe('audit log viewer', () => {
   it('lists newest first with actor details, and filters by action, outcome, actor and date', async () => {
     const { user, client } = await signInAs(Roles.SUPER_ADMIN);
     await client.post('/admin/announcements').send({ title: 'Audit One', body: 'text' });
-    await anon().post('/auth/admin-login').set('Origin', ORIGIN).send({ email: user.email, password: 'wrong-Password-1' });
+    await anon()
+      .post('/auth/admin-login')
+      .set('Origin', ORIGIN)
+      .send({ email: user.email, password: 'wrong-Password-1' });
 
     const all = await client.get('/admin/audit');
     expect(all.body.data.totalCount).toBeGreaterThanOrEqual(3);
@@ -285,11 +409,23 @@ describe('audit log viewer', () => {
     expect(JSON.stringify(all.body)).not.toMatch(/passwordHash|argon2|csrf|"token"/);
 
     const created = await client.get('/admin/audit?action=announcement.created');
-    expect(created.body.data.entries[0]).toMatchObject({ action: 'announcement.created', actor: { id: user._id, name: user.name } });
+    expect(created.body.data.entries[0]).toMatchObject({
+      action: 'announcement.created',
+      actor: { id: user._id, name: user.name },
+    });
     expect((await client.get('/admin/audit?action=announcement.*')).body.data.totalCount).toBe(1);
-    expect((await client.get('/admin/audit?action=auth.*')).body.data.totalCount).toBeGreaterThanOrEqual(2);
-    expect((await client.get('/admin/audit?outcome=failure')).body.data.entries.every((e: { outcome: string }) => e.outcome === 'failure')).toBe(true);
-    expect((await client.get(`/admin/audit?actorId=${user._id}&action=announcement.created`)).body.data.totalCount).toBe(1);
+    expect(
+      (await client.get('/admin/audit?action=auth.*')).body.data.totalCount,
+    ).toBeGreaterThanOrEqual(2);
+    expect(
+      (await client.get('/admin/audit?outcome=failure')).body.data.entries.every(
+        (e: { outcome: string }) => e.outcome === 'failure',
+      ),
+    ).toBe(true);
+    expect(
+      (await client.get(`/admin/audit?actorId=${user._id}&action=announcement.created`)).body.data
+        .totalCount,
+    ).toBe(1);
     const future = new Date(Date.now() + DAY).toISOString();
     expect((await client.get(`/admin/audit?from=${future}`)).body.data.totalCount).toBe(0);
   });
@@ -301,7 +437,8 @@ describe('audit log viewer', () => {
     expect((await client.get('/admin/audit?from=yesterday')).status).toBe(400);
     expect((await client.get('/admin/audit?action=a%20b%24')).status).toBe(400);
     expect((await client.get('/admin/audit?limit=1000')).status).toBe(400);
-    for (let i = 0; i < 4; i += 1) await client.post('/admin/announcements').send({ title: `Page test ${i}`, body: 'text' });
+    for (let i = 0; i < 4; i += 1)
+      await client.post('/admin/announcements').send({ title: `Page test ${i}`, body: 'text' });
     const page = await client.get('/admin/audit?limit=2&page=2');
     expect(page.body.data.entries).toHaveLength(2);
   });
@@ -327,9 +464,17 @@ describe('global search', () => {
     await makeAnnouncement({ title: 'Diwali dinner details' });
     await makeAnnouncement({ title: 'Diwali secret draft', status: 'draft' });
     await makeAnnouncement({ title: 'Diwali later', publishAt: new Date(Date.now() + DAY) });
-    await Faq.create({ question: 'Is Diwali dinner free?', answer: 'Children under five eat free.', status: 'published' });
+    await Faq.create({
+      question: 'Is Diwali dinner free?',
+      answer: 'Children under five eat free.',
+      status: 'published',
+    });
     await Faq.create({ question: 'Diwali hidden?', answer: 'x', status: 'draft' });
-    await ImportantLink.create({ label: 'Diwali booking form', url: 'https://example.org', status: 'published' });
+    await ImportantLink.create({
+      label: 'Diwali booking form',
+      url: 'https://example.org',
+      status: 'published',
+    });
     await makeProfile({ displayName: 'Diwali Patel', visibility: 'public' });
     await makeProfile({ displayName: 'Diwali Hidden', visibility: 'hidden' });
 
@@ -337,14 +482,21 @@ describe('global search', () => {
     expect(res.status).toBe(200);
     const r = res.body.data.results;
     expect(r.events.map((e: { title: string }) => e.title)).toEqual(['Diwali Dinner']);
-    expect(r.announcements.map((a: { title: string }) => a.title)).toEqual(['Diwali dinner details']);
+    expect(r.announcements.map((a: { title: string }) => a.title)).toEqual([
+      'Diwali dinner details',
+    ]);
     expect(r.faqs).toHaveLength(1);
     expect(r.links).toHaveLength(1);
     expect(r.members.map((m: { title: string }) => m.title)).toEqual(['Diwali Patel']);
   });
 
   it('never returns private fields for members', async () => {
-    await makeProfile({ displayName: 'Searchable Person', phone: '+91 98250 55555', familySize: 9, visibility: 'public' });
+    await makeProfile({
+      displayName: 'Searchable Person',
+      phone: '+91 98250 55555',
+      familySize: 9,
+      visibility: 'public',
+    });
     const dump = JSON.stringify((await anon().get('/search?q=searchable')).body);
     expect(dump).not.toMatch(/98250|familySize|phone/);
   });
@@ -359,7 +511,9 @@ describe('global search', () => {
 
   it('caps each group at five results', async () => {
     for (let i = 0; i < 8; i += 1) await makeAnnouncement({ title: `Repeated notice ${i}` });
-    expect((await anon().get('/search?q=repeated')).body.data.results.announcements).toHaveLength(5);
+    expect((await anon().get('/search?q=repeated')).body.data.results.announcements).toHaveLength(
+      5,
+    );
   });
 
   it('leaves deleted records out', async () => {

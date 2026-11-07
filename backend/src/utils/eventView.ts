@@ -19,8 +19,10 @@ const bilingualEvent = (event: IEvent) => ({
   venue: event.venue,
   venueGu: event.venueGu ?? null,
   status: event.status === EventStatus.CANCELLED ? 'cancelled' : 'published',
-  cancellationReason: event.status === EventStatus.CANCELLED ? (event.cancellationReason ?? null) : null,
-  cancellationReasonGu: event.status === EventStatus.CANCELLED ? (event.cancellationReasonGu ?? null) : null,
+  cancellationReason:
+    event.status === EventStatus.CANCELLED ? (event.cancellationReason ?? null) : null,
+  cancellationReasonGu:
+    event.status === EventStatus.CANCELLED ? (event.cancellationReasonGu ?? null) : null,
   featured: event.featured,
   imageMediaId: event.imageMediaId ?? null,
 });
@@ -48,6 +50,7 @@ interface TimingFields {
 
 /** Cross-field check on the final (merged) values, so partial updates cannot create a bad schedule. */
 export const timingError = (t: TimingFields): string | null => {
-  if (t.startsAt && t.endsAt && t.endsAt < t.startsAt) return 'The end time must be after the start time';
+  if (t.startsAt && t.endsAt && t.endsAt < t.startsAt)
+    return 'The end time must be after the start time';
   return null;
 };

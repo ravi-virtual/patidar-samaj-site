@@ -23,15 +23,30 @@ import { FormPage, FullWidth } from './FormPage';
 
 const noAngle = (v: string) => !/[<>]/.test(v);
 
-const optionalGu = (max: number) => z.string().trim().max(max).refine(noAngle, 'Contains invalid characters');
+const optionalGu = (max: number) =>
+  z.string().trim().max(max).refine(noAngle, 'Contains invalid characters');
 
 const schema = z.object({
-  title: z.string().trim().min(3, 'Title must be at least 3 characters').max(150).refine(noAngle, 'Contains invalid characters'),
+  title: z
+    .string()
+    .trim()
+    .min(3, 'Title must be at least 3 characters')
+    .max(150)
+    .refine(noAngle, 'Contains invalid characters'),
   titleGu: optionalGu(150),
   category: z.enum(ANNOUNCEMENT_CATEGORIES),
-  summary: z.string().trim().max(300, 'Keep the summary under 300 characters').refine(noAngle, 'Contains invalid characters'),
+  summary: z
+    .string()
+    .trim()
+    .max(300, 'Keep the summary under 300 characters')
+    .refine(noAngle, 'Contains invalid characters'),
   summaryGu: optionalGu(300),
-  body: z.string().trim().min(1, 'Write the announcement').max(8000).refine(noAngle, 'Contains invalid characters'),
+  body: z
+    .string()
+    .trim()
+    .min(1, 'Write the announcement')
+    .max(8000)
+    .refine(noAngle, 'Contains invalid characters'),
   bodyGu: optionalGu(8000),
   publishAt: z.string(),
   featured: z.boolean(),
@@ -85,7 +100,10 @@ export function AnnouncementForm({ item }: { item: AdminAnnouncement | null }) {
     handleSubmit,
     setError,
     formState: { errors, isDirty, isSubmitting },
-  } = useForm<Form>({ resolver: zodResolver(schema), defaultValues: item ? fromItem(item) : blank });
+  } = useForm<Form>({
+    resolver: zodResolver(schema),
+    defaultValues: item ? fromItem(item) : blank,
+  });
 
   const onSubmit = async (v: Form) => {
     try {
@@ -101,7 +119,8 @@ export function AnnouncementForm({ item }: { item: AdminAnnouncement | null }) {
           placed = true;
         }
       }
-      if (!placed) setError('root', { message: getErrorMessage(err, t('Could not save the announcement')) });
+      if (!placed)
+        setError('root', { message: getErrorMessage(err, t('Could not save the announcement')) });
     }
   };
 

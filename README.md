@@ -7,12 +7,12 @@ from the client-approved **Design 2 — Modern Platform** prototype. MERN stack 
 
 ## Prerequisites
 
-| Tool | Version | Notes |
-|---|---|---|
-| Node.js | **24.22.0** (LTS "Krypton") | Pinned in `.nvmrc`; the same version for frontend and backend |
-| npm | 11.19.1 or newer | Bundled with Node 24.22.0 |
-| MongoDB Community Server | 8.0.x | Local, bound to `127.0.0.1` |
-| Git | any recent | |
+| Tool                     | Version                     | Notes                                                         |
+| ------------------------ | --------------------------- | ------------------------------------------------------------- |
+| Node.js                  | **24.22.0** (LTS "Krypton") | Pinned in `.nvmrc`; the same version for frontend and backend |
+| npm                      | 11.19.1 or newer            | Bundled with Node 24.22.0                                     |
+| MongoDB Community Server | 8.0.x                       | Local, bound to `127.0.0.1`                                   |
+| Git                      | any recent                  |                                                               |
 
 ### Node.js
 
@@ -47,6 +47,7 @@ nvm use
 
    Data is stored in `.data/mongo` (git-ignored) and the server listens on `127.0.0.1:27018` only (not the default 27017, so it cannot clash with another MongoDB on the machine).
    If `mongod` is installed somewhere else set `MONGOD_PATH` to its full path.
+
 3. Verify: `npm run db:check` prints `OK  connected, server v8.0.x`.
 
 If you prefer another MongoDB (a service, Docker, Atlas free tier), skip step 2 and point `MONGO_URI` in `backend/.env` at it.
@@ -96,18 +97,18 @@ the public site.
 
 ## Daily commands
 
-| Command | What it does |
-|---|---|
-| `npm run mongo:start` | Start local MongoDB (separate terminal) |
-| `npm run dev` | API on `:5000` and web app on `:5173` together |
-| `npm run build` | Type-check and build both apps |
-| `npm run lint` | ESLint, backend and frontend |
-| `npm run typecheck` | `tsc` in both apps |
-| `npm test` | Unit tests, backend and frontend |
+| Command                    | What it does                                      |
+| -------------------------- | ------------------------------------------------- |
+| `npm run mongo:start`      | Start local MongoDB (separate terminal)           |
+| `npm run dev`              | API on `:5000` and web app on `:5173` together    |
+| `npm run build`            | Type-check and build both apps                    |
+| `npm run lint`             | ESLint, backend and frontend                      |
+| `npm run typecheck`        | `tsc` in both apps                                |
+| `npm test`                 | Unit tests, backend and frontend                  |
 | `npm run test:integration` | Backend integration tests (needs MongoDB running) |
-| `npm run seed` | Development sample data (see above) |
-| `npm run db:check` | Verify the MongoDB connection |
-| `npm run audit` | `npm audit` for production dependencies |
+| `npm run seed`             | Development sample data (see above)               |
+| `npm run db:check`         | Verify the MongoDB connection                     |
+| `npm run audit`            | `npm audit` for production dependencies           |
 
 Open <http://localhost:5173>. With the sample data loaded, open /admin/login and sign in with one of the two accounts printed by
 `npm run seed` (Super Admin, Admin).
@@ -122,11 +123,10 @@ scripts/    Node version check, local MongoDB launcher
 
 ## Troubleshooting
 
-| Symptom | Fix |
-|---|---|
-| `Node.js version mismatch` | `nvm use 24.22.0`, open a new terminal |
-| `FATAL: Missing required env var` | Create `backend/.env` from `backend/.env.example` |
-| `Could not connect to MongoDB` | Run `npm run mongo:start` and `npm run db:check` |
-| `Port 5000 is already in use` | Stop the other process or change `PORT` in `backend/.env` (and the Vite proxy target) |
-| Clean reinstall | Delete `node_modules` in the root, `backend/` and `frontend/`, then `npm run install:all` |
-
+| Symptom                           | Fix                                                                                       |
+| --------------------------------- | ----------------------------------------------------------------------------------------- |
+| `Node.js version mismatch`        | `nvm use 24.22.0`, open a new terminal                                                    |
+| `FATAL: Missing required env var` | Create `backend/.env` from `backend/.env.example`                                         |
+| `Could not connect to MongoDB`    | Run `npm run mongo:start` and `npm run db:check`                                          |
+| `Port 5000 is already in use`     | Stop the other process or change `PORT` in `backend/.env` (and the Vite proxy target)     |
+| Clean reinstall                   | Delete `node_modules` in the root, `backend/` and `frontend/`, then `npm run install:all` |

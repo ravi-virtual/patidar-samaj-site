@@ -9,7 +9,9 @@ import { useFetch } from '../../lib/useFetch';
 export default function AdminEventFormPage() {
   const can = useCan();
   const { id } = useParams();
-  const query = useFetch(`admin-event:${id ?? 'new'}`, () => (id ? getEventApi(id) : Promise.resolve(null)));
+  const query = useFetch(`admin-event:${id ?? 'new'}`, () =>
+    id ? getEventApi(id) : Promise.resolve(null),
+  );
 
   if (!can(id ? 'events.update' : 'events.create')) return <Navigate to="/admin/events" replace />;
 

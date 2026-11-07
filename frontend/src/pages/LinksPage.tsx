@@ -16,7 +16,13 @@ export default function LinksPage() {
         title={t('Important links')}
         description={t('Forms, documents and services the community uses.')}
       />
-      <Async data={data} loading={initialLoading} error={error} onRetry={retry} skeleton={<Skeleton className="h-48" />}>
+      <Async
+        data={data}
+        loading={initialLoading}
+        error={error}
+        onRetry={retry}
+        skeleton={<Skeleton className="h-48" />}
+      >
         {(links) => {
           if (links.length === 0) return <EmptyState title={t('No links yet')} />;
           const categories = [...new Set(links.map((l) => l.category))];
@@ -24,7 +30,10 @@ export default function LinksPage() {
             <div className="space-y-6">
               {categories.map((c) => (
                 <section key={c} aria-labelledby={`cat-${c}`}>
-                  <h2 id={`cat-${c}`} className="mb-2.5 text-[13px] font-semibold uppercase tracking-wider text-text-subtle">
+                  <h2
+                    id={`cat-${c}`}
+                    className="mb-2.5 text-[13px] font-semibold uppercase tracking-wider text-text-subtle"
+                  >
                     {c}
                   </h2>
                   <ul className="m-0 grid list-none gap-3 p-0 [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]">
@@ -45,4 +54,3 @@ export default function LinksPage() {
     </>
   );
 }
-

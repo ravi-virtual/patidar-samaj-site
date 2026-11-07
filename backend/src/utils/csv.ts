@@ -14,14 +14,20 @@ const neutralise = (value: unknown): string => {
 
 /** Builds a CSV (CRLF line endings, UTF-8 BOM). */
 export const toCsv = (headers: string[], rows: unknown[][]): string => {
-  const lines = [headers.map(neutralise).join(','), ...rows.map((r) => r.map(neutralise).join(','))];
+  const lines = [
+    headers.map(neutralise).join(','),
+    ...rows.map((r) => r.map(neutralise).join(',')),
+  ];
   return `${BOM}${lines.join('\r\n')}\r\n`;
 };
 
 /** Sends a CSV as a download. No caching, and the browser may not guess a different type. */
 export const sendCsv = (res: Response, filename: string, csv: string): Response => {
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename="${filename.replace(/[^A-Za-z0-9._-]/g, '_')}"`);
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename="${filename.replace(/[^A-Za-z0-9._-]/g, '_')}"`,
+  );
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   return res.status(200).send(csv);

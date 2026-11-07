@@ -38,8 +38,25 @@ router.post('/', isSuperAdmin, hasPermission(P.USERS_MANAGE), createAdminRules, 
 router.patch('/:id', isSuperAdmin, hasPermission(P.USERS_MANAGE), updateAdminRules, updateAdmin);
 router.delete('/:id', isSuperAdmin, hasPermission(P.USERS_MANAGE), userIdRules, deleteAdmin);
 router.post('/:id/suspend', isSuperAdmin, hasPermission(P.USERS_MANAGE), reasonRules, suspendUser);
-router.post('/:id/reactivate', isSuperAdmin, hasPermission(P.USERS_MANAGE), userIdRules, reactivateUser);
-router.post('/:id/revoke-sessions', isSuperAdmin, hasPermission(P.SESSIONS_REVOKE), userIdRules, revokeUserSessionsAction);
-router.post('/:id/password-reset', hasPermission(P.USERS_RESET_PASSWORD), resetPasswordRules, resetAdminPassword);
+router.post(
+  '/:id/reactivate',
+  isSuperAdmin,
+  hasPermission(P.USERS_MANAGE),
+  userIdRules,
+  reactivateUser,
+);
+router.post(
+  '/:id/revoke-sessions',
+  isSuperAdmin,
+  hasPermission(P.SESSIONS_REVOKE),
+  userIdRules,
+  revokeUserSessionsAction,
+);
+router.post(
+  '/:id/password-reset',
+  hasPermission(P.USERS_RESET_PASSWORD),
+  resetPasswordRules,
+  resetAdminPassword,
+);
 
 export default router;

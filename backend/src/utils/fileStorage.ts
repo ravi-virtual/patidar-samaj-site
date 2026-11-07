@@ -34,7 +34,12 @@ export const storeFile = async (buffer: Buffer, storedName: string, kind: Kind):
   await new Promise<void>((resolve, reject) => {
     cloudinary.uploader
       .upload_stream(
-        { public_id: publicIdOf(storedName, kind), resource_type: resourceType(kind), type: 'authenticated', overwrite: false },
+        {
+          public_id: publicIdOf(storedName, kind),
+          resource_type: resourceType(kind),
+          type: 'authenticated',
+          overwrite: false,
+        },
         (err) => (err ? reject(err) : resolve()),
       )
       .end(buffer);
@@ -47,7 +52,11 @@ export const removeFile = async (storedName: string, kind: Kind): Promise<void> 
     return;
   }
   await cloudinary.uploader
-    .destroy(publicIdOf(storedName, kind), { resource_type: resourceType(kind), type: 'authenticated', invalidate: true })
+    .destroy(publicIdOf(storedName, kind), {
+      resource_type: resourceType(kind),
+      type: 'authenticated',
+      invalidate: true,
+    })
     .catch(() => undefined);
 };
 

@@ -16,7 +16,15 @@ const inputClass =
  * Label + input + hint + error in one accessible unit. The label is programmatically tied to the
  * input and the error/hint are announced through aria-describedby.
  */
-export function TextField({ label, error, hint, className = '', ref, required, ...rest }: TextFieldProps) {
+export function TextField({
+  label,
+  error,
+  hint,
+  className = '',
+  ref,
+  required,
+  ...rest
+}: TextFieldProps) {
   const id = useId();
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
@@ -24,7 +32,12 @@ export function TextField({ label, error, hint, className = '', ref, required, .
     <div className="space-y-1.5">
       <label htmlFor={id} className="block text-[13px] font-medium text-text">
         {label}
-        {required && <span aria-hidden="true" className="text-danger"> *</span>}
+        {required && (
+          <span aria-hidden="true" className="text-danger">
+            {' '}
+            *
+          </span>
+        )}
       </label>
       <input
         id={id}
@@ -49,7 +62,14 @@ export function TextField({ label, error, hint, className = '', ref, required, .
   );
 }
 
-export function PasswordField({ label, error, hint, ref, required, ...rest }: Omit<TextFieldProps, 'type'>) {
+export function PasswordField({
+  label,
+  error,
+  hint,
+  ref,
+  required,
+  ...rest
+}: Omit<TextFieldProps, 'type'>) {
   const id = useId();
   const [visible, setVisible] = useState(false);
   const hintId = hint ? `${id}-hint` : undefined;
@@ -58,7 +78,12 @@ export function PasswordField({ label, error, hint, ref, required, ...rest }: Om
     <div className="space-y-1.5">
       <label htmlFor={id} className="block text-[13px] font-medium text-text">
         {label}
-        {required && <span aria-hidden="true" className="text-danger"> *</span>}
+        {required && (
+          <span aria-hidden="true" className="text-danger">
+            {' '}
+            *
+          </span>
+        )}
       </label>
       <div className="relative">
         <input
@@ -78,7 +103,11 @@ export function PasswordField({ label, error, hint, ref, required, ...rest }: Om
           aria-label={visible ? t('Hide password') : t('Show password')}
           className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded text-text-muted hover:text-text"
         >
-          {visible ? <EyeOff aria-hidden="true" className="h-4 w-4" /> : <Eye aria-hidden="true" className="h-4 w-4" />}
+          {visible ? (
+            <EyeOff aria-hidden="true" className="h-4 w-4" />
+          ) : (
+            <Eye aria-hidden="true" className="h-4 w-4" />
+          )}
         </button>
       </div>
       {hint && !error && (

@@ -5,7 +5,8 @@ import { config } from '../config/constants';
 export const generateToken = (): string => randomBytes(32).toString('base64url');
 
 /** Only this hash is stored server-side. */
-export const hashToken = (token: string): string => createHash('sha256').update(token).digest('hex');
+export const hashToken = (token: string): string =>
+  createHash('sha256').update(token).digest('hex');
 
 /**
  * CSRF token bound to the session: HMAC of the raw session token with the server secret.

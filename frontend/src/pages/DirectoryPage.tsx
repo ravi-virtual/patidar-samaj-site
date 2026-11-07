@@ -25,7 +25,12 @@ export default function DirectoryPage() {
 
   const filters = useFetch('member-filters', getMemberFiltersApi);
   const list = useFetch(`members:${term}:${village}:${page}`, () =>
-    listMembersApi({ search: term || undefined, village: village || undefined, page, limit: PAGE_SIZE }),
+    listMembersApi({
+      search: term || undefined,
+      village: village || undefined,
+      page,
+      limit: PAGE_SIZE,
+    }),
   );
 
   const reset = () => {
@@ -43,7 +48,9 @@ export default function DirectoryPage() {
           list.data
             ? list.data.totalCount === 1
               ? t('1 family listed. Contact details are never shown here.')
-              : t('{count} families listed. Contact details are never shown here.', { count: list.data.totalCount })
+              : t('{count} families listed. Contact details are never shown here.', {
+                  count: list.data.totalCount,
+                })
             : t('Find families by name, village or city.')
         }
         actions={
@@ -62,7 +69,11 @@ export default function DirectoryPage() {
       />
 
       {filters.data && filters.data.villages.length > 0 && (
-        <div className="mb-3.5 flex flex-wrap gap-1.5" role="group" aria-label={t('Filter by village')}>
+        <div
+          className="mb-3.5 flex flex-wrap gap-1.5"
+          role="group"
+          aria-label={t('Filter by village')}
+        >
           <Chip active={village === ''} onClick={() => (setVillage(''), setPage(1))}>
             {t('All villages')}
           </Chip>
@@ -81,7 +92,11 @@ export default function DirectoryPage() {
       ) : list.data.members.length === 0 ? (
         <EmptyState
           title={t('No families found')}
-          description={term ? t('Nothing matches “{term}”.', { term }) : t('No directory entries are visible yet.')}
+          description={
+            term
+              ? t('Nothing matches “{term}”.', { term })
+              : t('No directory entries are visible yet.')
+          }
           action={
             (term || village) && (
               <button
@@ -100,26 +115,43 @@ export default function DirectoryPage() {
             <caption className="sr-only">{t('Community directory')}</caption>
             <thead>
               <tr className="border-b border-border text-xs text-text-muted">
-                <th scope="col" className="px-4 py-2.5 font-medium">{t('Name')}</th>
-                <th scope="col" className="px-4 py-2.5 font-medium">{t('Village')}</th>
-                <th scope="col" className="px-4 py-2.5 font-medium">{t('Location')}</th>
-                <th scope="col" className="px-4 py-2.5 font-medium">{t('Occupation')}</th>
-                <th scope="col" className="px-4 py-2.5 font-medium">{t('Since')}</th>
+                <th scope="col" className="px-4 py-2.5 font-medium">
+                  {t('Name')}
+                </th>
+                <th scope="col" className="px-4 py-2.5 font-medium">
+                  {t('Village')}
+                </th>
+                <th scope="col" className="px-4 py-2.5 font-medium">
+                  {t('Location')}
+                </th>
+                <th scope="col" className="px-4 py-2.5 font-medium">
+                  {t('Occupation')}
+                </th>
+                <th scope="col" className="px-4 py-2.5 font-medium">
+                  {t('Since')}
+                </th>
               </tr>
             </thead>
             <tbody>
               {list.data.members.map((m) => (
                 <tr key={m.id} className="border-b border-surface-muted last:border-b-0">
                   <td className="px-4 py-2.5">
-                    <Link to={`/members/${m.id}`} className="flex items-center gap-2.5 whitespace-nowrap font-medium text-text">
+                    <Link
+                      to={`/members/${m.id}`}
+                      className="flex items-center gap-2.5 whitespace-nowrap font-medium text-text"
+                    >
                       <Avatar name={m.name} size="sm" />
                       {m.name}
                     </Link>
                   </td>
                   <td className="px-4 py-2.5 text-text-secondary">{m.village ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-text-secondary">{place(m.city, m.country) || '—'}</td>
+                  <td className="px-4 py-2.5 text-text-secondary">
+                    {place(m.city, m.country) || '—'}
+                  </td>
                   <td className="px-4 py-2.5 text-text-secondary">{m.occupation ?? '—'}</td>
-                  <td className="px-4 py-2.5 font-mono text-[13px] text-text-muted">{m.joinedYear ?? '—'}</td>
+                  <td className="px-4 py-2.5 font-mono text-[13px] text-text-muted">
+                    {m.joinedYear ?? '—'}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -127,7 +159,14 @@ export default function DirectoryPage() {
         </Card>
       )}
 
-      {list.data && <Pagination page={page} pageSize={PAGE_SIZE} totalCount={list.data.totalCount} onChange={setPage} />}
+      {list.data && (
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          totalCount={list.data.totalCount}
+          onChange={setPage}
+        />
+      )}
     </>
   );
 }

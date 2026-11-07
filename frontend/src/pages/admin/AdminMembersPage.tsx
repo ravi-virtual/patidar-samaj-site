@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Download, Plus, UserX } from 'lucide-react';
-import { anonymizeMemberApi, downloadCsv, listStaffMembersApi, type StaffMember } from '../../api/adminApi';
+import {
+  anonymizeMemberApi,
+  downloadCsv,
+  listStaffMembersApi,
+  type StaffMember,
+} from '../../api/adminApi';
 import { getErrorMessage } from '../../api/axiosInstance';
 import { RowMenu } from '../../components/admin/RowActions';
 import { DataTable, type Column } from '../../components/admin/DataTable';
@@ -71,9 +76,20 @@ export default function AdminMembersPage() {
     },
     { header: t('Village'), cell: (m) => m.village ?? '—' },
     { header: t('Location'), cell: (m) => place(m.city, m.country) || '—' },
-    ...(showPhone ? [{ header: t('Phone'), className: 'whitespace-nowrap font-mono text-[13px]', cell: (m: StaffMember) => m.phone ?? '—' }] : []),
+    ...(showPhone
+      ? [
+          {
+            header: t('Phone'),
+            className: 'whitespace-nowrap font-mono text-[13px]',
+            cell: (m: StaffMember) => m.phone ?? '—',
+          },
+        ]
+      : []),
     { header: t('Membership'), cell: (m) => <StatusBadge status={m.membershipStatus} /> },
-    { header: t('Visible to'), cell: (m) => <Badge>{t(visibilityLabel[m.visibility] ?? visibilityLabel.hidden)}</Badge> },
+    {
+      header: t('Visible to'),
+      cell: (m) => <Badge>{t(visibilityLabel[m.visibility] ?? visibilityLabel.hidden)}</Badge>,
+    },
     {
       header: t('Actions'),
       srOnlyHeader: true,
@@ -82,8 +98,19 @@ export default function AdminMembersPage() {
         <RowMenu
           name={m.name}
           actions={[
-            { label: t('Edit'), kind: 'edit', show: can('members.update') && !m.anonymizedAt, onSelect: () => navigate(`/admin/members/${m.id}/edit`) },
-            { label: t('Anonymise…'), icon: UserX, danger: true, show: can('members.anonymize') && !m.anonymizedAt, onSelect: () => setAnonymizing(m) },
+            {
+              label: t('Edit'),
+              kind: 'edit',
+              show: can('members.update') && !m.anonymizedAt,
+              onSelect: () => navigate(`/admin/members/${m.id}/edit`),
+            },
+            {
+              label: t('Anonymise…'),
+              icon: UserX,
+              danger: true,
+              show: can('members.anonymize') && !m.anonymizedAt,
+              onSelect: () => setAnonymizing(m),
+            },
           ]}
         />
       ),
@@ -92,7 +119,12 @@ export default function AdminMembersPage() {
 
   return (
     <>
-      <PageHeader title={t('Members')} description={t('The community directory. Entries are added and kept up to date by the office; members do not sign in.')} />
+      <PageHeader
+        title={t('Members')}
+        description={t(
+          'The community directory. Entries are added and kept up to date by the office; members do not sign in.',
+        )}
+      />
       <Toolbar
         search={search}
         onSearch={reset(setSearch)}
@@ -114,8 +146,26 @@ export default function AdminMembersPage() {
           </>
         }
       >
-        <FilterSelect label={t('Membership')} value={membershipStatus} onChange={reset(setMembershipStatus)} options={[{ value: '', label: t('Any membership') }, { value: 'active', label: t('Active') }, { value: 'inactive', label: t('Inactive') }]} />
-        <FilterSelect label={t('Visibility')} value={visibility} onChange={reset(setVisibility)} options={[{ value: '', label: t('Any visibility') }, { value: 'hidden', label: t('Office only') }, { value: 'public', label: t('Everyone') }]} />
+        <FilterSelect
+          label={t('Membership')}
+          value={membershipStatus}
+          onChange={reset(setMembershipStatus)}
+          options={[
+            { value: '', label: t('Any membership') },
+            { value: 'active', label: t('Active') },
+            { value: 'inactive', label: t('Inactive') },
+          ]}
+        />
+        <FilterSelect
+          label={t('Visibility')}
+          value={visibility}
+          onChange={reset(setVisibility)}
+          options={[
+            { value: '', label: t('Any visibility') },
+            { value: 'hidden', label: t('Office only') },
+            { value: 'public', label: t('Everyone') },
+          ]}
+        />
       </Toolbar>
 
       <DataTable
@@ -126,9 +176,21 @@ export default function AdminMembersPage() {
         loading={list.loading}
         error={list.error}
         onRetry={list.retry}
-        empty={<EmptyState title={t('No members found')} description={t('Try different filters, or add a directory entry.')} />}
+        empty={
+          <EmptyState
+            title={t('No members found')}
+            description={t('Try different filters, or add a directory entry.')}
+          />
+        }
       />
-      {list.data && <Pagination page={page} pageSize={PAGE_SIZE} totalCount={list.data.totalCount} onChange={setPage} />}
+      {list.data && (
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          totalCount={list.data.totalCount}
+          onChange={setPage}
+        />
+      )}
 
       <ConfirmDialog
         open={anonymizing !== null}
@@ -137,11 +199,18 @@ export default function AdminMembersPage() {
         tone="danger"
         busy={busy}
         onConfirm={() => {
-          if (anonymizing) void run(() => anonymizeMemberApi(anonymizing.id), t('Member anonymised.')).then((ok) => ok && setAnonymizing(null));
+          if (anonymizing)
+            void run(() => anonymizeMemberApi(anonymizing.id), t('Member anonymised.')).then(
+              (ok) => ok && setAnonymizing(null),
+            );
         }}
         onCancel={() => setAnonymizing(null)}
       >
-        {anonymizing ? t("{name}'s name and personal details are removed for good. This cannot be undone.", { name: anonymizing.name }) : ''}
+        {anonymizing
+          ? t("{name}'s name and personal details are removed for good. This cannot be undone.", {
+              name: anonymizing.name,
+            })
+          : ''}
       </ConfirmDialog>
     </>
   );

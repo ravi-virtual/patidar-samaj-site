@@ -12,15 +12,17 @@ import {
   toDateTimeInput,
 } from '../../src/lib/format';
 import { roleLabel } from '../../src/lib/labels';
-import {
-  forgotPasswordSchema,
-  loginSchema,
-  resetPasswordSchema,
-} from '../../src/utils/validation';
+import { forgotPasswordSchema, loginSchema, resetPasswordSchema } from '../../src/utils/validation';
 import { createStore } from '../../src/store';
 import { dismissToast, showToast } from '../../src/store/slices/toastSlice';
 import { fetchSiteSettings, settingsReplaced } from '../../src/store/slices/siteSlice';
-import { adminLogin, bootstrapAuth, clearLoginError, logout, sessionLost } from '../../src/store/slices/authSlice';
+import {
+  adminLogin,
+  bootstrapAuth,
+  clearLoginError,
+  logout,
+  sessionLost,
+} from '../../src/store/slices/authSlice';
 import { getCsrfToken, setCsrfToken } from '../../src/api/csrf';
 import { setStoredUserId } from '../../src/api/currentUser';
 import * as authApi from '../../src/api/authApi';
@@ -49,7 +51,9 @@ describe('format helpers', () => {
     // 13:00 UTC is 18:30 IST
     expect(formatDateTime('2030-10-01T13:00:00.000Z')).toMatch(/^1 Oct 2030, 6:30 pm IST$/i);
     expect(formatTimeRange('2030-10-01T13:00:00.000Z', null)).toMatch(/^6:30 pm IST$/i);
-    expect(formatTimeRange('2030-10-01T13:00:00.000Z', '2030-10-01T15:30:00.000Z')).toMatch(/^6:30 pm – 9:00 pm IST$/i);
+    expect(formatTimeRange('2030-10-01T13:00:00.000Z', '2030-10-01T15:30:00.000Z')).toMatch(
+      /^6:30 pm – 9:00 pm IST$/i,
+    );
   });
 
   it('uses the IST calendar day, which can differ from the UTC day', () => {
@@ -107,18 +111,31 @@ describe('labels', () => {
 });
 
 describe('validation schemas', () => {
-  const messages = (r: { error?: { issues: { message: string }[] } }) => r.error?.issues.map((i) => i.message) ?? [];
+  const messages = (r: { error?: { issues: { message: string }[] } }) =>
+    r.error?.issues.map((i) => i.message) ?? [];
 
   it('only requires something in the login fields (the server decides the rest)', () => {
     expect(loginSchema.safeParse({ email: 'x', password: 'y' }).success).toBe(true);
-    expect(messages(loginSchema.safeParse({ email: ' ', password: '' }))).toEqual(['Email is required', 'Password is required']);
+    expect(messages(loginSchema.safeParse({ email: ' ', password: '' }))).toEqual([
+      'Email is required',
+      'Password is required',
+    ]);
   });
 
   it('validates forgot and reset password forms', () => {
-    expect(forgotPasswordSchema.safeParse({ email: ' asha@example.test ' }).data?.email).toBe('asha@example.test');
+    expect(forgotPasswordSchema.safeParse({ email: ' asha@example.test ' }).data?.email).toBe(
+      'asha@example.test',
+    );
     expect(forgotPasswordSchema.safeParse({ email: 'nope' }).success).toBe(false);
-    expect(resetPasswordSchema.safeParse({ password: 'Fresh-Start-2026', confirmPassword: 'Fresh-Start-2026' }).success).toBe(true);
-    expect(resetPasswordSchema.safeParse({ password: 'Fresh-Start-2026', confirmPassword: 'x' }).success).toBe(false);
+    expect(
+      resetPasswordSchema.safeParse({
+        password: 'Fresh-Start-2026',
+        confirmPassword: 'Fresh-Start-2026',
+      }).success,
+    ).toBe(true);
+    expect(
+      resetPasswordSchema.safeParse({ password: 'Fresh-Start-2026', confirmPassword: 'x' }).success,
+    ).toBe(false);
   });
 });
 
@@ -165,7 +182,11 @@ describe('siteSlice', () => {
     site.getSettingsApi.mockRejectedValue(apiError(500, 'Server exploded'));
     const store = createStore();
     await store.dispatch(fetchSiteSettings());
-    expect(store.getState().site).toMatchObject({ status: 'failed', settings: null, error: 'Server exploded' });
+    expect(store.getState().site).toMatchObject({
+      status: 'failed',
+      settings: null,
+      error: 'Server exploded',
+    });
   });
 
   it('lets an admin save replace the settings immediately', () => {
@@ -202,7 +223,9 @@ describe('authSlice', () => {
   });
 
   it('keeps the server error message and code when sign-in fails, and clears them', async () => {
-    auth.adminLoginApi.mockRejectedValue(apiError(403, 'This account has been suspended.', 'ACCOUNT_NOT_ACTIVE'));
+    auth.adminLoginApi.mockRejectedValue(
+      apiError(403, 'This account has been suspended.', 'ACCOUNT_NOT_ACTIVE'),
+    );
     const store = createStore();
     await store.dispatch(adminLogin({ email: 'a@b.test', password: 'x' }));
     expect(store.getState().auth).toMatchObject({
@@ -212,7 +235,11 @@ describe('authSlice', () => {
       loginErrorCode: 'ACCOUNT_NOT_ACTIVE',
     });
     store.dispatch(clearLoginError());
-    expect(store.getState().auth).toMatchObject({ loginStatus: 'idle', loginError: null, loginErrorCode: null });
+    expect(store.getState().auth).toMatchObject({
+      loginStatus: 'idle',
+      loginError: null,
+      loginErrorCode: null,
+    });
   });
 
   it('signs out locally even when the logout request fails', async () => {

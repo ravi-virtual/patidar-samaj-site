@@ -26,7 +26,10 @@ export const getUserByIdApi = async (id: string): Promise<SessionPayload> => {
   return data.data;
 };
 
-export const adminLoginApi = async (body: { email: string; password: string }): Promise<SessionPayload> => {
+export const adminLoginApi = async (body: {
+  email: string;
+  password: string;
+}): Promise<SessionPayload> => {
   const { data } = await api.post<{ data: SessionPayload }>('/auth/admin-login', body);
   return data.data;
 };
@@ -35,7 +38,10 @@ export const logoutApi = async (): Promise<void> => {
   await api.post('/auth/logout');
 };
 
-export const updateUserThemeByIdApi = async (id: string, themePreference: ThemePreference): Promise<void> => {
+export const updateUserThemeByIdApi = async (
+  id: string,
+  themePreference: ThemePreference,
+): Promise<void> => {
   await api.patch(`/auth/${id}/theme`, { themePreference });
 };
 

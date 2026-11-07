@@ -18,7 +18,10 @@ export default function ForgotPasswordPage() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<ForgotPasswordForm>({ resolver: zodResolver(forgotPasswordSchema), defaultValues: { email: '' } });
+  } = useForm<ForgotPasswordForm>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: { email: '' },
+  });
 
   const onSubmit = async ({ email }: ForgotPasswordForm) => {
     setError(null);
@@ -32,7 +35,9 @@ export default function ForgotPasswordPage() {
   return (
     <AuthCard
       title={t('Reset your password')}
-      description={t('Enter your admin account email. If email delivery is available you will receive a reset link; otherwise the Super Admin can issue one for you.')}
+      description={t(
+        'Enter your admin account email. If email delivery is available you will receive a reset link; otherwise the Super Admin can issue one for you.',
+      )}
       footer={
         <Link to="/admin/login" className="font-medium text-accent hover:underline">
           {t('Back to sign in')}

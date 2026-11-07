@@ -12,7 +12,14 @@ interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'typ
  * readers behave natively); the box and check icon are drawn from its checked/focus/disabled state.
  * Without a `label`, pass `aria-label`.
  */
-export function Checkbox({ label, description, className = '', id: idProp, ref, ...rest }: CheckboxProps) {
+export function Checkbox({
+  label,
+  description,
+  className = '',
+  id: idProp,
+  ref,
+  ...rest
+}: CheckboxProps) {
   const autoId = useId();
   const id = idProp ?? autoId;
   const descId = description ? `${id}-desc` : undefined;
@@ -49,8 +56,13 @@ export function Checkbox({ label, description, className = '', id: idProp, ref, 
   return (
     <div className={`flex items-start gap-2.5 ${className}`}>
       {box}
-      <label htmlFor={id} className={`min-w-0 text-sm leading-snug ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-        <span className={`block font-medium ${disabled ? 'text-text-muted' : 'text-text'}`}>{label}</span>
+      <label
+        htmlFor={id}
+        className={`min-w-0 text-sm leading-snug ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+      >
+        <span className={`block font-medium ${disabled ? 'text-text-muted' : 'text-text'}`}>
+          {label}
+        </span>
         {description && (
           <span id={descId} className="mt-0.5 block text-xs font-normal text-text-muted">
             {description}

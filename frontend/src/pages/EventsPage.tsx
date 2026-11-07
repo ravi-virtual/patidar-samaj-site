@@ -24,8 +24,16 @@ export default function EventsPage() {
   const [page, setPage] = useState(1);
   const term = useDebounced(search.trim(), 300);
 
-  const { data, error, loading, retry } = useFetch(`events:${signedIn}:${when}:${category}:${term}:${page}`, () =>
-    listEventsApi({ when, category: category || undefined, search: term || undefined, page, limit: PAGE_SIZE }),
+  const { data, error, loading, retry } = useFetch(
+    `events:${signedIn}:${when}:${category}:${term}:${page}`,
+    () =>
+      listEventsApi({
+        when,
+        category: category || undefined,
+        search: term || undefined,
+        page,
+        limit: PAGE_SIZE,
+      }),
   );
 
   const reset = () => {
@@ -39,7 +47,11 @@ export default function EventsPage() {
       <PageHeader
         eyebrow={t('Events')}
         title={t('Events')}
-        description={data ? t('{count} shown', { count: data.totalCount }) : t('Festivals, family gatherings and community service.')}
+        description={
+          data
+            ? t('{count} shown', { count: data.totalCount })
+            : t('Festivals, family gatherings and community service.')
+        }
         actions={
           <Segmented
             label={t('Show')}
@@ -114,7 +126,14 @@ export default function EventsPage() {
         </ul>
       )}
 
-      {data && <Pagination page={page} pageSize={PAGE_SIZE} totalCount={data.totalCount} onChange={setPage} />}
+      {data && (
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          totalCount={data.totalCount}
+          onChange={setPage}
+        />
+      )}
     </>
   );
 }

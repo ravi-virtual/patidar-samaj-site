@@ -1,7 +1,13 @@
 import type { Request } from 'express';
 import Session from '../models/Session';
 import User from '../models/User';
-import { AccountStatus, ErrorCodes, ResponseCodes, config, type ErrorCode } from '../config/constants';
+import {
+  AccountStatus,
+  ErrorCodes,
+  ResponseCodes,
+  config,
+  type ErrorCode,
+} from '../config/constants';
 import { permissionsFor } from '../config/permissions';
 import { readSessionToken } from './sessions';
 import { csrfTokenFor, hashToken, safeEqual } from './tokens';
@@ -45,33 +51,57 @@ export const authenticate = async (
 
   const session = await Session.findOne({ tokenHash: hashToken(raw) }).lean();
   if (!session) {
-    return fail(ResponseCodes.UNAUTHORIZED, 'Session is not valid. Please sign in again.', ErrorCodes.INVALID_SESSION, true);
+    return fail(
+      ResponseCodes.UNAUTHORIZED,
+      'Session is not valid. Please sign in again.',
+      ErrorCodes.INVALID_SESSION,
+      true,
+    );
   }
 
   const now = Date.now();
   const idleLimit = config.session.idleMinutes * 60_000;
   if (session.expiresAt.getTime() <= now || now - session.lastSeenAt.getTime() > idleLimit) {
     await Session.deleteOne({ _id: session._id });
-    return fail(ResponseCodes.UNAUTHORIZED, 'Your session has expired. Please sign in again.', ErrorCodes.SESSION_EXPIRED, true);
+    return fail(
+      ResponseCodes.UNAUTHORIZED,
+      'Your session has expired. Please sign in again.',
+      ErrorCodes.SESSION_EXPIRED,
+      true,
+    );
   }
 
   const user = await User.findOne({ _id: session.userId, isDeleted: false }).lean();
   if (!user) {
     await Session.deleteOne({ _id: session._id });
-    return fail(ResponseCodes.UNAUTHORIZED, 'Session is not valid. Please sign in again.', ErrorCodes.INVALID_SESSION, true);
+    return fail(
+      ResponseCodes.UNAUTHORIZED,
+      'Session is not valid. Please sign in again.',
+      ErrorCodes.INVALID_SESSION,
+      true,
+    );
   }
 
   if (user.status !== AccountStatus.ACTIVE) {
     // Suspension revokes sessions already; this is the backstop for any race or manual change.
     await Session.deleteMany({ userId: user._id });
-    return fail(ResponseCodes.FORBIDDEN, 'This account is not active.', ErrorCodes.ACCOUNT_NOT_ACTIVE, true);
+    return fail(
+      ResponseCodes.FORBIDDEN,
+      'This account is not active.',
+      ErrorCodes.ACCOUNT_NOT_ACTIVE,
+      true,
+    );
   }
 
   const csrfToken = csrfTokenFor(raw);
   if (enforceCsrf && !SAFE_METHODS.has(req.method)) {
     const sent = req.get('x-csrf-token');
     if (!sent || !safeEqual(sent, csrfToken)) {
-      return fail(ResponseCodes.FORBIDDEN, 'Missing or invalid CSRF token', ErrorCodes.CSRF_INVALID);
+      return fail(
+        ResponseCodes.FORBIDDEN,
+        'Missing or invalid CSRF token',
+        ErrorCodes.CSRF_INVALID,
+      );
     }
   }
 

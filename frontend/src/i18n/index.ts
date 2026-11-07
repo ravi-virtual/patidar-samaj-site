@@ -1,7 +1,11 @@
 import { useSyncExternalStore } from 'react';
-import { gu } from './locales/gu';
+import en from './en.json';
+import guj from './guj.json';
 
 export type Language = 'en' | 'gu';
+
+/** Every UI text, keyed by its English wording: `en.json` for English, `guj.json` for Gujarati. */
+const messages: Record<Language, Record<string, string>> = { en, gu: guj };
 
 export const LANGUAGES: readonly Language[] = ['en', 'gu'];
 export const LANGUAGE_STORAGE_KEY = 'samaj.language';
@@ -45,15 +49,18 @@ const subscribe = (listener: () => void) => {
 };
 
 /** The active language; the component re-renders when it changes. */
-export const useLanguage = (): Language => useSyncExternalStore(subscribe, getLanguage, getLanguage);
+export const useLanguage = (): Language =>
+  useSyncExternalStore(subscribe, getLanguage, getLanguage);
 
 /**
  * Translates an English UI string. The English text itself is the key, so a string with no
- * Gujarati entry simply shows in English. `{name}` placeholders are filled from `vars`.
+ * entry in the active language's JSON file simply shows in English. `{name}` placeholders are filled from `vars`.
  * Never call this at module scope (the language can change): call it while rendering.
  */
 export const t = (text: string, vars?: Record<string, string | number>): string => {
-  const translated = current === 'gu' ? (gu[text] ?? text) : text;
+  const translated = messages[current][text] ?? text;
   if (!vars) return translated;
-  return translated.replace(/\{(\w+)\}/g, (match, name: string) => (name in vars ? String(vars[name]) : match));
+  return translated.replace(/\{(\w+)\}/g, (match, name: string) =>
+    name in vars ? String(vars[name]) : match,
+  );
 };

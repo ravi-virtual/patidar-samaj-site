@@ -21,7 +21,12 @@ const webAddress = (path: string) =>
     .isString()
     .trim()
     .isLength({ max: 500 })
-    .isURL({ protocols: ['http', 'https'], require_protocol: true, require_tld: true, disallow_auth: true })
+    .isURL({
+      protocols: ['http', 'https'],
+      require_protocol: true,
+      require_tld: true,
+      disallow_auth: true,
+    })
     .withMessage('Enter a full web address starting with http:// or https://');
 
 export const updateSettingsRules = [
@@ -36,7 +41,10 @@ export const updateSettingsRules = [
   text('invocationGu', 80),
   text('taglineGu', 200),
   text('footerNoteGu', 400),
-  body('logoMediaId').optional({ values: 'null' }).isUUID().withMessage('logoMediaId must be a media id'),
+  body('logoMediaId')
+    .optional({ values: 'null' })
+    .isUUID()
+    .withMessage('logoMediaId must be a media id'),
   body('contact').optional().isObject().withMessage('contact must be an object'),
   body('contact.email')
     .optional({ values: 'falsy' })
@@ -51,34 +59,59 @@ export const updateSettingsRules = [
   text('contact.officeHoursGu', 200),
   body('socialLinks').optional().isArray({ max: 8 }).withMessage('At most 8 social links'),
   text('socialLinks.*.label', 40),
-  body('socialLinks.*.label').optional().isString().trim().isLength({ min: 1 }).withMessage('Each link needs a label'),
+  body('socialLinks.*.label')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ min: 1 })
+    .withMessage('Each link needs a label'),
   webAddress('socialLinks.*.url').optional(),
   body('publicTabs')
     .optional()
     .custom((value: unknown) => {
-      if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error('publicTabs must be an object');
+      if (typeof value !== 'object' || value === null || Array.isArray(value))
+        throw new Error('publicTabs must be an object');
       for (const [key, on] of Object.entries(value)) {
-        if (!(PublicTabs as readonly string[]).includes(key)) throw new Error(`Unknown public tab "${key}"`);
+        if (!(PublicTabs as readonly string[]).includes(key))
+          throw new Error(`Unknown public tab "${key}"`);
         if (typeof on !== 'boolean') throw new Error(`publicTabs.${key} must be true or false`);
       }
       return true;
     }),
-  body('themeDefault').optional().isIn([...ThemePreferences]),
+  body('themeDefault')
+    .optional()
+    .isIn([...ThemePreferences]),
   validateRequest,
 ];
 
 export const auditListRules = [
   ...paginationRules(100),
-  query('action').optional().isString().trim().isLength({ max: 80 }).matches(/^[a-zA-Z0-9._*-]+$/),
+  query('action')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ max: 80 })
+    .matches(/^[a-zA-Z0-9._*-]+$/),
   query('actorId').optional().isUUID(),
   query('outcome').optional().isIn(['success', 'failure']),
-  query('targetType').optional().isString().trim().isLength({ max: 40 }).matches(/^[a-zA-Z0-9._-]+$/),
+  query('targetType')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ max: 40 })
+    .matches(/^[a-zA-Z0-9._-]+$/),
   query('from').optional().isISO8601({ strict: true }).toDate(),
   query('to').optional().isISO8601({ strict: true }).toDate(),
   validateRequest,
 ];
 
 export const searchRules = [
-  query('q').isString().withMessage('Enter something to search for').bail().trim().isLength({ min: 2, max: 100 }).withMessage('Search must be 2–100 characters'),
+  query('q')
+    .isString()
+    .withMessage('Enter something to search for')
+    .bail()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Search must be 2–100 characters'),
   validateRequest,
 ];

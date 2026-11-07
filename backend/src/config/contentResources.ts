@@ -27,7 +27,8 @@ export interface ContentResource {
  * The fields of a list that have a Gujarati twin (`question` when `questionGu` is listed too).
  * Public responses localize exactly these and drop the twins.
  */
-export const translatedFieldsOf = (fields: readonly string[]): string[] => fields.filter((f) => fields.includes(guField(f)));
+export const translatedFieldsOf = (fields: readonly string[]): string[] =>
+  fields.filter((f) => fields.includes(guField(f)));
 
 // To add another simple, orderable, publishable content type: add a model, an entry here and a
 // validation rule set in validators/contentValidator.ts. Controllers and routes need no changes.
@@ -45,8 +46,24 @@ export const ContentResources: Record<string, ContentResource> = {
   links: {
     label: 'Link',
     model: ImportantLink,
-    publicFields: ['label', 'description', 'labelGu', 'descriptionGu', 'url', 'fileMediaId', 'category'],
-    writableFields: ['label', 'description', 'labelGu', 'descriptionGu', 'url', 'fileMediaId', 'category'],
+    publicFields: [
+      'label',
+      'description',
+      'labelGu',
+      'descriptionGu',
+      'url',
+      'fileMediaId',
+      'category',
+    ],
+    writableFields: [
+      'label',
+      'description',
+      'labelGu',
+      'descriptionGu',
+      'url',
+      'fileMediaId',
+      'category',
+    ],
     filterFields: ['category'],
     searchFields: ['label', 'description', 'labelGu', 'descriptionGu'],
     sort: { order: 1, createdAt: 1 },
@@ -55,8 +72,28 @@ export const ContentResources: Record<string, ContentResource> = {
   milestones: {
     label: 'Milestone',
     model: HistoryMilestone,
-    publicFields: ['periodLabel', 'title', 'text', 'imageMediaId', 'sourceRef', 'periodLabelGu', 'titleGu', 'textGu', 'sourceRefGu'],
-    writableFields: ['periodLabel', 'title', 'text', 'imageMediaId', 'sourceRef', 'periodLabelGu', 'titleGu', 'textGu', 'sourceRefGu'],
+    publicFields: [
+      'periodLabel',
+      'title',
+      'text',
+      'imageMediaId',
+      'sourceRef',
+      'periodLabelGu',
+      'titleGu',
+      'textGu',
+      'sourceRefGu',
+    ],
+    writableFields: [
+      'periodLabel',
+      'title',
+      'text',
+      'imageMediaId',
+      'sourceRef',
+      'periodLabelGu',
+      'titleGu',
+      'textGu',
+      'sourceRefGu',
+    ],
     filterFields: [],
     searchFields: ['title', 'text', 'periodLabel', 'titleGu', 'textGu', 'periodLabelGu'],
     sort: { order: 1, createdAt: 1 },
@@ -75,8 +112,26 @@ export const ContentResources: Record<string, ContentResource> = {
   'committee-members': {
     label: 'Committee member',
     model: CommitteeMember,
-    publicFields: ['termId', 'name', 'position', 'bio', 'nameGu', 'positionGu', 'bioGu', 'imageMediaId'],
-    writableFields: ['termId', 'name', 'position', 'bio', 'nameGu', 'positionGu', 'bioGu', 'imageMediaId'],
+    publicFields: [
+      'termId',
+      'name',
+      'position',
+      'bio',
+      'nameGu',
+      'positionGu',
+      'bioGu',
+      'imageMediaId',
+    ],
+    writableFields: [
+      'termId',
+      'name',
+      'position',
+      'bio',
+      'nameGu',
+      'positionGu',
+      'bioGu',
+      'imageMediaId',
+    ],
     filterFields: ['termId'],
     searchFields: ['name', 'position', 'nameGu', 'positionGu'],
     sort: { order: 1, createdAt: 1 },

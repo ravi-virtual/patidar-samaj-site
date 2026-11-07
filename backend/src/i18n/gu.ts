@@ -6,9 +6,11 @@ export const guMessages: Record<string, string> = {
   'Not found': 'મળ્યું નથી',
   'Not authenticated': 'સાઇન ઇન કરેલું નથી',
   'Session is not valid. Please sign in again.': 'સત્ર માન્ય નથી. કૃપા કરીને ફરી સાઇન ઇન કરો.',
-  'Your session has expired. Please sign in again.': 'તમારું સત્ર સમાપ્ત થઈ ગયું છે. કૃપા કરીને ફરી સાઇન ઇન કરો.',
+  'Your session has expired. Please sign in again.':
+    'તમારું સત્ર સમાપ્ત થઈ ગયું છે. કૃપા કરીને ફરી સાઇન ઇન કરો.',
   'This account is not active.': 'આ ખાતું સક્રિય નથી.',
-  'This account is inactive. Please contact the Super Admin.': 'આ ખાતું નિષ્ક્રિય છે. કૃપા કરીને સુપર એડમિનનો સંપર્ક કરો.',
+  'This account is inactive. Please contact the Super Admin.':
+    'આ ખાતું નિષ્ક્રિય છે. કૃપા કરીને સુપર એડમિનનો સંપર્ક કરો.',
   'Missing or invalid CSRF token': 'CSRF ટોકન ખૂટે છે અથવા અમાન્ય છે',
   'Cross-origin request blocked': 'અન્ય સ્રોતની વિનંતી અવરોધિત કરવામાં આવી',
   'You do not have permission to perform this action': 'આ કાર્ય કરવાની તમને પરવાનગી નથી',
@@ -16,10 +18,14 @@ export const guMessages: Record<string, string> = {
   'Only the Super Admin can do this': 'આ ફક્ત સુપર એડમિન કરી શકે છે',
   'You can only access your own account': 'તમે ફક્ત તમારું પોતાનું ખાતું જોઈ શકો છો',
   'Database not connected': 'ડેટાબેઝ જોડાયેલ નથી',
-  'Service temporarily unavailable. Please try again shortly.': 'સેવા થોડા સમય માટે ઉપલબ્ધ નથી. કૃપા કરીને થોડીવારમાં ફરી પ્રયાસ કરો.',
-  'Too many requests. Please wait a while and try again.': 'ઘણી બધી વિનંતીઓ. કૃપા કરીને થોડી રાહ જુઓ અને ફરી પ્રયાસ કરો.',
-  'Too many failed sign-in attempts. Please try again in a few minutes.': 'સાઇન ઇનના ઘણા નિષ્ફળ પ્રયાસો. કૃપા કરીને થોડી મિનિટ પછી ફરી પ્રયાસ કરો.',
-  'You have sent several messages recently. Please wait a while before sending another.': 'તમે તાજેતરમાં ઘણા સંદેશા મોકલ્યા છે. બીજો મોકલતા પહેલાં કૃપા કરીને થોડી રાહ જુઓ.',
+  'Service temporarily unavailable. Please try again shortly.':
+    'સેવા થોડા સમય માટે ઉપલબ્ધ નથી. કૃપા કરીને થોડીવારમાં ફરી પ્રયાસ કરો.',
+  'Too many requests. Please wait a while and try again.':
+    'ઘણી બધી વિનંતીઓ. કૃપા કરીને થોડી રાહ જુઓ અને ફરી પ્રયાસ કરો.',
+  'Too many failed sign-in attempts. Please try again in a few minutes.':
+    'સાઇન ઇનના ઘણા નિષ્ફળ પ્રયાસો. કૃપા કરીને થોડી મિનિટ પછી ફરી પ્રયાસ કરો.',
+  'You have sent several messages recently. Please wait a while before sending another.':
+    'તમે તાજેતરમાં ઘણા સંદેશા મોકલ્યા છે. બીજો મોકલતા પહેલાં કૃપા કરીને થોડી રાહ જુઓ.',
   'That file is too large': 'તે ફાઇલ ઘણી મોટી છે',
   'Upload one file in the "file" field': '"file" ફીલ્ડમાં એક ફાઇલ અપલોડ કરો',
   'Request body is too large': 'વિનંતીની માહિતી ઘણી મોટી છે',
@@ -40,15 +46,18 @@ export const guMessages: Record<string, string> = {
   'Theme preference saved': 'થીમની પસંદગી સાચવી',
   'Current password is incorrect': 'હાલનો પાસવર્ડ ખોટો છે',
   'Current password is required': 'હાલનો પાસવર્ડ જરૂરી છે',
-  'Password changed. Other devices have been signed out.': 'પાસવર્ડ બદલાયો. અન્ય ઉપકરણો સાઇન આઉટ થઈ ગયા છે.',
+  'Password changed. Other devices have been signed out.':
+    'પાસવર્ડ બદલાયો. અન્ય ઉપકરણો સાઇન આઉટ થઈ ગયા છે.',
   'Password updated. You can now sign in.': 'પાસવર્ડ અપડેટ થયો. હવે તમે સાઇન ઇન કરી શકો છો.',
   'Password reset': 'પાસવર્ડ રીસેટ થયો',
-  'This reset link is invalid or has expired. Please request a new one.': 'આ રીસેટ લિંક અમાન્ય છે અથવા સમાપ્ત થઈ ગઈ છે. કૃપા કરીને નવી લિંક માંગો.',
+  'This reset link is invalid or has expired. Please request a new one.':
+    'આ રીસેટ લિંક અમાન્ય છે અથવા સમાપ્ત થઈ ગઈ છે. કૃપા કરીને નવી લિંક માંગો.',
   'Reset link is invalid': 'રીસેટ લિંક અમાન્ય છે',
   'Password is required': 'પાસવર્ડ જરૂરી છે',
   'Passwords do not match': 'પાસવર્ડ મેળ ખાતા નથી',
   'That password is too common': 'તે પાસવર્ડ ઘણો સામાન્ય છે',
-  'Password must contain at least one letter and one number': 'પાસવર્ડમાં ઓછામાં ઓછો એક અક્ષર અને એક અંક હોવો જોઈએ',
+  'Password must contain at least one letter and one number':
+    'પાસવર્ડમાં ઓછામાં ઓછો એક અક્ષર અને એક અંક હોવો જોઈએ',
   'Password must not contain your email name': 'પાસવર્ડમાં તમારા ઇમેઇલનું નામ ન હોવું જોઈએ',
   'Email is required': 'ઇમેઇલ જરૂરી છે',
   'Enter a valid email address': 'માન્ય ઇમેઇલ સરનામું દાખલ કરો',
@@ -65,7 +74,8 @@ export const guMessages: Record<string, string> = {
   'Users fetched successfully': 'વપરાશકર્તાઓ સફળતાપૂર્વક મેળવ્યા',
   'User not found': 'વપરાશકર્તા મળ્યા નથી',
   'Only admin accounts can be created here': 'અહીં ફક્ત એડમિન ખાતાં બનાવી શકાય છે',
-  'Permissions must come from the selectable list and be listed once': 'પરવાનગીઓ પસંદગીની યાદીમાંથી હોવી જોઈએ અને એક જ વાર હોવી જોઈએ',
+  'Permissions must come from the selectable list and be listed once':
+    'પરવાનગીઓ પસંદગીની યાદીમાંથી હોવી જોઈએ અને એક જ વાર હોવી જોઈએ',
   'permissions must be a list': 'પરવાનગીઓ યાદી સ્વરૂપે હોવી જોઈએ',
   'Invalid user id': 'વપરાશકર્તા ID અમાન્ય છે',
 
@@ -81,7 +91,8 @@ export const guMessages: Record<string, string> = {
   'Enter a valid phone number': 'માન્ય ફોન નંબર દાખલ કરો',
   'Enter something to search for': 'શોધવા માટે કંઈક લખો',
   'Search must be 2–100 characters': 'શોધ 2–100 અક્ષરોની હોવી જોઈએ',
-  'Enter a full web address starting with http:// or https://': 'http:// અથવા https:// થી શરૂ થતું પૂરું વેબ સરનામું લખો',
+  'Enter a full web address starting with http:// or https://':
+    'http:// અથવા https:// થી શરૂ થતું પૂરું વેબ સરનામું લખો',
   'Give a web address or attach a document': 'વેબ સરનામું આપો અથવા દસ્તાવેજ જોડો',
   'Use either a web address or a document, not both': 'વેબ સરનામું અથવા દસ્તાવેજ વાપરો, બંને નહીં',
   'Choose one of the listed topics': 'યાદીમાંથી એક વિષય પસંદ કરો',
@@ -126,9 +137,12 @@ export const guMessages: Record<string, string> = {
   'That image does not exist': 'તે છબી અસ્તિત્વમાં નથી',
 
   // Members, events, announcements, content, files, settings
-  'Only staff authorized for private member data can change phone, family size or kul': 'ફક્ત ખાનગી સભ્ય માહિતી માટે અધિકૃત સ્ટાફ ફોન, પરિવારનું કદ અથવા કુળ બદલી શકે છે',
-  'Only staff authorized for private member data can record phone, family size or kul': 'ફક્ત ખાનગી સભ્ય માહિતી માટે અધિકૃત સ્ટાફ ફોન, પરિવારનું કદ અથવા કુળ નોંધી શકે છે',
-  'This message already has the maximum number of notes.': 'આ સંદેશમાં નોંધોની મહત્તમ સંખ્યા થઈ ગઈ છે.',
+  'Only staff authorized for private member data can change phone, family size or kul':
+    'ફક્ત ખાનગી સભ્ય માહિતી માટે અધિકૃત સ્ટાફ ફોન, પરિવારનું કદ અથવા કુળ બદલી શકે છે',
+  'Only staff authorized for private member data can record phone, family size or kul':
+    'ફક્ત ખાનગી સભ્ય માહિતી માટે અધિકૃત સ્ટાફ ફોન, પરિવારનું કદ અથવા કુળ નોંધી શકે છે',
+  'This message already has the maximum number of notes.':
+    'આ સંદેશમાં નોંધોની મહત્તમ સંખ્યા થઈ ગઈ છે.',
   'Member added': 'સભ્ય ઉમેર્યા',
   'Member anonymised': 'સભ્યની ઓળખ છુપાવી',
   'Member updated': 'સભ્ય અપડેટ થયા',
@@ -206,8 +220,14 @@ export const guPatterns: [RegExp, PatternTranslation][] = [
   [/^Password must be at least (\d+) characters$/, 'પાસવર્ડ ઓછામાં ઓછો $1 અક્ષરોનો હોવો જોઈએ'],
   [/^Password must be at most (\d+) characters$/, 'પાસવર્ડ વધુમાં વધુ $1 અક્ષરોનો હોવો જોઈએ'],
   [/^Unknown public tab "(.+)"$/, 'અજાણ્યું જાહેર ટૅબ "$1"'],
-  [/^(Images|Documents) can be at most (\d+) MB$/, (m) => `${m[1] === 'Images' ? 'છબીઓ' : 'દસ્તાવેજો'} વધુમાં વધુ ${m[2]} MB ના હોઈ શકે`],
-  [/^This file is still used by: (.+)\. Replace it there first\.$/, 'આ ફાઇલ હજુ આમાં વપરાય છે: $1. પહેલાં ત્યાં બદલો.'],
+  [
+    /^(Images|Documents) can be at most (\d+) MB$/,
+    (m) => `${m[1] === 'Images' ? 'છબીઓ' : 'દસ્તાવેજો'} વધુમાં વધુ ${m[2]} MB ના હોઈ શકે`,
+  ],
+  [
+    /^This file is still used by: (.+)\. Replace it there first\.$/,
+    'આ ફાઇલ હજુ આમાં વપરાય છે: $1. પહેલાં ત્યાં બદલો.',
+  ],
   [/^(.+) not found$/, (m) => `${resourceLabel(m[1]!)} મળ્યું નથી`],
   [/^(.+) deleted$/, (m) => `${resourceLabel(m[1]!)} કાઢી નાખ્યું`],
   [/^(.+) updated$/, (m) => `${resourceLabel(m[1]!)} અપડેટ થયું`],

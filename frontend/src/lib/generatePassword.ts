@@ -2,7 +2,8 @@ const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 const DIGITS = '23456789';
 const SYMBOLS = '@#$%&*!';
 
-const pick = (chars: string): string => chars[crypto.getRandomValues(new Uint32Array(1))[0]! % chars.length]!;
+const pick = (chars: string): string =>
+  chars[crypto.getRandomValues(new Uint32Array(1))[0]! % chars.length]!;
 
 /** A random 14-character password with letters, digits and a symbol. Uses the browser's secure RNG. */
 export function generatePassword(length = 14): string {

@@ -50,7 +50,11 @@ const memberProfileSchema = new Schema<IMemberProfile>(
     },
     // Privacy-first default: only the office sees an entry until an admin makes it public.
     // (A legacy "members" value in old data is treated as hidden: only "public" is ever shown.)
-    visibility: { type: String, enum: Object.values(MemberVisibility), default: MemberVisibility.HIDDEN },
+    visibility: {
+      type: String,
+      enum: Object.values(MemberVisibility),
+      default: MemberVisibility.HIDDEN,
+    },
     highlighted: { type: Boolean, default: false },
     anonymizedAt: { type: Date },
     isDeleted: { type: Boolean, default: false },

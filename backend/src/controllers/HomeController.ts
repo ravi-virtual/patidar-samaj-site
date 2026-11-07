@@ -6,7 +6,13 @@ import Event from '../models/Event';
 import Faq from '../models/Faq';
 import ImportantLink from '../models/ImportantLink';
 import MemberProfile from '../models/MemberProfile';
-import { EventStatus, MemberVisibility, MembershipStatus, PublishStatus, ResponseCodes } from '../config/constants';
+import {
+  EventStatus,
+  MemberVisibility,
+  MembershipStatus,
+  PublishStatus,
+  ResponseCodes,
+} from '../config/constants';
 import { ApiResponse } from '../utils/apiResponse';
 import { escapeRegex } from '../utils/escapeRegex';
 import { resolvePublicTabs } from '../config/publicTabs';
@@ -45,11 +51,24 @@ export const getHome = async (req: Request, res: Response, next: NextFunction) =
       ContentBlock.find({
         isDeleted: false,
         status: PublishStatus.PUBLISHED,
-        key: { $in: tabs.about ? ['home.welcome', 'home.stats', 'about.intro'] : ['home.welcome', 'home.stats'] },
+        key: {
+          $in: tabs.about
+            ? ['home.welcome', 'home.stats', 'about.intro']
+            : ['home.welcome', 'home.stats'],
+        },
       }).lean(),
-      tabs.events ? Event.findOne({ ...upcoming, featured: true }).sort({ startsAt: 1 }).lean() : null,
+      tabs.events
+        ? Event.findOne({ ...upcoming, featured: true })
+            .sort({ startsAt: 1 })
+            .lean()
+        : null,
       tabs.events ? Event.find(upcoming).sort({ startsAt: 1 }).limit(4).lean() : [],
-      tabs.news ? Announcement.find(visibleNowFilter(now)).sort({ pinned: -1, order: 1, publishAt: -1 }).limit(4).lean() : [],
+      tabs.news
+        ? Announcement.find(visibleNowFilter(now))
+            .sort({ pinned: -1, order: 1, publishAt: -1 })
+            .limit(4)
+            .lean()
+        : [],
       tabs.directory
         ? MemberProfile.find({
             isDeleted: false,
@@ -62,7 +81,12 @@ export const getHome = async (req: Request, res: Response, next: NextFunction) =
             .limit(6)
             .lean()
         : [],
-      tabs.links ? ImportantLink.find({ isDeleted: false, status: PublishStatus.PUBLISHED }).sort({ order: 1, createdAt: 1 }).limit(6).lean() : [],
+      tabs.links
+        ? ImportantLink.find({ isDeleted: false, status: PublishStatus.PUBLISHED })
+            .sort({ order: 1, createdAt: 1 })
+            .limit(6)
+            .lean()
+        : [],
     ]);
 
     const linkFields = ContentResources.links!.publicFields;
@@ -95,25 +119,50 @@ export const search = async (req: Request, res: Response, next: NextFunction) =>
     const { q } = matchedData<{ q: string }>(req, { locations: ['query'] });
     const rx = new RegExp(escapeRegex(q), 'i');
     // Gujarati visitors also match the Gujarati text; English visitors only the English text.
-    const anyOf = (fields: string[]) => ({ $or: searchFieldsFor(fields, req.lang).map((f) => ({ [f]: rx })) });
+    const anyOf = (fields: string[]) => ({
+      $or: searchFieldsFor(fields, req.lang).map((f) => ({ [f]: rx })),
+    });
     const now = new Date();
     const tabs = resolvePublicTabs((await getSettings())?.publicTabs);
 
     const [events, announcements, faqs, links, members] = await Promise.all([
       tabs.events
-        ? Event.find({ isDeleted: false, status: { $in: [EventStatus.PUBLISHED, EventStatus.CANCELLED] }, ...anyOf(['title', 'description', 'venue']) })
+        ? Event.find({
+            isDeleted: false,
+            status: { $in: [EventStatus.PUBLISHED, EventStatus.CANCELLED] },
+            ...anyOf(['title', 'description', 'venue']),
+          })
             .sort({ startsAt: -1 })
             .limit(5)
             .lean()
         : [],
       tabs.news
-        ? Announcement.find({ ...visibleNowFilter(now), $and: [anyOf(['title', 'summary', 'body'])] })
+        ? Announcement.find({
+            ...visibleNowFilter(now),
+            $and: [anyOf(['title', 'summary', 'body'])],
+          })
             .sort({ publishAt: -1 })
             .limit(5)
             .lean()
         : [],
-      tabs.faq ? Faq.find({ isDeleted: false, status: PublishStatus.PUBLISHED, ...anyOf(['question', 'answer']) }).limit(5).lean() : [],
-      tabs.links ? ImportantLink.find({ isDeleted: false, status: PublishStatus.PUBLISHED, ...anyOf(['label', 'description']) }).limit(5).lean() : [],
+      tabs.faq
+        ? Faq.find({
+            isDeleted: false,
+            status: PublishStatus.PUBLISHED,
+            ...anyOf(['question', 'answer']),
+          })
+            .limit(5)
+            .lean()
+        : [],
+      tabs.links
+        ? ImportantLink.find({
+            isDeleted: false,
+            status: PublishStatus.PUBLISHED,
+            ...anyOf(['label', 'description']),
+          })
+            .limit(5)
+            .lean()
+        : [],
       tabs.directory
         ? MemberProfile.find({
             isDeleted: false,
@@ -145,7 +194,11 @@ export const search = async (req: Request, res: Response, next: NextFunction) =>
         const l = localizeFields(raw, ['label', 'description'], req.lang);
         return { id: l._id, title: l.label, snippet: l.description ?? null };
       }),
-      members: members.map((m) => ({ id: m._id, title: m.displayName, snippet: [m.village, m.city].filter(Boolean).join(', ') })),
+      members: members.map((m) => ({
+        id: m._id,
+        title: m.displayName,
+        snippet: [m.village, m.city].filter(Boolean).join(', '),
+      })),
     };
     const totalCount = Object.values(results).reduce((n, list) => n + list.length, 0);
     return new ApiResponse(ResponseCodes.OK, 'Search complete', { results, totalCount }).send(res);

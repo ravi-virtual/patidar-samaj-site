@@ -19,11 +19,21 @@ export function Pagination({ page, pageSize, totalCount, onChange }: PaginationP
         {t('Page {page} of {pages}', { page, pages })}
       </p>
       <div className="flex gap-2">
-        <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => onChange(page - 1)}>
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={page <= 1}
+          onClick={() => onChange(page - 1)}
+        >
           <ChevronLeft aria-hidden="true" className="h-4 w-4" />
           {t('Previous')}
         </Button>
-        <Button variant="secondary" size="sm" disabled={page >= pages} onClick={() => onChange(page + 1)}>
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={page >= pages}
+          onClick={() => onChange(page + 1)}
+        >
           {t('Next')}
           <ChevronRight aria-hidden="true" className="h-4 w-4" />
         </Button>

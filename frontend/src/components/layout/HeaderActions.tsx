@@ -13,10 +13,18 @@ export function HeaderActions() {
 
   return (
     <div className="flex items-center gap-2 lg:hidden">
-      <span className="hidden max-w-[10rem] truncate text-[13px] text-text-secondary sm:inline" title={user.email}>
+      <span
+        className="hidden max-w-[10rem] truncate text-[13px] text-text-secondary sm:inline"
+        title={user.email}
+      >
         {user.name}
       </span>
-      <Button variant="secondary" size="sm" onClick={() => void dispatch(logout())} aria-label={t('Sign out {name}', { name: user.name })}>
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={() => void dispatch(logout())}
+        aria-label={t('Sign out {name}', { name: user.name })}
+      >
         <LogOut aria-hidden="true" className="h-3.5 w-3.5" />
         <span className="hidden sm:inline">{t('Sign out')}</span>
       </Button>

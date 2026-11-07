@@ -14,7 +14,9 @@ import { PageLoading } from './PageLoading';
  */
 export function TabGate({ tab, children }: { tab: PublicTabKey; children?: ReactNode }) {
   const enabled = useTabEnabled(tab);
-  const waiting = useAppSelector((s) => s.site.settings === null && (s.site.status === 'idle' || s.site.status === 'loading'));
+  const waiting = useAppSelector(
+    (s) => s.site.settings === null && (s.site.status === 'idle' || s.site.status === 'loading'),
+  );
   if (waiting) return <PageLoading />;
   if (!enabled) return <NotFoundPage />;
   return <>{children ?? <Outlet />}</>;

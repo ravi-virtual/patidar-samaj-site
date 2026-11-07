@@ -46,11 +46,15 @@ export default function AdminAnnouncementsPage() {
     setter(v);
     setPage(1);
   };
-  const act = (a: AdminAnnouncement, action: Parameters<typeof announcementActionApi>[1], message: string) =>
-    void run(() => announcementActionApi(a.id, action), message);
+  const act = (
+    a: AdminAnnouncement,
+    action: Parameters<typeof announcementActionApi>[1],
+    message: string,
+  ) => void run(() => announcementActionApi(a.id, action), message);
 
   // Admins without publish rights may only edit drafts; the server enforces the same rule.
-  const canEdit = (a: AdminAnnouncement) => can('announcements.update') && (a.status === 'draft' || can('announcements.publish'));
+  const canEdit = (a: AdminAnnouncement) =>
+    can('announcements.update') && (a.status === 'draft' || can('announcements.publish'));
   const publisher = can('announcements.publish');
 
   const columns: Column<AdminAnnouncement>[] = [
@@ -59,7 +63,9 @@ export default function AdminAnnouncementsPage() {
       cell: (a) => (
         <div className="max-w-sm">
           <p className="flex items-center gap-1.5 truncate font-medium text-text">
-            {a.pinned && <Pin aria-label={t('Pinned')} className="h-3.5 w-3.5 shrink-0 text-accent" />}
+            {a.pinned && (
+              <Pin aria-label={t('Pinned')} className="h-3.5 w-3.5 shrink-0 text-accent" />
+            )}
             <span className="truncate">{a.title}</span>
           </p>
           <p className="truncate text-xs text-text-muted">{a.summary ?? a.body}</p>
@@ -70,7 +76,8 @@ export default function AdminAnnouncementsPage() {
     {
       header: t('Shown from'),
       className: 'whitespace-nowrap font-mono text-[13px]',
-      cell: (a) => (a.publishAt ?? a.publishedAt ? formatDateTime((a.publishAt ?? a.publishedAt)!) : '—'),
+      cell: (a) =>
+        (a.publishAt ?? a.publishedAt) ? formatDateTime((a.publishAt ?? a.publishedAt)!) : '—',
     },
     {
       header: t('Status'),
@@ -89,12 +96,44 @@ export default function AdminAnnouncementsPage() {
         <RowMenu
           name={a.title}
           actions={[
-            { label: t('Edit'), kind: 'edit', show: canEdit(a), onSelect: () => navigate(`/admin/announcements/${a.id}/edit`) },
-            { label: t('Publish'), show: publisher && a.status !== 'published', onSelect: () => act(a, 'publish', t('Announcement published.')) },
-            { label: t('Unpublish'), show: publisher && a.status === 'published', onSelect: () => act(a, 'unpublish', t('Announcement moved back to draft.')) },
-            { label: a.pinned ? t('Unpin') : t('Pin to top'), show: publisher && a.status === 'published', onSelect: () => act(a, a.pinned ? 'unpin' : 'pin', a.pinned ? t('Unpinned.') : t('Pinned to the top.')) },
-            { label: t('Archive'), show: publisher && a.status !== 'archived', onSelect: () => act(a, 'archive', t('Announcement archived.')) },
-            { label: t('Delete'), kind: 'delete', danger: true, show: can('announcements.delete'), onSelect: () => setDeleting(a) },
+            {
+              label: t('Edit'),
+              kind: 'edit',
+              show: canEdit(a),
+              onSelect: () => navigate(`/admin/announcements/${a.id}/edit`),
+            },
+            {
+              label: t('Publish'),
+              show: publisher && a.status !== 'published',
+              onSelect: () => act(a, 'publish', t('Announcement published.')),
+            },
+            {
+              label: t('Unpublish'),
+              show: publisher && a.status === 'published',
+              onSelect: () => act(a, 'unpublish', t('Announcement moved back to draft.')),
+            },
+            {
+              label: a.pinned ? t('Unpin') : t('Pin to top'),
+              show: publisher && a.status === 'published',
+              onSelect: () =>
+                act(
+                  a,
+                  a.pinned ? 'unpin' : 'pin',
+                  a.pinned ? t('Unpinned.') : t('Pinned to the top.'),
+                ),
+            },
+            {
+              label: t('Archive'),
+              show: publisher && a.status !== 'archived',
+              onSelect: () => act(a, 'archive', t('Announcement archived.')),
+            },
+            {
+              label: t('Delete'),
+              kind: 'delete',
+              danger: true,
+              show: can('announcements.delete'),
+              onSelect: () => setDeleting(a),
+            },
           ]}
         />
       ),
@@ -103,7 +142,10 @@ export default function AdminAnnouncementsPage() {
 
   return (
     <>
-      <PageHeader title={t('Announcements')} description={t('News and notices. New items start as drafts and go live when published.')} />
+      <PageHeader
+        title={t('Announcements')}
+        description={t('News and notices. New items start as drafts and go live when published.')}
+      />
       <Toolbar
         search={search}
         onSearch={reset(setSearch)}
@@ -117,8 +159,26 @@ export default function AdminAnnouncementsPage() {
           )
         }
       >
-        <FilterSelect label={t('Status')} value={status} onChange={reset(setStatus)} options={[{ value: '', label: t('All statuses') }, { value: 'draft', label: t('Draft') }, { value: 'published', label: t('Published') }, { value: 'archived', label: t('Archived') }]} />
-        <FilterSelect label={t('Category')} value={category} onChange={reset(setCategory)} options={[{ value: '', label: t('All categories') }, ...ANNOUNCEMENT_CATEGORIES.map((c) => ({ value: c, label: t(c) }))]} />
+        <FilterSelect
+          label={t('Status')}
+          value={status}
+          onChange={reset(setStatus)}
+          options={[
+            { value: '', label: t('All statuses') },
+            { value: 'draft', label: t('Draft') },
+            { value: 'published', label: t('Published') },
+            { value: 'archived', label: t('Archived') },
+          ]}
+        />
+        <FilterSelect
+          label={t('Category')}
+          value={category}
+          onChange={reset(setCategory)}
+          options={[
+            { value: '', label: t('All categories') },
+            ...ANNOUNCEMENT_CATEGORIES.map((c) => ({ value: c, label: t(c) })),
+          ]}
+        />
       </Toolbar>
 
       <DataTable
@@ -129,9 +189,21 @@ export default function AdminAnnouncementsPage() {
         loading={list.loading}
         error={list.error}
         onRetry={list.retry}
-        empty={<EmptyState title={t('No announcements found')} description={t('Try different filters, or write the first one.')} />}
+        empty={
+          <EmptyState
+            title={t('No announcements found')}
+            description={t('Try different filters, or write the first one.')}
+          />
+        }
       />
-      {list.data && <Pagination page={page} pageSize={PAGE_SIZE} totalCount={list.data.totalCount} onChange={setPage} />}
+      {list.data && (
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          totalCount={list.data.totalCount}
+          onChange={setPage}
+        />
+      )}
 
       <ConfirmDialog
         open={deleting !== null}
@@ -140,7 +212,10 @@ export default function AdminAnnouncementsPage() {
         tone="danger"
         busy={busy}
         onConfirm={() => {
-          if (deleting) void run(() => deleteAnnouncementApi(deleting.id), t('Announcement deleted.')).then((ok) => ok && setDeleting(null));
+          if (deleting)
+            void run(() => deleteAnnouncementApi(deleting.id), t('Announcement deleted.')).then(
+              (ok) => ok && setDeleting(null),
+            );
         }}
         onCancel={() => setDeleting(null)}
       >

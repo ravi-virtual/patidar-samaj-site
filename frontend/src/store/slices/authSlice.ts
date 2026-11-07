@@ -9,6 +9,8 @@ interface AuthState {
   user: SessionUser | null;
   /** False until the first GET /auth/:id has answered, so guards do not flash a redirect. */
   bootstrapped: boolean;
+  /** True while the first GET /auth/:id is in flight, so it is not sent twice. */
+  bootstrapping: boolean;
   loginStatus: 'idle' | 'loading' | 'failed';
   loginError: string | null;
   loginErrorCode: string | null;
@@ -17,25 +19,31 @@ interface AuthState {
 const initialState: AuthState = {
   user: null,
   bootstrapped: false,
+  bootstrapping: false,
   loginStatus: 'idle',
   loginError: null,
   loginErrorCode: null,
 };
 
 /** Restores the signed-in state on page load. A 401 simply means "not signed in". */
-export const bootstrapAuth = createAsyncThunk<SessionUser | null>('auth/bootstrap', async () => {
-  const storedId = getStoredUserId();
-  if (!storedId) return null;
-  try {
-    const { user, csrfToken } = await getUserByIdApi(storedId);
-    setCsrfToken(csrfToken);
-    return user;
-  } catch {
-    setCsrfToken(null);
-    setStoredUserId(null);
-    return null;
-  }
-});
+export const bootstrapAuth = createAsyncThunk<SessionUser | null>(
+  'auth/bootstrap',
+  async () => {
+    const storedId = getStoredUserId();
+    if (!storedId) return null;
+    try {
+      const { user, csrfToken } = await getUserByIdApi(storedId);
+      setCsrfToken(csrfToken);
+      return user;
+    } catch {
+      setCsrfToken(null);
+      setStoredUserId(null);
+      return null;
+    }
+  },
+  // A request already in flight is enough (React StrictMode re-runs effects in development).
+  { condition: (_arg, { getState }) => !(getState() as { auth: AuthState }).auth.bootstrapping },
+);
 
 type LoginArg = { email: string; password: string };
 type LoginReject = { rejectValue: { message: string; code?: string } };
@@ -87,9 +95,13 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      .addCase(bootstrapAuth.pending, (state) => {
+        state.bootstrapping = true;
+      })
       .addCase(bootstrapAuth.fulfilled, (state, action) => {
         state.user = action.payload;
         state.bootstrapped = true;
+        state.bootstrapping = false;
       })
       .addCase(logout.fulfilled, (state) => {
         state.user = null;

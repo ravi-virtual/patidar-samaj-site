@@ -3,7 +3,18 @@ import AuditLog from '../../src/models/AuditLog';
 import ContactMessage from '../../src/models/ContactMessage';
 import User from '../../src/models/User';
 import { AccountStatus, Roles } from '../../src/config/constants';
-import { ORIGIN, anon, connectTestDb, disconnectTestDb, makeUser, resetDb, signInAs, OPS_ADMIN_PERMISSIONS, READ_ONLY_ADMIN_PERMISSIONS, DRAFT_ADMIN_PERMISSIONS } from '../helpers';
+import {
+  ORIGIN,
+  anon,
+  connectTestDb,
+  disconnectTestDb,
+  makeUser,
+  resetDb,
+  signInAs,
+  OPS_ADMIN_PERMISSIONS,
+  READ_ONLY_ADMIN_PERMISSIONS,
+  DRAFT_ADMIN_PERMISSIONS,
+} from '../helpers';
 
 beforeAll(connectTestDb);
 afterAll(disconnectTestDb);
@@ -16,7 +27,8 @@ const valid = (over: Record<string, unknown> = {}) => ({
   message: 'I would like to know how to renew my family membership.',
   ...over,
 });
-const submit = (body: Record<string, unknown>) => anon().post('/contact').set('Origin', ORIGIN).send(body);
+const submit = (body: Record<string, unknown>) =>
+  anon().post('/contact').set('Origin', ORIGIN).send(body);
 
 describe('public contact form', () => {
   it('saves the message and says it was received — never that an email was sent', async () => {
@@ -28,7 +40,12 @@ describe('public contact form', () => {
     expect(res.body.data.reference).toMatch(/^[0-9A-F]{8}$/);
 
     const stored = await ContactMessage.findOne().lean();
-    expect(stored).toMatchObject({ name: 'Meera Patel', email: 'meera@example.test', topic: 'Membership', status: 'new' });
+    expect(stored).toMatchObject({
+      name: 'Meera Patel',
+      email: 'meera@example.test',
+      topic: 'Membership',
+      status: 'new',
+    });
   });
 
   it('defaults the topic and stores a hash of the sender’s network address, not the address', async () => {
@@ -89,12 +106,17 @@ describe('public contact form', () => {
     expect(await ContactMessage.countDocuments()).toBe(3);
 
     // An older message does not count against the hourly cap.
-    await ContactMessage.updateMany({}, { $set: { createdAt: new Date(Date.now() - 2 * 3600_000) } }, { timestamps: false, overwriteImmutable: true });
+    await ContactMessage.updateMany(
+      {},
+      { $set: { createdAt: new Date(Date.now() - 2 * 3600_000) } },
+      { timestamps: false, overwriteImmutable: true },
+    );
     expect((await submit(valid())).status).toBe(201);
   });
 
   it('also limits one network address across different emails', async () => {
-    for (let i = 0; i < 6; i += 1) expect((await submit(valid({ email: `sender${i}@example.test` }))).status).toBe(201);
+    for (let i = 0; i < 6; i += 1)
+      expect((await submit(valid({ email: `sender${i}@example.test` }))).status).toBe(201);
     expect((await submit(valid({ email: 'sender99@example.test' }))).status).toBe(429);
   });
 
@@ -110,7 +132,11 @@ describe('who can read the inbox', () => {
     const message = await ContactMessage.create(valid());
     expect((await anon().get('/admin/contacts')).status).toBe(401);
     expect((await anon().get(`/admin/contacts/${message._id}`)).status).toBe(401);
-    for (const [label, permissions] of [['no permissions', []], ['read-only', READ_ONLY_ADMIN_PERMISSIONS], ['drafting', DRAFT_ADMIN_PERMISSIONS]] as const) {
+    for (const [label, permissions] of [
+      ['no permissions', []],
+      ['read-only', READ_ONLY_ADMIN_PERMISSIONS],
+      ['drafting', DRAFT_ADMIN_PERMISSIONS],
+    ] as const) {
       const { client } = await signInAs(Roles.ADMIN, { permissions: [...permissions] });
       const results = await Promise.all([
         client.get('/admin/contacts'),
@@ -125,7 +151,10 @@ describe('who can read the inbox', () => {
 
   it('lets an admin with contacts.read, and the Super Admin, read it', async () => {
     await ContactMessage.create(valid());
-    for (const [role, permissions] of [[Roles.ADMIN, ['contacts.read']], [Roles.SUPER_ADMIN, []]] as const) {
+    for (const [role, permissions] of [
+      [Roles.ADMIN, ['contacts.read']],
+      [Roles.SUPER_ADMIN, []],
+    ] as const) {
       const { client } = await signInAs(role, { permissions: [...permissions] });
       expect((await client.get('/admin/contacts')).body.data.totalCount).toBe(1);
     }
@@ -134,9 +163,28 @@ describe('who can read the inbox', () => {
 
 describe('inbox management', () => {
   const seed = async () => {
-    await ContactMessage.create(valid({ name: 'Alice Shah', message: 'Question about scholarships for my daughter.', topic: 'Scholarships' }));
-    await ContactMessage.create(valid({ name: 'Bhavin Mehta', message: 'Booking the Bhavan hall for a wedding.', topic: 'Patidar Samaj Bhavan booking', status: 'in_progress' }));
-    await ContactMessage.create(valid({ name: 'Chetna Desai', message: 'Thanks, my membership is sorted now.', status: 'resolved' }));
+    await ContactMessage.create(
+      valid({
+        name: 'Alice Shah',
+        message: 'Question about scholarships for my daughter.',
+        topic: 'Scholarships',
+      }),
+    );
+    await ContactMessage.create(
+      valid({
+        name: 'Bhavin Mehta',
+        message: 'Booking the Bhavan hall for a wedding.',
+        topic: 'Patidar Samaj Bhavan booking',
+        status: 'in_progress',
+      }),
+    );
+    await ContactMessage.create(
+      valid({
+        name: 'Chetna Desai',
+        message: 'Thanks, my membership is sorted now.',
+        status: 'resolved',
+      }),
+    );
   };
 
   it('lists with status counts, filters, search and paging', async () => {
@@ -148,8 +196,12 @@ describe('inbox management', () => {
     expect(all.body.data.messages[0]).toHaveProperty('preview');
     expect(all.body.data.messages[0]).not.toHaveProperty('notes');
 
-    expect((await client.get('/admin/contacts?status=new')).body.data.messages[0].name).toBe('Alice Shah');
-    expect((await client.get('/admin/contacts?search=wedding')).body.data.messages[0].name).toBe('Bhavin Mehta');
+    expect((await client.get('/admin/contacts?status=new')).body.data.messages[0].name).toBe(
+      'Alice Shah',
+    );
+    expect((await client.get('/admin/contacts?search=wedding')).body.data.messages[0].name).toBe(
+      'Bhavin Mehta',
+    );
     expect((await client.get('/admin/contacts?search=.*')).body.data.totalCount).toBe(0);
     expect((await client.get('/admin/contacts?limit=2&page=2')).body.data.messages).toHaveLength(1);
     expect((await client.get('/admin/contacts?status=bogus')).status).toBe(400);
@@ -162,10 +214,16 @@ describe('inbox management', () => {
     expect(await AuditLog.countDocuments({ action: 'contact.viewed' })).toBe(0); // listing is not a "view"
 
     const res = await client.get(`/admin/contacts/${message._id}`);
-    expect(res.body.data.message).toMatchObject({ email: 'meera@example.test', message: valid().message, notes: [] });
+    expect(res.body.data.message).toMatchObject({
+      email: 'meera@example.test',
+      message: valid().message,
+      notes: [],
+    });
     const audit = await AuditLog.findOne({ action: 'contact.viewed' }).lean();
     expect(audit).toMatchObject({ actorId: user._id, targetId: message._id });
-    expect((await client.get('/admin/contacts/11111111-1111-4111-8111-111111111111')).status).toBe(404);
+    expect((await client.get('/admin/contacts/11111111-1111-4111-8111-111111111111')).status).toBe(
+      404,
+    );
     expect((await client.get('/admin/contacts/nope')).status).toBe(400);
   });
 
@@ -181,7 +239,9 @@ describe('inbox management', () => {
     const reopened = await set('new');
     expect(reopened.body.data.message.resolvedAt).toBeNull();
     expect((await set('archived')).status).toBe(400);
-    expect(await AuditLog.countDocuments({ action: 'contact.updated', targetId: message._id })).toBe(3);
+    expect(
+      await AuditLog.countDocuments({ action: 'contact.updated', targetId: message._id }),
+    ).toBe(3);
   });
 
   it('assigns to active staff only, and moves a new message into progress', async () => {
@@ -191,7 +251,8 @@ describe('inbox management', () => {
     await User.updateOne({ _id: deleted._id }, { $set: { isDeleted: true } });
     const suspended = await makeUser({ role: Roles.ADMIN, status: AccountStatus.SUSPENDED });
     const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
-    const assign = (id: string | null) => client.patch(`/admin/contacts/${message._id}`).send({ assignedTo: id });
+    const assign = (id: string | null) =>
+      client.patch(`/admin/contacts/${message._id}`).send({ assignedTo: id });
 
     expect((await assign(deleted._id)).status).toBe(400);
     expect((await assign(suspended._id)).status).toBe(400);
@@ -202,7 +263,9 @@ describe('inbox management', () => {
     const ok = await assign(staff._id);
     expect(ok.status).toBe(200);
     expect(ok.body.data.message).toMatchObject({ assignedTo: staff._id, status: 'in_progress' });
-    expect((await client.get(`/admin/contacts?assignedTo=${staff._id}`)).body.data.totalCount).toBe(1);
+    expect((await client.get(`/admin/contacts?assignedTo=${staff._id}`)).body.data.totalCount).toBe(
+      1,
+    );
 
     const cleared = await assign(null);
     expect(cleared.body.data.message.assignedTo).toBeNull();
@@ -218,21 +281,46 @@ describe('inbox management', () => {
   it('keeps internal notes on the detail view only', async () => {
     const message = await ContactMessage.create(valid());
     const { user, client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
-    const res = await client.post(`/admin/contacts/${message._id}/notes`).send({ text: 'Called back; will send the form.' });
+    const res = await client
+      .post(`/admin/contacts/${message._id}/notes`)
+      .send({ text: 'Called back; will send the form.' });
     expect(res.status).toBe(201);
-    expect(res.body.data.message.notes[0]).toMatchObject({ authorId: user._id, text: 'Called back; will send the form.' });
+    expect(res.body.data.message.notes[0]).toMatchObject({
+      authorId: user._id,
+      text: 'Called back; will send the form.',
+    });
     expect((await client.get('/admin/contacts')).body.data.messages[0]).not.toHaveProperty('notes');
-    expect((await client.post(`/admin/contacts/${message._id}/notes`).send({ text: '' })).status).toBe(400);
-    expect((await client.post(`/admin/contacts/${message._id}/notes`).send({ text: '<script>x</script>' })).status).toBe(400);
+    expect(
+      (await client.post(`/admin/contacts/${message._id}/notes`).send({ text: '' })).status,
+    ).toBe(400);
+    expect(
+      (
+        await client
+          .post(`/admin/contacts/${message._id}/notes`)
+          .send({ text: '<script>x</script>' })
+      ).status,
+    ).toBe(400);
     expect(await AuditLog.countDocuments({ action: 'contact.note_added' })).toBe(1);
   });
 
   it('ignores fields staff may not change (sender details, hash, deletion flag)', async () => {
     const message = await ContactMessage.create(valid());
     const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
-    await client.patch(`/admin/contacts/${message._id}`).send({ status: 'in_progress', email: 'changed@example.test', name: 'Changed', message: 'Changed', isDeleted: true, ipHash: 'x' });
+    await client.patch(`/admin/contacts/${message._id}`).send({
+      status: 'in_progress',
+      email: 'changed@example.test',
+      name: 'Changed',
+      message: 'Changed',
+      isDeleted: true,
+      ipHash: 'x',
+    });
     const stored = await ContactMessage.findById(message._id).lean();
-    expect(stored).toMatchObject({ email: 'meera@example.test', name: 'Meera Patel', isDeleted: false, status: 'in_progress' });
+    expect(stored).toMatchObject({
+      email: 'meera@example.test',
+      name: 'Meera Patel',
+      isDeleted: false,
+      status: 'in_progress',
+    });
     expect(stored?.message).toBe(valid().message);
   });
 });

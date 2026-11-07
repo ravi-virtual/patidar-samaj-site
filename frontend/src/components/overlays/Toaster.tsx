@@ -17,7 +17,10 @@ function ToastItem({ toast }: { toast: Toast }) {
 
   // Errors stay a little longer so they can be read.
   useEffect(() => {
-    const id = setTimeout(() => dispatch(dismissToast(toast.id)), toast.tone === 'error' ? 8000 : 4500);
+    const id = setTimeout(
+      () => dispatch(dismissToast(toast.id)),
+      toast.tone === 'error' ? 8000 : 4500,
+    );
     return () => clearTimeout(id);
   }, [dispatch, toast.id, toast.tone]);
 

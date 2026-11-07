@@ -20,8 +20,18 @@ interface Tile {
 const tiles: Tile[] = [
   { key: 'totalMembers', label: 'Active members', note: 'In the directory', to: '/admin/members' },
   { key: 'upcomingEvents', label: 'Upcoming events', note: 'Published', to: '/admin/events' },
-  { key: 'publishedAnnouncements', label: 'Announcements', note: 'Live on the site', to: '/admin/announcements' },
-  { key: 'unreadContactMessages', label: 'New messages', note: 'Not yet opened', to: '/admin/contacts?status=new' },
+  {
+    key: 'publishedAnnouncements',
+    label: 'Announcements',
+    note: 'Live on the site',
+    to: '/admin/announcements',
+  },
+  {
+    key: 'unreadContactMessages',
+    label: 'New messages',
+    note: 'Not yet opened',
+    to: '/admin/contacts?status=new',
+  },
 ];
 
 function Body({ stats }: { stats: DashboardStats }) {
@@ -34,10 +44,15 @@ function Body({ stats }: { stats: DashboardStats }) {
             <li key={tile.key}>
               <Card className="h-full px-[18px] py-4">
                 <p className="text-[13px] text-text-muted">{t(tile.label)}</p>
-                <p className="text-3xl font-semibold tabular-nums tracking-tight">{String(stats[tile.key])}</p>
+                <p className="text-3xl font-semibold tabular-nums tracking-tight">
+                  {String(stats[tile.key])}
+                </p>
                 <p className="text-xs text-text-muted">
                   {tile.to ? (
-                    <Link to={tile.to} className="text-text-muted underline-offset-2 hover:text-accent">
+                    <Link
+                      to={tile.to}
+                      className="text-text-muted underline-offset-2 hover:text-accent"
+                    >
                       {t(tile.note)}
                     </Link>
                   ) : (
@@ -57,10 +72,17 @@ function Body({ stats }: { stats: DashboardStats }) {
           ) : (
             <ul className="m-0 list-none p-0">
               {stats.recentActivity.map((a, i) => (
-                <li key={i} className="flex items-start gap-2.5 border-t border-surface-muted py-2 text-sm first:border-t-0">
-                  <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                <li
+                  key={i}
+                  className="flex items-start gap-2.5 border-t border-surface-muted py-2 text-sm first:border-t-0"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
+                  />
                   <span className="flex-1">
-                    <strong className="font-semibold">{a.actor}</strong> · {describeAction(a.action)}
+                    <strong className="font-semibold">{a.actor}</strong> ·{' '}
+                    {describeAction(a.action)}
                   </span>
                   <time dateTime={a.at} className="whitespace-nowrap text-xs text-text-subtle">
                     {formatDateTime(a.at)}
@@ -80,8 +102,19 @@ export default function AdminDashboardPage() {
   const { data, initialLoading, error, retry } = useFetch('admin-dashboard', getDashboardApi);
   return (
     <>
-      <PageHeader title={t('Dashboard')} description={t('Signed in as {role}. Figures show only what your permissions allow.', { role: roleLabel(user.role) })} />
-      <Async data={data} loading={initialLoading} error={error} onRetry={retry} skeleton={<Skeleton className="h-40" />}>
+      <PageHeader
+        title={t('Dashboard')}
+        description={t('Signed in as {role}. Figures show only what your permissions allow.', {
+          role: roleLabel(user.role),
+        })}
+      />
+      <Async
+        data={data}
+        loading={initialLoading}
+        error={error}
+        onRetry={retry}
+        skeleton={<Skeleton className="h-40" />}
+      >
         {(stats) => <Body stats={stats} />}
       </Async>
     </>

@@ -13,7 +13,11 @@ const hasToken = async (req: Request, res: Response, next: NextFunction) => {
     const result = await authenticate(req, { enforceCsrf: true });
     if (!result.ok) {
       if (result.clearCookie) clearSessionCookie(res);
-      return sendError(res, { statusCode: result.status, message: result.message, code: result.code });
+      return sendError(res, {
+        statusCode: result.status,
+        message: result.message,
+        code: result.code,
+      });
     }
     req.user = result.user;
     req.authSession = result.session;

@@ -7,7 +7,8 @@ type Params = Record<string, string | number | boolean | undefined>;
 
 /** Query parameters that are empty are left out, so filters read naturally in the calling code. */
 const clean = (params?: Params): Params | undefined =>
-  params && Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== ''));
+  params &&
+  Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== ''));
 
 // ─── Dashboard, audit, settings ──────────────────────────────────────────────
 
@@ -37,9 +38,12 @@ export interface AuditEntry {
 }
 
 export const listAuditApi = async (params: Params) => {
-  const { data } = await api.get<Envelope<{ entries: AuditEntry[]; totalCount: number }>>('/admin/audit', {
-    params: clean(params),
-  });
+  const { data } = await api.get<Envelope<{ entries: AuditEntry[]; totalCount: number }>>(
+    '/admin/audit',
+    {
+      params: clean(params),
+    },
+  );
   return data.data;
 };
 
@@ -49,7 +53,14 @@ export interface AdminSettings {
   invocation: string;
   tagline: string;
   logoUrl?: string | null;
-  contact: { email: string; phone: string; address: string; officeHours: string; addressGu?: string; officeHoursGu?: string };
+  contact: {
+    email: string;
+    phone: string;
+    address: string;
+    officeHours: string;
+    addressGu?: string;
+    officeHoursGu?: string;
+  };
   socialLinks: { label: string; url: string }[];
   footerNote: string;
   // Gujarati versions (optional; empty means the English text is shown).
@@ -68,7 +79,9 @@ export const getAdminSettingsApi = async (): Promise<AdminSettings> => {
 };
 
 /** A partial update: only the listed fields (and only the listed public tabs) change. */
-export const updateAdminSettingsApi = async (body: Partial<Omit<AdminSettings, 'publicTabs'>> & { publicTabs?: Partial<PublicTabs> }): Promise<AdminSettings> => {
+export const updateAdminSettingsApi = async (
+  body: Partial<Omit<AdminSettings, 'publicTabs'>> & { publicTabs?: Partial<PublicTabs> },
+): Promise<AdminSettings> => {
   const { data } = await api.patch<Envelope<{ settings: AdminSettings }>>('/admin/settings', body);
   return data.data.settings;
 };
@@ -112,9 +125,12 @@ export interface EventInput {
 }
 
 export const listAdminEventsApi = async (params: Params) => {
-  const { data } = await api.get<Envelope<{ events: AdminEvent[]; totalCount: number }>>('/admin/events', {
-    params: clean(params),
-  });
+  const { data } = await api.get<Envelope<{ events: AdminEvent[]; totalCount: number }>>(
+    '/admin/events',
+    {
+      params: clean(params),
+    },
+  );
   return data.data;
 };
 
@@ -133,7 +149,10 @@ export const eventActionApi = async (
   action: 'publish' | 'unpublish' | 'archive' | 'cancel',
   body?: { reason?: string; reasonGu?: string },
 ): Promise<AdminEvent> => {
-  const { data } = await api.post<Envelope<{ event: AdminEvent }>>(`/admin/events/${id}/${action}`, body ?? {});
+  const { data } = await api.post<Envelope<{ event: AdminEvent }>>(
+    `/admin/events/${id}/${action}`,
+    body ?? {},
+  );
   return data.data.event;
 };
 
@@ -142,7 +161,11 @@ export const deleteEventApi = async (id: string): Promise<void> => {
 };
 
 /** Downloads a CSV through the authenticated API and hands it to the browser as a file. */
-export const downloadCsv = async (path: string, params: Params | undefined, filename: string): Promise<void> => {
+export const downloadCsv = async (
+  path: string,
+  params: Params | undefined,
+  filename: string,
+): Promise<void> => {
   const { data } = await api.get<Blob>(path, { params: clean(params), responseType: 'blob' });
   const url = URL.createObjectURL(data);
   const a = document.createElement('a');
@@ -190,20 +213,30 @@ export interface AnnouncementInput {
 }
 
 export const listAdminAnnouncementsApi = async (params: Params) => {
-  const { data } = await api.get<Envelope<{ announcements: AdminAnnouncement[]; totalCount: number }>>(
-    '/admin/announcements',
-    { params: clean(params) },
-  );
+  const { data } = await api.get<
+    Envelope<{ announcements: AdminAnnouncement[]; totalCount: number }>
+  >('/admin/announcements', { params: clean(params) });
   return data.data;
 };
 
-export const createAnnouncementApi = async (body: AnnouncementInput): Promise<AdminAnnouncement> => {
-  const { data } = await api.post<Envelope<{ announcement: AdminAnnouncement }>>('/admin/announcements', body);
+export const createAnnouncementApi = async (
+  body: AnnouncementInput,
+): Promise<AdminAnnouncement> => {
+  const { data } = await api.post<Envelope<{ announcement: AdminAnnouncement }>>(
+    '/admin/announcements',
+    body,
+  );
   return data.data.announcement;
 };
 
-export const updateAnnouncementApi = async (id: string, body: AnnouncementInput): Promise<AdminAnnouncement> => {
-  const { data } = await api.patch<Envelope<{ announcement: AdminAnnouncement }>>(`/admin/announcements/${id}`, body);
+export const updateAnnouncementApi = async (
+  id: string,
+  body: AnnouncementInput,
+): Promise<AdminAnnouncement> => {
+  const { data } = await api.patch<Envelope<{ announcement: AdminAnnouncement }>>(
+    `/admin/announcements/${id}`,
+    body,
+  );
   return data.data.announcement;
 };
 
@@ -211,7 +244,10 @@ export const announcementActionApi = async (
   id: string,
   action: 'publish' | 'unpublish' | 'archive' | 'pin' | 'unpin',
 ): Promise<AdminAnnouncement> => {
-  const { data } = await api.post<Envelope<{ announcement: AdminAnnouncement }>>(`/admin/announcements/${id}/${action}`, {});
+  const { data } = await api.post<Envelope<{ announcement: AdminAnnouncement }>>(
+    `/admin/announcements/${id}/${action}`,
+    {},
+  );
   return data.data.announcement;
 };
 
@@ -235,7 +271,9 @@ export interface AdminUser {
 }
 
 export const listUsersApi = async (params: Params) => {
-  const { data } = await api.get<Envelope<{ users: AdminUser[]; totalCount: number }>>('/users', { params: clean(params) });
+  const { data } = await api.get<Envelope<{ users: AdminUser[]; totalCount: number }>>('/users', {
+    params: clean(params),
+  });
   return data.data;
 };
 
@@ -254,7 +292,10 @@ export const createAdminApi = async (body: {
   return data.data;
 };
 
-export const updateAdminApi = async (id: string, body: { name?: string; permissions?: string[] }): Promise<AdminUser> => {
+export const updateAdminApi = async (
+  id: string,
+  body: { name?: string; permissions?: string[] },
+): Promise<AdminUser> => {
   const { data } = await api.patch<Envelope<{ user: AdminUser }>>(`/users/${id}`, body);
   return data.data.user;
 };
@@ -272,7 +313,9 @@ export const userActionApi = async (
 };
 
 export const resetAdminPasswordApi = async (id: string, password: string): Promise<MailStatus> => {
-  const { data } = await api.post<Envelope<{ email: MailStatus }>>(`/users/${id}/password-reset`, { password });
+  const { data } = await api.post<Envelope<{ email: MailStatus }>>(`/users/${id}/password-reset`, {
+    password,
+  });
   return data.data.email;
 };
 
@@ -313,9 +356,12 @@ export interface MemberInput {
 }
 
 export const listStaffMembersApi = async (params: Params) => {
-  const { data } = await api.get<Envelope<{ members: StaffMember[]; totalCount: number }>>('/admin/members', {
-    params: clean(params),
-  });
+  const { data } = await api.get<Envelope<{ members: StaffMember[]; totalCount: number }>>(
+    '/admin/members',
+    {
+      params: clean(params),
+    },
+  );
   return data.data;
 };
 
@@ -354,7 +400,11 @@ export interface ContactMessage {
 
 export const listContactsApi = async (params: Params) => {
   const { data } = await api.get<
-    Envelope<{ messages: ContactMessage[]; totalCount: number; counts: Partial<Record<ContactStatus, number>> }>
+    Envelope<{
+      messages: ContactMessage[];
+      totalCount: number;
+      counts: Partial<Record<ContactStatus, number>>;
+    }>
   >('/admin/contacts', { params: clean(params) });
   return data.data;
 };
@@ -368,18 +418,25 @@ export const updateContactApi = async (
   id: string,
   body: { status?: ContactStatus; assignedTo?: string | null },
 ): Promise<ContactMessage> => {
-  const { data } = await api.patch<Envelope<{ message: ContactMessage }>>(`/admin/contacts/${id}`, body);
+  const { data } = await api.patch<Envelope<{ message: ContactMessage }>>(
+    `/admin/contacts/${id}`,
+    body,
+  );
   return data.data.message;
 };
 
 export const addContactNoteApi = async (id: string, text: string): Promise<ContactMessage> => {
-  const { data } = await api.post<Envelope<{ message: ContactMessage }>>(`/admin/contacts/${id}/notes`, { text });
+  const { data } = await api.post<Envelope<{ message: ContactMessage }>>(
+    `/admin/contacts/${id}/notes`,
+    { text },
+  );
   return data.data.message;
 };
 
 // ─── Content ─────────────────────────────────────────────────────────────────
 
-export type ContentResource = 'faqs' | 'links' | 'milestones' | 'committee-terms' | 'committee-members';
+export type ContentResource =
+  'faqs' | 'links' | 'milestones' | 'committee-terms' | 'committee-members';
 
 /** One shape for every managed content type; the fields that apply depend on the resource. */
 export interface ContentRow {
@@ -425,9 +482,12 @@ export interface ContentRow {
 }
 
 export const listContentApi = async (resource: ContentResource, params?: Params) => {
-  const { data } = await api.get<Envelope<{ items: ContentRow[]; totalCount: number }>>(`/admin/content/${resource}`, {
-    params: clean(params),
-  });
+  const { data } = await api.get<Envelope<{ items: ContentRow[]; totalCount: number }>>(
+    `/admin/content/${resource}`,
+    {
+      params: clean(params),
+    },
+  );
   return data.data;
 };
 
@@ -447,7 +507,10 @@ export const contentActionApi = async (
   id: string,
   action: 'publish' | 'unpublish' | 'archive',
 ): Promise<ContentRow> => {
-  const { data } = await api.post<Envelope<{ item: ContentRow }>>(`/admin/content/${resource}/${id}/${action}`, {});
+  const { data } = await api.post<Envelope<{ item: ContentRow }>>(
+    `/admin/content/${resource}/${id}/${action}`,
+    {},
+  );
   return data.data.item;
 };
 
@@ -485,14 +548,29 @@ export const listBlocksAdminApi = async (): Promise<AdminBlock[]> => {
 
 export const saveBlockApi = async (
   key: string,
-  body: { title?: string; titleGu?: string; body?: string; bodyGu?: string; items?: Record<string, string>[] },
+  body: {
+    title?: string;
+    titleGu?: string;
+    body?: string;
+    bodyGu?: string;
+    items?: Record<string, string>[];
+  },
 ): Promise<AdminBlock> => {
-  const { data } = await api.put<Envelope<{ block: AdminBlock }>>(`/admin/content/blocks/${key}`, body);
+  const { data } = await api.put<Envelope<{ block: AdminBlock }>>(
+    `/admin/content/blocks/${key}`,
+    body,
+  );
   return data.data.block;
 };
 
-export const blockActionApi = async (key: string, action: 'publish' | 'unpublish'): Promise<AdminBlock> => {
-  const { data } = await api.post<Envelope<{ block: AdminBlock }>>(`/admin/content/blocks/${key}/${action}`, {});
+export const blockActionApi = async (
+  key: string,
+  action: 'publish' | 'unpublish',
+): Promise<AdminBlock> => {
+  const { data } = await api.post<Envelope<{ block: AdminBlock }>>(
+    `/admin/content/blocks/${key}/${action}`,
+    {},
+  );
   return data.data.block;
 };
 
@@ -511,9 +589,12 @@ export interface MediaItem {
 }
 
 export const listMediaApi = async (params: Params) => {
-  const { data } = await api.get<Envelope<{ media: MediaItem[]; totalCount: number }>>('/admin/media', {
-    params: clean(params),
-  });
+  const { data } = await api.get<Envelope<{ media: MediaItem[]; totalCount: number }>>(
+    '/admin/media',
+    {
+      params: clean(params),
+    },
+  );
   return data.data;
 };
 
@@ -541,7 +622,10 @@ export const deleteMediaApi = async (id: string): Promise<void> => {
   await api.delete(`/admin/media/${id}`);
 };
 
-export const reorderContentApi = async (resource: ContentResource, ids: string[]): Promise<void> => {
+export const reorderContentApi = async (
+  resource: ContentResource,
+  ids: string[],
+): Promise<void> => {
   await api.patch(`/admin/content/${resource}/reorder`, { ids });
 };
 
@@ -553,7 +637,9 @@ export const getEventApi = async (id: string): Promise<AdminEvent> => {
 };
 
 export const getAnnouncementApi = async (id: string): Promise<AdminAnnouncement> => {
-  const { data } = await api.get<Envelope<{ announcement: AdminAnnouncement }>>(`/admin/announcements/${id}`);
+  const { data } = await api.get<Envelope<{ announcement: AdminAnnouncement }>>(
+    `/admin/announcements/${id}`,
+  );
   return data.data.announcement;
 };
 
@@ -563,7 +649,9 @@ export const getMemberApi = async (id: string): Promise<StaffMember> => {
 };
 
 export const getContentApi = async (resource: ContentResource, id: string): Promise<ContentRow> => {
-  const { data } = await api.get<Envelope<{ item: ContentRow }>>(`/admin/content/${resource}/${id}`);
+  const { data } = await api.get<Envelope<{ item: ContentRow }>>(
+    `/admin/content/${resource}/${id}`,
+  );
   return data.data.item;
 };
 

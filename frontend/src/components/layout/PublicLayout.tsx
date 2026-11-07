@@ -63,7 +63,8 @@ const titles: { prefix: string; label: string; icon?: LucideIcon }[] = [
   { prefix: '/reset-password', label: 'Reset password' },
 ];
 
-const breadcrumbFor = (pathname: string) => t(titles.find((x) => pathname.startsWith(x.prefix))?.label ?? 'Home');
+const breadcrumbFor = (pathname: string) =>
+  t(titles.find((x) => pathname.startsWith(x.prefix))?.label ?? 'Home');
 
 /** "Home > Events" and, on a detail page, "Home > Events > Details". */
 const crumbsFor = (pathname: string): Crumb[] => {
@@ -71,7 +72,11 @@ const crumbsFor = (pathname: string): Crumb[] => {
   if (!title) return [{ label: t('Home') }];
   const isDetail = pathname.replace(/\/+$/, '') !== title.prefix;
   return isDetail
-    ? [{ label: t('Home'), to: '/' }, { label: t(title.label), to: title.prefix }, { label: t('Details') }]
+    ? [
+        { label: t('Home'), to: '/' },
+        { label: t(title.label), to: title.prefix },
+        { label: t('Details') },
+      ]
     : [{ label: t('Home'), to: '/' }, { label: t(title.label) }];
 };
 

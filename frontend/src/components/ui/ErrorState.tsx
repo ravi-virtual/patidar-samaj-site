@@ -9,7 +9,11 @@ interface ErrorStateProps {
 }
 
 /** Actionable error: says what failed and offers a retry. role="alert" announces it. */
-export function ErrorState({ title = t('Something went wrong'), message, onRetry }: ErrorStateProps) {
+export function ErrorState({
+  title = t('Something went wrong'),
+  message,
+  onRetry,
+}: ErrorStateProps) {
   return (
     <div
       role="alert"

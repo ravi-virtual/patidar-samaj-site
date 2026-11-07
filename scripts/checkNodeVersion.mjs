@@ -9,9 +9,13 @@ const pinned = readFileSync(join(root, '.nvmrc'), 'utf8').trim().replace(/^v/, '
 const running = process.versions.node;
 
 if (pinned !== running) {
-  console.error(`\nNode.js version mismatch: this project requires v${pinned} but you are running v${running}.`);
+  console.error(
+    `\nNode.js version mismatch: this project requires v${pinned} but you are running v${running}.`,
+  );
   console.error('Fix it with:');
-  console.error(`  nvm install ${pinned} && nvm use ${pinned}   (nvm-windows, nvm for macOS/Linux)\n`);
+  console.error(
+    `  nvm install ${pinned} && nvm use ${pinned}   (nvm-windows, nvm for macOS/Linux)\n`,
+  );
   process.exit(1);
 }
 

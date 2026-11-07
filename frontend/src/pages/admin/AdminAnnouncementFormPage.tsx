@@ -9,9 +9,12 @@ import { useFetch } from '../../lib/useFetch';
 export default function AdminAnnouncementFormPage() {
   const can = useCan();
   const { id } = useParams();
-  const query = useFetch(`admin-announcement:${id ?? 'new'}`, () => (id ? getAnnouncementApi(id) : Promise.resolve(null)));
+  const query = useFetch(`admin-announcement:${id ?? 'new'}`, () =>
+    id ? getAnnouncementApi(id) : Promise.resolve(null),
+  );
 
-  if (!can(id ? 'announcements.update' : 'announcements.create')) return <Navigate to="/admin/announcements" replace />;
+  if (!can(id ? 'announcements.update' : 'announcements.create'))
+    return <Navigate to="/admin/announcements" replace />;
 
   return (
     <Async data={query.data} loading={query.loading} error={query.error} onRetry={query.retry}>

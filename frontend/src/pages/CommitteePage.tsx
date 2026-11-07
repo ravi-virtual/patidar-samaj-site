@@ -38,7 +38,11 @@ export default function CommitteePage() {
           ) : (
             <div className="space-y-5">
               {d.terms.length > 1 && (
-                <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t('Committee term')}>
+                <div
+                  className="flex flex-wrap items-center gap-2"
+                  role="group"
+                  aria-label={t('Committee term')}
+                >
                   {d.terms.map((tm) => (
                     <button
                       key={tm.id}

@@ -18,14 +18,25 @@ export function Breadcrumbs({ crumbs }: { crumbs: Crumb[] }) {
           const last = i === crumbs.length - 1;
           return (
             <Fragment key={`${c.label}-${i}`}>
-              {i > 0 && <ChevronRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-text-subtle" />}
+              {i > 0 && (
+                <ChevronRight
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5 shrink-0 text-text-subtle"
+                />
+              )}
               <li className={`min-w-0 ${last ? '' : 'hidden sm:block'}`}>
                 {c.to && !last ? (
-                  <Link to={c.to} className="truncate rounded text-text-muted hover:text-text hover:underline">
+                  <Link
+                    to={c.to}
+                    className="truncate rounded text-text-muted hover:text-text hover:underline"
+                  >
                     {c.label}
                   </Link>
                 ) : (
-                  <span aria-current={last ? 'page' : undefined} className={`truncate ${last ? 'font-medium text-text' : 'text-text-muted'}`}>
+                  <span
+                    aria-current={last ? 'page' : undefined}
+                    className={`truncate ${last ? 'font-medium text-text' : 'text-text-muted'}`}
+                  >
                     {c.label}
                   </span>
                 )}

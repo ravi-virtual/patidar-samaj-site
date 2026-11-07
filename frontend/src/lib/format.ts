@@ -59,7 +59,8 @@ export const initials = (name: string): string =>
     .map((p) => p[0]!.toUpperCase())
     .join('');
 
-export const place = (...parts: (string | null | undefined)[]): string => parts.filter(Boolean).join(', ');
+export const place = (...parts: (string | null | undefined)[]): string =>
+  parts.filter(Boolean).join(', ');
 
 const inputParts = new Intl.DateTimeFormat('en-CA', {
   timeZone: ZONE,
@@ -74,7 +75,9 @@ const inputParts = new Intl.DateTimeFormat('en-CA', {
 /** ISO timestamp → value for <input type="datetime-local">, expressed in IST. Empty for no date. */
 export const toDateTimeInput = (iso: string | null | undefined): string => {
   if (!iso) return '';
-  const p = Object.fromEntries(inputParts.formatToParts(new Date(iso)).map((x) => [x.type, x.value]));
+  const p = Object.fromEntries(
+    inputParts.formatToParts(new Date(iso)).map((x) => [x.type, x.value]),
+  );
   return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
 };
 
@@ -137,6 +140,8 @@ export const describeAction = (action: string): string => {
   if (known) return t(known);
   const parts = action.split('.');
   // content.<type>.<verb> and similar generated names
-  const text = (parts.length > 2 ? [parts[parts.length - 1], parts[1]] : parts).join(' ').replace(/[_]/g, ' ');
+  const text = (parts.length > 2 ? [parts[parts.length - 1], parts[1]] : parts)
+    .join(' ')
+    .replace(/[_]/g, ' ');
   return text.charAt(0).toUpperCase() + text.slice(1);
 };

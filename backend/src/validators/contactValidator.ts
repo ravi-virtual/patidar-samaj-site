@@ -24,7 +24,10 @@ export const submitContactRules = [
     .isEmail()
     .withMessage('Enter a valid email address')
     .normalizeEmail({ gmail_remove_dots: false, gmail_remove_subaddress: false }),
-  body('topic').optional().isIn([...ContactTopics]).withMessage('Choose one of the listed topics'),
+  body('topic')
+    .optional()
+    .isIn([...ContactTopics])
+    .withMessage('Choose one of the listed topics'),
   body('message')
     .isString()
     .withMessage('Message is required')

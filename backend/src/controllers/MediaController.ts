@@ -9,10 +9,15 @@ import { signedUrl, usesCloud } from '../utils/fileStorage';
 import { Readable } from 'node:stream';
 
 const notFound = (res: Response) =>
-  sendError(res, { statusCode: ResponseCodes.NOT_FOUND, message: 'File not found', code: ErrorCodes.NOT_FOUND });
+  sendError(res, {
+    statusCode: ResponseCodes.NOT_FOUND,
+    message: 'File not found',
+    code: ErrorCodes.NOT_FOUND,
+  });
 
 // Generated names only (uuid + a known extension). Anything else never reaches the filesystem.
-const SAFE_NAME = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp|pdf)$/;
+const SAFE_NAME =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp|pdf)$/;
 
 /**
  * @name serveMedia
@@ -49,12 +54,20 @@ export const serveMedia = async (req: Request, res: Response, next: NextFunction
       if (!upstream.ok || !upstream.body) return notFound(res);
       res.status(ResponseCodes.OK);
       res.setHeader('Content-Type', asset.mimeType);
-      res.setHeader('Content-Disposition', `inline; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(asset.originalName)}`);
+      res.setHeader(
+        'Content-Disposition',
+        `inline; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(asset.originalName)}`,
+      );
       res.setHeader('X-Content-Type-Options', 'nosniff');
-      res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+      res.setHeader(
+        'Content-Security-Policy',
+        "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+      );
       res.setHeader('Cache-Control', 'private, no-store');
       res.setHeader('Vary', 'Cookie');
-      Readable.fromWeb(upstream.body as never).on('error', next).pipe(res);
+      Readable.fromWeb(upstream.body as never)
+        .on('error', next)
+        .pipe(res);
       return;
     }
 
@@ -65,9 +78,15 @@ export const serveMedia = async (req: Request, res: Response, next: NextFunction
     res.status(ResponseCodes.OK);
     res.setHeader('Content-Type', asset.mimeType);
     res.setHeader('Content-Length', String(info.size));
-    res.setHeader('Content-Disposition', `inline; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(asset.originalName)}`);
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(asset.originalName)}`,
+    );
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+    );
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.setHeader('Cache-Control', isPublic ? 'public, max-age=86400' : 'private, no-store');
     if (!isPublic) res.setHeader('Vary', 'Cookie');

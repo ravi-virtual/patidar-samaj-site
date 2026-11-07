@@ -43,7 +43,9 @@ describe('who can reach the account endpoints', () => {
 
   it('has no role-change, approve, reject or roles-matrix endpoint any more', async () => {
     const { client } = await signInAs(Roles.SUPER_ADMIN);
-    expect((await client.patch(`/users/${UNKNOWN_ID}/role`).send({ role: 'admin' })).status).toBe(404);
+    expect((await client.patch(`/users/${UNKNOWN_ID}/role`).send({ role: 'admin' })).status).toBe(
+      404,
+    );
     expect((await client.post(`/users/${UNKNOWN_ID}/approve`)).status).toBe(404);
     expect((await client.post(`/users/${UNKNOWN_ID}/reject`).send({})).status).toBe(404);
     expect((await client.get('/admin/roles')).status).toBe(404);
@@ -112,10 +114,17 @@ describe('an admin can never manage any account, even with tampered data', () =>
   it('is refused on every account action, even holding every selectable permission', async () => {
     const victim = await makeUser({ name: 'Victim Admin' });
     const boss = await makeUser({ role: Roles.SUPER_ADMIN });
-    const { user: admin, client } = await signInAs(Roles.ADMIN, { permissions: ADMIN_PERMISSIONS_WITHOUT_USER_RESET });
+    const { user: admin, client } = await signInAs(Roles.ADMIN, {
+      permissions: ADMIN_PERMISSIONS_WITHOUT_USER_RESET,
+    });
     const calls = await Promise.all([
       client.get('/users'),
-      client.post('/users').send({ name: 'Bad Actor', email: 'bad@example.test', password: 'Bad-Actor-2026', permissions: [] }),
+      client.post('/users').send({
+        name: 'Bad Actor',
+        email: 'bad@example.test',
+        password: 'Bad-Actor-2026',
+        permissions: [],
+      }),
       client.patch(`/users/${victim._id}`).send({ name: 'Renamed', permissions: ['events.read'] }),
       client.post(`/users/${victim._id}/suspend`).send({}),
       client.post(`/users/${victim._id}/reactivate`),
@@ -127,7 +136,11 @@ describe('an admin can never manage any account, even with tampered data', () =>
     ]);
     for (const res of calls) expect(res.status).toBe(403);
 
-    expect((await User.findById(victim._id).lean())).toMatchObject({ name: 'Victim Admin', isDeleted: false, status: 'active' });
+    expect(await User.findById(victim._id).lean()).toMatchObject({
+      name: 'Victim Admin',
+      isDeleted: false,
+      status: 'active',
+    });
     expect((await User.findById(boss._id).lean())?.name).not.toBe('Pwned');
     expect(await User.countDocuments({ email: 'bad@example.test' })).toBe(0);
   });
@@ -151,7 +164,9 @@ describe('an admin can never manage any account, even with tampered data', () =>
 
   it('cannot become Super Admin by changing their own role field in a request', async () => {
     const { user, client } = await signInAs(Roles.ADMIN, { permissions: ALL_ADMIN_PERMISSIONS });
-    const res = await client.patch(`/users/${user._id}`).send({ role: 'superadmin', name: 'Still Admin' });
+    const res = await client
+      .patch(`/users/${user._id}`)
+      .send({ role: 'superadmin', name: 'Still Admin' });
     expect(res.status).toBe(403);
     expect((await User.findById(user._id).lean())?.role).toBe('admin');
   });
@@ -184,14 +199,24 @@ describe('Super Admin manages admins', () => {
 
   it('refuses to create an admin without a valid password', async () => {
     const { client: sa } = await signInAs(Roles.SUPER_ADMIN);
-    expect((await sa.post('/users').send({ name: 'No Pass', email: 'nopass@example.test' })).status).toBe(400);
-    expect((await sa.post('/users').send({ name: 'No Pass', email: 'nopass@example.test', password: 'weak' })).status).toBe(400);
+    expect(
+      (await sa.post('/users').send({ name: 'No Pass', email: 'nopass@example.test' })).status,
+    ).toBe(400);
+    expect(
+      (
+        await sa
+          .post('/users')
+          .send({ name: 'No Pass', email: 'nopass@example.test', password: 'weak' })
+      ).status,
+    ).toBe(400);
     expect(await User.countDocuments({ email: 'nopass@example.test' })).toBe(0);
   });
 
   it('creates an admin with no permissions by default', async () => {
     const { client: sa } = await signInAs(Roles.SUPER_ADMIN);
-    const res = await sa.post('/users').send({ name: 'Empty Admin', email: 'empty@example.test', password: 'Welcome-Blank-2026' });
+    const res = await sa
+      .post('/users')
+      .send({ name: 'Empty Admin', email: 'empty@example.test', password: 'Welcome-Blank-2026' });
     expect(res.status).toBe(201);
     expect(res.body.data.user.permissions).toEqual([]);
   });
@@ -201,12 +226,26 @@ describe('Super Admin manages admins', () => {
     const base = { name: 'Sneaky', email: 'sneaky@example.test', password: 'Welcome-Base-2026' };
     expect((await sa.post('/users').send({ ...base, role: 'superadmin' })).status).toBe(400);
     expect((await sa.post('/users').send({ ...base, role: 'editor' })).status).toBe(400);
-    for (const permissions of [['users.manage'], ['roles.manage'], ['sessions.revoke'], ['members.approve'], ['events.read', 'events.read'], 'events.read', [1]]) {
+    for (const permissions of [
+      ['users.manage'],
+      ['roles.manage'],
+      ['sessions.revoke'],
+      ['members.approve'],
+      ['events.read', 'events.read'],
+      'events.read',
+      [1],
+    ]) {
       expect((await sa.post('/users').send({ ...base, permissions })).status).toBe(400);
     }
     expect(await User.countDocuments({ email: base.email })).toBe(0);
     const existing = await makeUser({ email: 'taken@example.test' });
-    expect((await sa.post('/users').send({ name: 'Dup', email: existing.email, password: 'Dup-Pass-2026' })).status).toBe(409);
+    expect(
+      (
+        await sa
+          .post('/users')
+          .send({ name: 'Dup', email: existing.email, password: 'Dup-Pass-2026' })
+      ).status,
+    ).toBe(409);
   });
 
   it('edits an admin’s name and permissions, and the change applies on the very next request', async () => {
@@ -216,13 +255,20 @@ describe('Super Admin manages admins', () => {
     expect((await adminClient.get('/admin/events')).status).toBe(200);
 
     const { client: sa } = await signInAs(Roles.SUPER_ADMIN);
-    const res = await sa.patch(`/users/${admin._id}`).send({ name: 'Renamed Admin', permissions: ['members.read'] });
+    const res = await sa
+      .patch(`/users/${admin._id}`)
+      .send({ name: 'Renamed Admin', permissions: ['members.read'] });
     expect(res.status).toBe(200);
-    expect(res.body.data.user).toMatchObject({ name: 'Renamed Admin', permissions: ['members.read'] });
+    expect(res.body.data.user).toMatchObject({
+      name: 'Renamed Admin',
+      permissions: ['members.read'],
+    });
 
     expect((await adminClient.get('/admin/members')).status).toBe(200);
     expect((await adminClient.get('/admin/events')).status).toBe(403);
-    expect((await adminClient.get(`/auth/${adminClient.userId}`)).body.data.user.permissions).toEqual(['members.read']);
+    expect(
+      (await adminClient.get(`/auth/${adminClient.userId}`)).body.data.user.permissions,
+    ).toEqual(['members.read']);
 
     const audit = await AuditLog.findOne({ action: 'user.admin_updated' }).lean();
     expect(audit?.targetId).toBe(admin._id);
@@ -232,14 +278,21 @@ describe('Super Admin manages admins', () => {
     });
 
     // Name only keeps the permissions; permissions can be cleared completely.
-    expect((await sa.patch(`/users/${admin._id}`).send({ name: 'Second Name' })).body.data.user.permissions).toEqual(['members.read']);
-    expect((await sa.patch(`/users/${admin._id}`).send({ permissions: [] })).body.data.user.permissions).toEqual([]);
+    expect(
+      (await sa.patch(`/users/${admin._id}`).send({ name: 'Second Name' })).body.data.user
+        .permissions,
+    ).toEqual(['members.read']);
+    expect(
+      (await sa.patch(`/users/${admin._id}`).send({ permissions: [] })).body.data.user.permissions,
+    ).toEqual([]);
   });
 
   it('refuses unselectable permissions, empty edits and bad ids when editing', async () => {
     const admin = await makeUser();
     const { client: sa } = await signInAs(Roles.SUPER_ADMIN);
-    expect((await sa.patch(`/users/${admin._id}`).send({ permissions: ['users.manage'] })).status).toBe(400);
+    expect(
+      (await sa.patch(`/users/${admin._id}`).send({ permissions: ['users.manage'] })).status,
+    ).toBe(400);
     expect((await sa.patch(`/users/${admin._id}`).send({})).status).toBe(400);
     expect((await sa.patch('/users/not-a-uuid').send({ name: 'Ok Name' })).status).toBe(400);
     expect((await sa.patch(`/users/${UNKNOWN_ID}`).send({ name: 'Ok Name' })).status).toBe(404);
@@ -254,7 +307,10 @@ describe('Super Admin manages admins', () => {
     expect((await sa.post(`/users/${other._id}/suspend`).send({})).status).toBe(403);
     expect((await sa.del(`/users/${other._id}`)).status).toBe(403);
     expect((await sa.del(`/users/${user._id}`)).status).toBe(403);
-    expect((await User.findById(other._id).lean())).toMatchObject({ name: 'Other Boss', isDeleted: false });
+    expect(await User.findById(other._id).lean()).toMatchObject({
+      name: 'Other Boss',
+      isDeleted: false,
+    });
     expect((await User.findById(user._id).lean())?.isDeleted).toBe(false);
   });
 
@@ -270,7 +326,10 @@ describe('Super Admin manages admins', () => {
     expect((await adminClient.get(`/auth/${adminClient.userId}`)).status).toBe(401);
     expect((await sa.post(`/users/${admin._id}/suspend`).send({})).status).toBe(409);
 
-    const blocked = await anon().post('/auth/admin-login').set('Origin', ORIGIN).send({ email: admin.email, password: PASSWORD });
+    const blocked = await anon()
+      .post('/auth/admin-login')
+      .set('Origin', ORIGIN)
+      .send({ email: admin.email, password: PASSWORD });
     expect(blocked.status).toBe(403);
     expect(blocked.body.error.code).toBe('ACCOUNT_NOT_ACTIVE');
 
@@ -284,36 +343,65 @@ describe('Super Admin manages admins', () => {
     const adminClient = await signIn(admin.email);
     const { client: sa } = await signInAs(Roles.SUPER_ADMIN);
 
-    const res = await sa.post(`/users/${admin._id}/password-reset`).send({ password: 'Fresh-Start-2026' });
+    const res = await sa
+      .post(`/users/${admin._id}/password-reset`)
+      .send({ password: 'Fresh-Start-2026' });
     expect(res.status).toBe(200);
     expect(JSON.stringify(res.body)).not.toContain('Fresh-Start-2026');
     expect((await adminClient.get(`/auth/${adminClient.userId}`)).status).toBe(401); // old sessions revoked
     expect((await signIn(admin.email, 'Fresh-Start-2026')).userId).toBe(admin._id);
-    expect((await AuditLog.findOne({ action: 'user.password_reset' }).lean())?.targetId).toBe(admin._id);
+    expect((await AuditLog.findOne({ action: 'user.password_reset' }).lean())?.targetId).toBe(
+      admin._id,
+    );
   });
 
   it('rejects a weak password and refuses to reset an inactive admin', async () => {
     const admin = await makeUser();
     const { client: sa } = await signInAs(Roles.SUPER_ADMIN);
-    expect((await sa.post(`/users/${admin._id}/password-reset`).send({ password: 'weak' })).status).toBe(400);
+    expect(
+      (await sa.post(`/users/${admin._id}/password-reset`).send({ password: 'weak' })).status,
+    ).toBe(400);
     expect((await sa.post(`/users/${admin._id}/password-reset`).send({})).status).toBe(400);
 
     await sa.post(`/users/${admin._id}/suspend`).send({});
-    expect((await sa.post(`/users/${admin._id}/password-reset`).send({ password: 'Fresh-Start-2026' })).status).toBe(409);
+    expect(
+      (await sa.post(`/users/${admin._id}/password-reset`).send({ password: 'Fresh-Start-2026' }))
+        .status,
+    ).toBe(409);
   });
 
   it('lets an admin with users.reset_password reset another admin, but only one whose permissions they also hold', async () => {
-    const { client } = await signInAs(Roles.ADMIN, { permissions: ['users.reset_password', 'events.read'] });
+    const { client } = await signInAs(Roles.ADMIN, {
+      permissions: ['users.reset_password', 'events.read'],
+    });
     const peer = await makeUser({ permissions: ['events.read'] });
     const stronger = await makeUser({ permissions: ['events.read', 'events.publish'] });
     const boss = await makeUser({ role: Roles.SUPER_ADMIN });
 
-    expect((await client.post(`/users/${peer._id}/password-reset`).send({ password: 'Peer-Reset-2026' })).status).toBe(200);
+    expect(
+      (await client.post(`/users/${peer._id}/password-reset`).send({ password: 'Peer-Reset-2026' }))
+        .status,
+    ).toBe(200);
     expect((await signIn(peer.email, 'Peer-Reset-2026')).userId).toBe(peer._id);
-    expect((await client.post(`/users/${stronger._id}/password-reset`).send({ password: 'Peer-Reset-2026' })).status).toBe(403);
-    expect((await client.post(`/users/${boss._id}/password-reset`).send({ password: 'Peer-Reset-2026' })).status).toBe(403);
+    expect(
+      (
+        await client
+          .post(`/users/${stronger._id}/password-reset`)
+          .send({ password: 'Peer-Reset-2026' })
+      ).status,
+    ).toBe(403);
+    expect(
+      (await client.post(`/users/${boss._id}/password-reset`).send({ password: 'Peer-Reset-2026' }))
+        .status,
+    ).toBe(403);
     expect((await client.get('/users')).status).toBe(200);
-    expect((await client.post('/users').send({ name: 'Nope', email: 'nope@example.test', password: 'Nope-Pass-2026' })).status).toBe(403);
+    expect(
+      (
+        await client
+          .post('/users')
+          .send({ name: 'Nope', email: 'nope@example.test', password: 'Nope-Pass-2026' })
+      ).status,
+    ).toBe(403);
   });
 
   it('can revoke all of an admin’s sessions', async () => {
@@ -330,7 +418,10 @@ describe('Super Admin manages admins', () => {
   it('returns 404 for unknown users and 400 for malformed ids', async () => {
     const { client: sa } = await signInAs(Roles.SUPER_ADMIN);
     expect((await sa.post(`/users/${UNKNOWN_ID}/suspend`).send({})).status).toBe(404);
-    expect((await sa.post(`/users/${UNKNOWN_ID}/password-reset`).send({ password: 'Fresh-Start-2026' })).status).toBe(404);
+    expect(
+      (await sa.post(`/users/${UNKNOWN_ID}/password-reset`).send({ password: 'Fresh-Start-2026' }))
+        .status,
+    ).toBe(404);
     expect((await sa.del(`/users/${UNKNOWN_ID}`)).status).toBe(404);
     expect((await sa.post('/users/not-a-uuid/suspend').send({})).status).toBe(400);
     expect((await sa.del('/users/not-a-uuid')).status).toBe(400);
@@ -343,7 +434,12 @@ describe('deleting an admin (soft delete)', () => {
     const phone = await signIn(admin.email);
     const laptop = await signIn(admin.email);
     const { client: sa } = await signInAs(Roles.SUPER_ADMIN);
-    await PasswordResetToken.create({ userId: admin._id, tokenHash: 'x'.repeat(64), purpose: 'reset', expiresAt: new Date(Date.now() + 60_000) });
+    await PasswordResetToken.create({
+      userId: admin._id,
+      tokenHash: 'x'.repeat(64),
+      purpose: 'reset',
+      expiresAt: new Date(Date.now() + 60_000),
+    });
 
     const res = await sa.del(`/users/${admin._id}`);
     expect(res.status).toBe(200);
@@ -357,7 +453,10 @@ describe('deleting an admin (soft delete)', () => {
 
     const list = await sa.get('/users');
     expect(list.body.data.totalCount).toBe(0);
-    const login = await anon().post('/auth/admin-login').set('Origin', ORIGIN).send({ email: admin.email, password: PASSWORD });
+    const login = await anon()
+      .post('/auth/admin-login')
+      .set('Origin', ORIGIN)
+      .send({ email: admin.email, password: PASSWORD });
     expect(login.status).toBe(401);
 
     // Already deleted: not found, and further actions are refused.
@@ -370,7 +469,9 @@ describe('deleting an admin (soft delete)', () => {
     const { client: sa } = await signInAs(Roles.SUPER_ADMIN);
     await sa.del(`/users/${admin._id}`);
     expect((await User.findById(admin._id).lean())?.email).toBe('reserved@example.test');
-    const again = await sa.post('/users').send({ name: 'New Person', email: 'reserved@example.test', password: 'New-Person-2026' });
+    const again = await sa
+      .post('/users')
+      .send({ name: 'New Person', email: 'reserved@example.test', password: 'New-Person-2026' });
     expect(again.status).toBe(409);
   });
 
@@ -386,7 +487,12 @@ describe('deleting an admin (soft delete)', () => {
 describe('audit trail for sensitive actions', () => {
   it('records creation, edits, suspension and deletion with actor and target, but no secrets', async () => {
     const { user: sa, client } = await signInAs(Roles.SUPER_ADMIN);
-    const created = await client.post('/users').send({ name: 'Audit Subject', email: 'audit@example.test', password: 'Welcome-Trail-2026', permissions: ['events.read'] });
+    const created = await client.post('/users').send({
+      name: 'Audit Subject',
+      email: 'audit@example.test',
+      password: 'Welcome-Trail-2026',
+      permissions: ['events.read'],
+    });
     const id = created.body.data.user.id as string;
     await client.patch(`/users/${id}`).send({ permissions: ['members.read'] });
     await client.post(`/users/${id}/suspend`).send({ reason: 'test' });
@@ -394,9 +500,17 @@ describe('audit trail for sensitive actions', () => {
 
     const actions = (await AuditLog.find({ actorId: sa._id }).lean()).map((e) => e.action);
     expect(actions).toEqual(
-      expect.arrayContaining(['user.admin_created', 'user.admin_updated', 'user.suspended', 'user.deleted', 'auth.admin_login']),
+      expect.arrayContaining([
+        'user.admin_created',
+        'user.admin_updated',
+        'user.suspended',
+        'user.deleted',
+        'auth.admin_login',
+      ]),
     );
-    for (const e of await AuditLog.find({ action: { $in: ['user.admin_updated', 'user.suspended', 'user.deleted'] } }).lean()) {
+    for (const e of await AuditLog.find({
+      action: { $in: ['user.admin_updated', 'user.suspended', 'user.deleted'] },
+    }).lean()) {
       expect(e.targetId).toBe(id);
     }
 

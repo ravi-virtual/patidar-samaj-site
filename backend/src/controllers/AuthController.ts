@@ -65,10 +65,11 @@ export const adminLogin = async (req: Request, res: Response, next: NextFunction
         actorId: user._id,
         metadata: { emailFingerprint },
       });
+      // Same answer as a wrong password: a different one would show which emails are real accounts.
       return sendError(res, {
-        statusCode: ResponseCodes.TOO_MANY_REQUESTS,
-        message: 'Too many failed sign-in attempts. Please try again in a few minutes.',
-        code: ErrorCodes.RATE_LIMITED,
+        statusCode: ResponseCodes.UNAUTHORIZED,
+        message: GENERIC_LOGIN_ERROR,
+        code: ErrorCodes.UNAUTHORIZED,
       });
     }
 
@@ -81,7 +82,10 @@ export const adminLogin = async (req: Request, res: Response, next: NextFunction
         { _id: user._id },
         {
           $set: lock
-            ? { failedLoginCount: 0, lockUntil: new Date(Date.now() + config.auth.lockMinutes * 60_000) }
+            ? {
+                failedLoginCount: 0,
+                lockUntil: new Date(Date.now() + config.auth.lockMinutes * 60_000),
+              }
             : { failedLoginCount: failures },
         },
       );
@@ -205,7 +209,9 @@ export const updateUserThemeById = async (req: Request, res: Response, next: Nex
       locations: ['body'],
     });
     await User.updateOne({ _id: req.user?.id }, { $set: { themePreference } });
-    return new ApiResponse(ResponseCodes.OK, 'Theme preference saved', { themePreference }).send(res);
+    return new ApiResponse(ResponseCodes.OK, 'Theme preference saved', { themePreference }).send(
+      res,
+    );
   } catch (err) {
     return next(err);
   }
@@ -227,7 +233,9 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
       newPassword: string;
     }>(req, { locations: ['body'] });
 
-    const user = await User.findOne({ _id: req.user?.id, isDeleted: false }).select('+passwordHash');
+    const user = await User.findOne({ _id: req.user?.id, isDeleted: false }).select(
+      '+passwordHash',
+    );
     if (!user?.passwordHash || !(await verifyPassword(user.passwordHash, currentPassword))) {
       await writeAudit(req, { action: 'auth.password_change_failed', outcome: 'failure' });
       return sendError(res, {
@@ -246,9 +254,13 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
     const token = await startSession(req, res, user._id);
     await writeAudit(req, { action: 'auth.password_changed' });
 
-    return new ApiResponse(ResponseCodes.OK, 'Password changed. Other devices have been signed out.', {
-      csrfToken: csrfTokenFor(token),
-    }).send(res);
+    return new ApiResponse(
+      ResponseCodes.OK,
+      'Password changed. Other devices have been signed out.',
+      {
+        csrfToken: csrfTokenFor(token),
+      },
+    ).send(res);
   } catch (err) {
     return next(err);
   }

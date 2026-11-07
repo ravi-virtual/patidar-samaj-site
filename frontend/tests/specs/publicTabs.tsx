@@ -21,15 +21,35 @@ import { isTabOn, PUBLIC_TABS } from '../../src/lib/publicTabs';
 
 vi.mock('../../src/api/siteApi', async (importOriginal) => {
   const real = await importOriginal<typeof import('../../src/api/siteApi')>();
-  return { mediaUrl: real.mediaUrl, getHomeApi: vi.fn(), searchApi: vi.fn(), getSettingsApi: vi.fn() };
+  return {
+    mediaUrl: real.mediaUrl,
+    getHomeApi: vi.fn(),
+    searchApi: vi.fn(),
+    getSettingsApi: vi.fn(),
+  };
 });
-vi.mock('../../src/api/adminApi', () => ({ getAdminSettingsApi: vi.fn(), updateAdminSettingsApi: vi.fn() }));
+vi.mock('../../src/api/adminApi', () => ({
+  getAdminSettingsApi: vi.fn(),
+  updateAdminSettingsApi: vi.fn(),
+}));
 
 const site = vi.mocked(siteApi);
 const admin = vi.mocked(adminApi);
 
-const allOn = (): PublicTabs => ({ about: true, committee: true, faq: true, links: true, directory: true, events: true, news: true, contact: true });
-const tabsWith = (off: PublicTabKey[]): PublicTabs => ({ ...allOn(), ...Object.fromEntries(off.map((t) => [t, false])) });
+const allOn = (): PublicTabs => ({
+  about: true,
+  committee: true,
+  faq: true,
+  links: true,
+  directory: true,
+  events: true,
+  news: true,
+  contact: true,
+});
+const tabsWith = (off: PublicTabKey[]): PublicTabs => ({
+  ...allOn(),
+  ...Object.fromEntries(off.map((t) => [t, false])),
+});
 
 const makeSettings = (off: PublicTabKey[] = []): PublicSettings => ({
   name: 'Uttar Gujarat Kadva Patidar Samaj',
@@ -63,14 +83,37 @@ describe('isTabOn', () => {
   });
 
   it('lists the nine public tabs', () => {
-    expect(PUBLIC_TABS.map((t) => t.key)).toEqual(['about', 'committee', 'faq', 'links', 'directory', 'events', 'news', 'contact']);
+    expect(PUBLIC_TABS.map((t) => t.key)).toEqual([
+      'about',
+      'committee',
+      'faq',
+      'links',
+      'directory',
+      'events',
+      'news',
+      'contact',
+    ]);
   });
 });
 
 describe('Toggle', () => {
-  function Harness({ initial = false, disabled = false }: { initial?: boolean; disabled?: boolean }) {
+  function Harness({
+    initial = false,
+    disabled = false,
+  }: {
+    initial?: boolean;
+    disabled?: boolean;
+  }) {
     const [on, setOn] = useState(initial);
-    return <Toggle label="Feature on the home page" description="Shown first." checked={on} disabled={disabled} onChange={(e) => setOn(e.target.checked)} />;
+    return (
+      <Toggle
+        label="Feature on the home page"
+        description="Shown first."
+        checked={on}
+        disabled={disabled}
+        onChange={(e) => setOn(e.target.checked)}
+      />
+    );
   }
 
   it('is a switch with its label and description', () => {
@@ -123,16 +166,22 @@ describe('Toggle', () => {
 });
 
 describe('AdminSettingsPage', () => {
-  const adminSettings = (off: PublicTabKey[] = []): AdminSettings => ({ ...makeSettings(off), logoUrl: null });
+  const adminSettings = (off: PublicTabKey[] = []): AdminSettings => ({
+    ...makeSettings(off),
+    logoUrl: null,
+  });
 
   it('shows a switch per public tab in a Public site tabs card, and no registration or directory-visibility options', async () => {
     admin.getAdminSettingsApi.mockResolvedValue(adminSettings(['news']));
     renderWithApp(<AdminSettingsPage />);
     await screen.findByText('Public site tabs');
-    expect(screen.getByText('Turn a tab off to hide it from the public website.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Turn a tab off to hide it from the public website.'),
+    ).toBeInTheDocument();
 
     expect(screen.getAllByRole('switch')).toHaveLength(8);
-    for (const { label } of PUBLIC_TABS) expect(screen.getByRole('switch', { name: label })).toBeInTheDocument();
+    for (const { label } of PUBLIC_TABS)
+      expect(screen.getByRole('switch', { name: label })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'News' })).not.toBeChecked();
     expect(screen.getByRole('switch', { name: 'Events' })).toBeChecked();
 
@@ -145,7 +194,14 @@ describe('AdminSettingsPage', () => {
   it('saves the switched tabs and refreshes the public settings in the store', async () => {
     const user = userEvent.setup();
     admin.getAdminSettingsApi.mockResolvedValue(adminSettings());
-    admin.updateAdminSettingsApi.mockImplementation(async (body) => ({ ...adminSettings(), ...body, publicTabs: { ...allOn(), ...body.publicTabs } }) as AdminSettings);
+    admin.updateAdminSettingsApi.mockImplementation(
+      async (body) =>
+        ({
+          ...adminSettings(),
+          ...body,
+          publicTabs: { ...allOn(), ...body.publicTabs },
+        }) as AdminSettings,
+    );
     const { store } = renderWithApp(<AdminSettingsPage />);
     await screen.findByText('Public site tabs');
 
@@ -161,7 +217,13 @@ describe('AdminSettingsPage', () => {
     expect(body.publicTabs).toEqual({ ...allOn(), events: false, directory: false });
     expect(body).not.toHaveProperty('registrationOpen');
     expect(body).not.toHaveProperty('directoryPublic');
-    await waitFor(() => expect(store.getState().site.settings?.publicTabs).toMatchObject({ events: false, directory: false, news: true }));
+    await waitFor(() =>
+      expect(store.getState().site.settings?.publicTabs).toMatchObject({
+        events: false,
+        directory: false,
+        news: true,
+      }),
+    );
   });
 
   it('discards unsaved toggles', async () => {
@@ -245,11 +307,25 @@ describe('public routes and navigation', () => {
       </Provider>,
     );
 
-  const navNames = () => within(screen.getAllByRole('navigation', { name: 'Main' })[0]!).getAllByRole('link').map((a) => a.textContent);
+  const navNames = () =>
+    within(screen.getAllByRole('navigation', { name: 'Main' })[0]!)
+      .getAllByRole('link')
+      .map((a) => a.textContent);
 
   it('lists every public tab in the menu while all are on', () => {
     renderAt('/no-such-page', storeWith());
-    expect(navNames()).toEqual(expect.arrayContaining(['About', 'Committee', 'Directory', 'Events', 'News', 'FAQ', 'Important links', 'Contact']));
+    expect(navNames()).toEqual(
+      expect.arrayContaining([
+        'About',
+        'Committee',
+        'Directory',
+        'Events',
+        'News',
+        'FAQ',
+        'Important links',
+        'Contact',
+      ]),
+    );
   });
 
   it('removes a switched-off tab from the menu and keeps the rest', () => {
@@ -287,7 +363,13 @@ describe('public routes and navigation', () => {
 describe('SearchPalette', () => {
   const hit = (title: string) => [{ id: title, title, snippet: null }];
   const results = () => ({
-    results: { events: hit('Garba event'), announcements: hit('Garba news'), faqs: hit('Garba faq'), links: hit('Garba link'), members: hit('Garba member') },
+    results: {
+      events: hit('Garba event'),
+      announcements: hit('Garba news'),
+      faqs: hit('Garba faq'),
+      links: hit('Garba link'),
+      members: hit('Garba member'),
+    },
     totalCount: 6,
   });
 
@@ -301,7 +383,8 @@ describe('SearchPalette', () => {
 
   it('shows every group while all tabs are on', async () => {
     await search(storeWith());
-    for (const t of ['Garba event', 'Garba news', 'Garba faq', 'Garba link', 'Garba member']) expect(await screen.findByText(t)).toBeInTheDocument();
+    for (const t of ['Garba event', 'Garba news', 'Garba faq', 'Garba link', 'Garba member'])
+      expect(await screen.findByText(t)).toBeInTheDocument();
   });
 
   it('hides the results of switched-off tabs', async () => {
@@ -318,9 +401,27 @@ describe('HomePage sections', () => {
     settings: makeSettings(),
     blocks: {},
     featuredEvent: makeEvent({ id: 'f1', title: 'Featured Garba' }),
-    upcomingEvents: [makeEvent({ id: 'f1', title: 'Featured Garba' }), makeEvent({ id: 'e2', title: 'Second Event' })],
-    announcements: [{ id: 'a1', title: 'Big announcement', category: 'Notice', pinned: false, publishedAt: '2030-01-01T00:00:00.000Z' } as HomeData['announcements'][number]],
-    memberHighlights: [{ id: 'm1', name: 'Asha Patel', city: 'Unjha', country: 'India' } as HomeData['memberHighlights'][number]],
+    upcomingEvents: [
+      makeEvent({ id: 'f1', title: 'Featured Garba' }),
+      makeEvent({ id: 'e2', title: 'Second Event' }),
+    ],
+    announcements: [
+      {
+        id: 'a1',
+        title: 'Big announcement',
+        category: 'Notice',
+        pinned: false,
+        publishedAt: '2030-01-01T00:00:00.000Z',
+      } as HomeData['announcements'][number],
+    ],
+    memberHighlights: [
+      {
+        id: 'm1',
+        name: 'Asha Patel',
+        city: 'Unjha',
+        country: 'India',
+      } as HomeData['memberHighlights'][number],
+    ],
     links: [{ id: 'l1', label: 'Membership form', category: 'Forms' } as HomeData['links'][number]],
   });
 
@@ -337,7 +438,9 @@ describe('HomePage sections', () => {
 
   it('hides the sections and quick links of switched-off tabs', async () => {
     site.getHomeApi.mockResolvedValue(home());
-    renderWithApp(<HomePage />, { store: storeWith(['events', 'news', 'directory', 'links', 'contact']) });
+    renderWithApp(<HomePage />, {
+      store: storeWith(['events', 'news', 'directory', 'links', 'contact']),
+    });
     expect(await screen.findByRole('heading', { name: 'Quick actions' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Upcoming' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Next event' })).not.toBeInTheDocument();
@@ -345,7 +448,12 @@ describe('HomePage sections', () => {
     expect(screen.queryByRole('heading', { name: 'Recent announcements' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Member highlights' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Important links' })).not.toBeInTheDocument();
-    for (const name of [/find a family/i, /upcoming events/i, /book patidar samaj bhavan/i, /explore directory/i]) {
+    for (const name of [
+      /find a family/i,
+      /upcoming events/i,
+      /book patidar samaj bhavan/i,
+      /explore directory/i,
+    ]) {
       expect(screen.queryByRole('link', { name })).not.toBeInTheDocument();
     }
   });

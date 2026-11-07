@@ -2,7 +2,11 @@ import type { NextFunction, Request, Response } from 'express';
 import { matchedData } from 'express-validator';
 import CommitteeMember from '../models/CommitteeMember';
 import CommitteeTerm from '../models/CommitteeTerm';
-import ContentBlock, { type ContentKey, type IContentBlock, type IContentItem } from '../models/ContentBlock';
+import ContentBlock, {
+  type ContentKey,
+  type IContentBlock,
+  type IContentItem,
+} from '../models/ContentBlock';
 import { ContentResources, translatedFieldsOf } from '../config/contentResources';
 import { ErrorCodes, PublishStatus, ResponseCodes } from '../config/constants';
 import { ApiResponse, sendError } from '../utils/apiResponse';
@@ -41,7 +45,11 @@ export const listContent = async (req: Request, res: Response, next: NextFunctio
       const value = q[field as keyof typeof q];
       if (value) filter[field] = value;
     }
-    const items = (await resource.model.find(filter).sort(resource.sort).limit(500).lean()) as Row[];
+    const items = (await resource.model
+      .find(filter)
+      .sort(resource.sort)
+      .limit(500)
+      .lean()) as Row[];
     return new ApiResponse(ResponseCodes.OK, `${resource.label}s fetched successfully`, {
       items: items.map((i) => pick(i, resource.publicFields, req.lang)),
       totalCount: items.length,
@@ -69,9 +77,16 @@ export const getCommittee = async (req: Request, res: Response, next: NextFuncti
       .lean()) as unknown as Row[];
 
     const term =
-      terms.find((t) => t._id === wanted) ?? terms.find((t) => t.isCurrent === true) ?? terms[0] ?? null;
+      terms.find((t) => t._id === wanted) ??
+      terms.find((t) => t.isCurrent === true) ??
+      terms[0] ??
+      null;
     const members = term
-      ? ((await CommitteeMember.find({ termId: term._id, isDeleted: false, status: PublishStatus.PUBLISHED })
+      ? ((await CommitteeMember.find({
+          termId: term._id,
+          isDeleted: false,
+          status: PublishStatus.PUBLISHED,
+        })
           .sort({ order: 1, createdAt: 1 })
           .lean()) as unknown as Row[])
       : [];
@@ -88,7 +103,9 @@ export const getCommittee = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
-type BlockSource = Pick<IContentBlock, '_id' | 'key' | 'title' | 'body' | 'titleGu' | 'bodyGu'> & { items?: IContentItem[] };
+type BlockSource = Pick<IContentBlock, '_id' | 'key' | 'title' | 'body' | 'titleGu' | 'bodyGu'> & {
+  items?: IContentItem[];
+};
 
 /** A block in both languages (the `*Gu` twins included, items too). This is the staff (admin) view. */
 const blockView = (b: BlockSource) => ({
@@ -130,7 +147,10 @@ const publicBlockView = (b: BlockSource, lang: Language) => {
  */
 export const listBlocks = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const blocks = await ContentBlock.find({ isDeleted: false, status: PublishStatus.PUBLISHED }).lean();
+    const blocks = await ContentBlock.find({
+      isDeleted: false,
+      status: PublishStatus.PUBLISHED,
+    }).lean();
     return new ApiResponse(ResponseCodes.OK, 'Content fetched successfully', {
       blocks: Object.fromEntries(blocks.map((b) => [b.key, publicBlockView(b, req.lang)])),
     }).send(res);
@@ -155,9 +175,15 @@ export const getBlock = async (req: Request, res: Response, next: NextFunction) 
       status: PublishStatus.PUBLISHED,
     }).lean();
     if (!block) {
-      return sendError(res, { statusCode: ResponseCodes.NOT_FOUND, message: 'Content not found', code: ErrorCodes.NOT_FOUND });
+      return sendError(res, {
+        statusCode: ResponseCodes.NOT_FOUND,
+        message: 'Content not found',
+        code: ErrorCodes.NOT_FOUND,
+      });
     }
-    return new ApiResponse(ResponseCodes.OK, 'Content fetched successfully', { block: publicBlockView(block, req.lang) }).send(res);
+    return new ApiResponse(ResponseCodes.OK, 'Content fetched successfully', {
+      block: publicBlockView(block, req.lang),
+    }).send(res);
   } catch (err) {
     return next(err);
   }

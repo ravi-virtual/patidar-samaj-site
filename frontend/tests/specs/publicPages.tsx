@@ -43,11 +43,19 @@ describe('EventsPage', () => {
     expect(screen.getByText('Loading…')).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: /navratri garba night/i })).toBeInTheDocument();
     expect(screen.getByText('1 shown')).toBeInTheDocument();
-    expect(api.listEventsApi).toHaveBeenCalledWith({ when: 'upcoming', category: undefined, search: undefined, page: 1, limit: 12 });
+    expect(api.listEventsApi).toHaveBeenCalledWith({
+      when: 'upcoming',
+      category: undefined,
+      search: undefined,
+      page: 1,
+      limit: 12,
+    });
   });
 
   it('shows an actionable error and retries', async () => {
-    api.listEventsApi.mockRejectedValueOnce(apiError(500, 'Events are down')).mockResolvedValueOnce({ events: [makeEvent()], totalCount: 1 });
+    api.listEventsApi
+      .mockRejectedValueOnce(apiError(500, 'Events are down'))
+      .mockResolvedValueOnce({ events: [makeEvent()], totalCount: 1 });
     const user = userEvent.setup();
     renderWithApp(<EventsPage />);
     expect(await screen.findByRole('alert')).toHaveTextContent('Events are down');
@@ -65,15 +73,23 @@ describe('EventsPage', () => {
 
   it('filters by category and offers a reset when the filter finds nothing', async () => {
     api.listEventsApi.mockImplementation(async (p) =>
-      p.category === 'Sports' ? { events: [], totalCount: 0 } : { events: [makeEvent()], totalCount: 1 },
+      p.category === 'Sports'
+        ? { events: [], totalCount: 0 }
+        : { events: [makeEvent()], totalCount: 1 },
     );
     const user = userEvent.setup();
     renderWithApp(<EventsPage />);
     await screen.findByRole('link', { name: /navratri/i });
 
-    await user.click(within(screen.getByRole('group', { name: 'Category' })).getByRole('button', { name: 'Sports' }));
+    await user.click(
+      within(screen.getByRole('group', { name: 'Category' })).getByRole('button', {
+        name: 'Sports',
+      }),
+    );
     expect(await screen.findByText('Try a different search or category.')).toBeInTheDocument();
-    expect(api.listEventsApi).toHaveBeenLastCalledWith(expect.objectContaining({ category: 'Sports', page: 1 }));
+    expect(api.listEventsApi).toHaveBeenLastCalledWith(
+      expect.objectContaining({ category: 'Sports', page: 1 }),
+    );
 
     await user.click(screen.getByRole('button', { name: /reset filters/i }));
     expect(await screen.findByRole('link', { name: /navratri/i })).toBeInTheDocument();
@@ -86,7 +102,11 @@ describe('EventsPage', () => {
     renderWithApp(<EventsPage />);
     await screen.findByRole('link', { name: /navratri/i });
     await user.type(screen.getByRole('searchbox', { name: /search events/i }), '  garba ');
-    await waitFor(() => expect(api.listEventsApi).toHaveBeenLastCalledWith(expect.objectContaining({ search: 'garba' })));
+    await waitFor(() =>
+      expect(api.listEventsApi).toHaveBeenLastCalledWith(
+        expect.objectContaining({ search: 'garba' }),
+      ),
+    );
     // one request per settled term, not one per keystroke
     const searched = api.listEventsApi.mock.calls.filter(([p]) => p.search);
     expect(searched).toHaveLength(1);
@@ -113,7 +133,9 @@ describe('EventDetailPage', () => {
       </Routes>,
       { path: '/events/e1' },
     );
-    expect(await screen.findByRole('heading', { name: 'Navratri Garba Night' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Navratri Garba Night' }),
+    ).toBeInTheDocument();
     expect(screen.getByText('Samaj Bhavan')).toBeInTheDocument();
     expect(screen.getByText('Raas under the full moon.')).toBeInTheDocument();
     expect(screen.queryByText(/register|sign in|places|going|left/i)).not.toBeInTheDocument();
@@ -136,11 +158,17 @@ describe('NewsPage', () => {
 
   it('lists announcements with category, pinned and archived badges', async () => {
     api.listAnnouncementsApi.mockResolvedValue({
-      announcements: [item({ pinned: true }), item({ id: 'a2', title: 'Old notice', archived: true })],
+      announcements: [
+        item({ pinned: true }),
+        item({ id: 'a2', title: 'Old notice', archived: true }),
+      ],
       totalCount: 2,
     });
     renderWithApp(<NewsPage />);
-    expect(await screen.findByRole('link', { name: 'Scholarship forms open' })).toHaveAttribute('href', '/news/a1');
+    expect(await screen.findByRole('link', { name: 'Scholarship forms open' })).toHaveAttribute(
+      'href',
+      '/news/a1',
+    );
     expect(screen.getByText('Pinned')).toBeInTheDocument();
     expect(screen.getByText('Archived')).toBeInTheDocument();
     expect(screen.getAllByText('10 Jan 2030')).toHaveLength(2);
@@ -165,18 +193,50 @@ describe('NewsPage', () => {
     expect(screen.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true');
     await user.click(screen.getByRole('button', { name: 'Seva' }));
     expect(screen.getByRole('button', { name: 'Seva' })).toHaveAttribute('aria-pressed', 'true');
-    await waitFor(() => expect(api.listAnnouncementsApi).toHaveBeenLastCalledWith(expect.objectContaining({ category: 'Seva', page: 1 })));
+    await waitFor(() =>
+      expect(api.listAnnouncementsApi).toHaveBeenLastCalledWith(
+        expect.objectContaining({ category: 'Seva', page: 1 }),
+      ),
+    );
   });
 });
 
 describe('DirectoryPage', () => {
-  const entry = { id: 'm1', name: 'Asha Patel', village: 'Unjha', city: 'Mehsana', country: 'India', occupation: 'Teacher', bio: null, joinedYear: 2015, highlighted: false };
+  const entry = {
+    id: 'm1',
+    name: 'Asha Patel',
+    village: 'Unjha',
+    city: 'Mehsana',
+    country: 'India',
+    occupation: 'Teacher',
+    bio: null,
+    joinedYear: 2015,
+    highlighted: false,
+  };
 
   it('lists families and village filters, and never asks for contact details', async () => {
     api.getMemberFiltersApi.mockResolvedValue({ villages: ['Unjha', 'Visnagar'], cities: [] });
-    api.listMembersApi.mockResolvedValue({ members: [entry, { ...entry, id: 'm2', name: 'Ravi Shah', village: null, city: null, country: null, occupation: null, joinedYear: null }], totalCount: 2 });
+    api.listMembersApi.mockResolvedValue({
+      members: [
+        entry,
+        {
+          ...entry,
+          id: 'm2',
+          name: 'Ravi Shah',
+          village: null,
+          city: null,
+          country: null,
+          occupation: null,
+          joinedYear: null,
+        },
+      ],
+      totalCount: 2,
+    });
     renderWithApp(<DirectoryPage />);
-    expect(await screen.findByRole('link', { name: /Asha Patel/ })).toHaveAttribute('href', '/members/m1');
+    expect(await screen.findByRole('link', { name: /Asha Patel/ })).toHaveAttribute(
+      'href',
+      '/members/m1',
+    );
     expect(screen.getByText('Mehsana, India')).toBeInTheDocument();
     expect(screen.getByText(/2 families listed/)).toBeInTheDocument();
     // missing optional fields render a dash, not "null"
@@ -191,13 +251,22 @@ describe('DirectoryPage', () => {
     const user = userEvent.setup();
     renderWithApp(<DirectoryPage />);
     await user.click(await screen.findByRole('button', { name: 'Visnagar' }));
-    await waitFor(() => expect(api.listMembersApi).toHaveBeenLastCalledWith(expect.objectContaining({ village: 'Visnagar' })));
-    expect(screen.getByRole('button', { name: 'Visnagar' })).toHaveAttribute('aria-pressed', 'true');
+    await waitFor(() =>
+      expect(api.listMembersApi).toHaveBeenLastCalledWith(
+        expect.objectContaining({ village: 'Visnagar' }),
+      ),
+    );
+    expect(screen.getByRole('button', { name: 'Visnagar' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 
   it('shows an empty state that names the search term and clears it', async () => {
     api.getMemberFiltersApi.mockResolvedValue({ villages: [], cities: [] });
-    api.listMembersApi.mockImplementation(async (p) => (p.search ? { members: [], totalCount: 0 } : { members: [entry], totalCount: 1 }));
+    api.listMembersApi.mockImplementation(async (p) =>
+      p.search ? { members: [], totalCount: 0 } : { members: [entry], totalCount: 1 },
+    );
     const user = userEvent.setup();
     renderWithApp(<DirectoryPage />);
     await screen.findByRole('link', { name: /Asha Patel/ });
@@ -218,7 +287,9 @@ describe('DirectoryPage', () => {
 
 describe('FaqPage', () => {
   it('renders questions as expandable details with plain-text answers', async () => {
-    api.getFaqsApi.mockResolvedValue([{ id: 'f1', question: 'How do I join?', answer: 'Register <b>online</b>.' }]);
+    api.getFaqsApi.mockResolvedValue([
+      { id: 'f1', question: 'How do I join?', answer: 'Register <b>online</b>.' },
+    ]);
     renderWithApp(<FaqPage />);
     expect(await screen.findByText('How do I join?')).toBeInTheDocument();
     // answers are text, never markup
@@ -238,12 +309,26 @@ describe('FaqPage', () => {
 });
 
 describe('LinksPage', () => {
-  const link = (over = {}) => ({ id: 'l1', label: 'Scholarship form', description: 'Yearly form', url: 'https://example.test/form', fileMediaId: null, category: 'Forms', ...over });
+  const link = (over = {}) => ({
+    id: 'l1',
+    label: 'Scholarship form',
+    description: 'Yearly form',
+    url: 'https://example.test/form',
+    fileMediaId: null,
+    category: 'Forms',
+    ...over,
+  });
 
   it('groups links by category; external links are safe, files download from the media route', async () => {
     api.getLinksApi.mockResolvedValue([
       link(),
-      link({ id: 'l2', label: 'Rules PDF', url: null, fileMediaId: 'abc123', category: 'Documents' }),
+      link({
+        id: 'l2',
+        label: 'Rules PDF',
+        url: null,
+        fileMediaId: 'abc123',
+        category: 'Documents',
+      }),
     ]);
     renderWithApp(<LinksPage />);
     expect(await screen.findByRole('heading', { name: 'Forms' })).toBeInTheDocument();
@@ -274,12 +359,23 @@ describe('LinksPage', () => {
 describe('CommitteePage', () => {
   const t1 = { id: 't1', label: '2024-26', startYear: 2024, endYear: 2026, isCurrent: true };
   const t0 = { id: 't0', label: '2022-24', startYear: 2022, endYear: 2024, isCurrent: false };
-  const person = { id: 'c1', termId: 't1', name: 'Mahesh Patel', position: 'President', bio: 'Serving since 2010', imageMediaId: null };
+  const person = {
+    id: 'c1',
+    termId: 't1',
+    name: 'Mahesh Patel',
+    position: 'President',
+    bio: 'Serving since 2010',
+    imageMediaId: null,
+  };
 
   it('shows the current term with members, and switches term on click', async () => {
     api.getCommitteeApi.mockImplementation(async (termId) =>
       termId === 't0'
-        ? { terms: [t1, t0], term: t0, members: [{ ...person, id: 'c0', termId: 't0', name: 'Old President' }] }
+        ? {
+            terms: [t1, t0],
+            term: t0,
+            members: [{ ...person, id: 'c0', termId: 't0', name: 'Old President' }],
+          }
         : { terms: [t1, t0], term: t1, members: [person] },
     );
     const user = userEvent.setup();
@@ -287,7 +383,10 @@ describe('CommitteePage', () => {
     expect(await screen.findByRole('heading', { name: 'Mahesh Patel' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Committee 2024-26' })).toBeInTheDocument();
     expect(screen.getByText('President')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /2024-26 · current/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /2024-26 · current/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
 
     await user.click(screen.getByRole('button', { name: '2022-24' }));
     expect(await screen.findByRole('heading', { name: 'Old President' })).toBeInTheDocument();
@@ -372,7 +471,11 @@ describe('ContactPage', () => {
   });
 
   it('puts server field errors next to the field and keeps what was typed', async () => {
-    api.submitContactApi.mockRejectedValue(apiError(422, 'Invalid', 'VALIDATION_ERROR', [{ field: 'email', message: 'This email domain is not accepted' }]));
+    api.submitContactApi.mockRejectedValue(
+      apiError(422, 'Invalid', 'VALIDATION_ERROR', [
+        { field: 'email', message: 'This email domain is not accepted' },
+      ]),
+    );
     const user = userEvent.setup();
     renderWithApp(<ContactPage />);
     await fill(user);
@@ -383,12 +486,16 @@ describe('ContactPage', () => {
   });
 
   it('shows a form-level alert when the failure is not about a field', async () => {
-    api.submitContactApi.mockRejectedValue(apiError(429, 'Too many messages. Try again later.', 'RATE_LIMITED'));
+    api.submitContactApi.mockRejectedValue(
+      apiError(429, 'Too many messages. Try again later.', 'RATE_LIMITED'),
+    );
     const user = userEvent.setup();
     renderWithApp(<ContactPage />);
     await fill(user);
     await user.click(screen.getByRole('button', { name: /send message/i }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Too many messages. Try again later.');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Too many messages. Try again later.',
+    );
   });
 
   it('keeps the honeypot out of the accessibility tree', () => {

@@ -3,10 +3,7 @@ import { t } from '../../i18n';
 /** Loading placeholder. Announced once as a busy region instead of per-line noise. */
 export function Skeleton({ className = '' }: { className?: string }) {
   return (
-    <div
-      aria-hidden="true"
-      className={`animate-pulse rounded-md bg-surface-muted ${className}`}
-    />
+    <div aria-hidden="true" className={`animate-pulse rounded-md bg-surface-muted ${className}`} />
   );
 }
 

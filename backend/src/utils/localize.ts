@@ -8,7 +8,11 @@ export const guField = (field: string): string => `${field}Gu`;
  * its `<field>Gu` text when one was entered (otherwise the English text stays), and every `*Gu`
  * field is dropped so public responses stay the same shape in both languages.
  */
-export const localizeFields = <T extends object>(record: T, fields: readonly string[], lang: Language): T => {
+export const localizeFields = <T extends object>(
+  record: T,
+  fields: readonly string[],
+  lang: Language,
+): T => {
   const out = { ...record } as Record<string, unknown>;
   for (const field of fields) {
     const gu = out[guField(field)];

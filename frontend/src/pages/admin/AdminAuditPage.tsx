@@ -45,10 +45,16 @@ export default function AdminAuditPage() {
   // The server matches `action` exactly (or with a trailing *), so free text becomes a prefix search.
   const safeTerm = term.replace(/[^a-zA-Z0-9._-]/g, '');
   const actionFilter = safeTerm ? `${safeTerm}*` : action;
-  const list = useFetch(`audit:${actionFilter}:${outcome}:${page}`, () => listAuditApi({ action: actionFilter, outcome, page, limit: PAGE_SIZE }));
+  const list = useFetch(`audit:${actionFilter}:${outcome}:${page}`, () =>
+    listAuditApi({ action: actionFilter, outcome, page, limit: PAGE_SIZE }),
+  );
 
   const columns: Column<AuditEntry>[] = [
-    { header: t('When'), className: 'whitespace-nowrap font-mono text-[13px]', cell: (e) => formatDateTime(e.createdAt) },
+    {
+      header: t('When'),
+      className: 'whitespace-nowrap font-mono text-[13px]',
+      cell: (e) => formatDateTime(e.createdAt),
+    },
     {
       header: t('Who'),
       cell: (e) =>
@@ -79,10 +85,33 @@ export default function AdminAuditPage() {
 
   return (
     <>
-      <PageHeader title={t('Audit log')} description={t('Who did what, and when. Entries cannot be edited or deleted; they expire after the retention period.')} />
-      <Toolbar search={search} onSearch={(v) => (setSearch(v), setPage(1))} searchLabel={t('Action starts with, e.g. auth.login')}>
-        <FilterSelect label={t('Area')} value={action} onChange={(v) => (setAction(v), setPage(1))} options={areas.map((a) => ({ ...a, label: t(a.label) }))} />
-        <FilterSelect label={t('Result')} value={outcome} onChange={(v) => (setOutcome(v), setPage(1))} options={[{ value: '', label: t('Success or failure') }, { value: 'success', label: t('Success') }, { value: 'failure', label: t('Failure') }]} />
+      <PageHeader
+        title={t('Audit log')}
+        description={t(
+          'Who did what, and when. Entries cannot be edited or deleted; they expire after the retention period.',
+        )}
+      />
+      <Toolbar
+        search={search}
+        onSearch={(v) => (setSearch(v), setPage(1))}
+        searchLabel={t('Action starts with, e.g. auth.login')}
+      >
+        <FilterSelect
+          label={t('Area')}
+          value={action}
+          onChange={(v) => (setAction(v), setPage(1))}
+          options={areas.map((a) => ({ ...a, label: t(a.label) }))}
+        />
+        <FilterSelect
+          label={t('Result')}
+          value={outcome}
+          onChange={(v) => (setOutcome(v), setPage(1))}
+          options={[
+            { value: '', label: t('Success or failure') },
+            { value: 'success', label: t('Success') },
+            { value: 'failure', label: t('Failure') },
+          ]}
+        />
       </Toolbar>
       <DataTable
         caption={t('Audit log')}
@@ -93,9 +122,18 @@ export default function AdminAuditPage() {
         error={list.error}
         onRetry={list.retry}
         minWidth={760}
-        empty={<EmptyState title={t('No entries')} description={t('Nothing matches these filters.')} />}
+        empty={
+          <EmptyState title={t('No entries')} description={t('Nothing matches these filters.')} />
+        }
       />
-      {list.data && <Pagination page={page} pageSize={PAGE_SIZE} totalCount={list.data.totalCount} onChange={setPage} />}
+      {list.data && (
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          totalCount={list.data.totalCount}
+          onChange={setPage}
+        />
+      )}
     </>
   );
 }

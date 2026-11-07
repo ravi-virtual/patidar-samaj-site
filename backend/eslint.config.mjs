@@ -10,13 +10,20 @@ export default tseslint.config(
     languageOptions: { globals: { ...globals.node } },
     rules: {
       // Controllers return the response; consistent-return would fight that pattern.
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
       'no-console': 'off',
       eqeqeq: ['error', 'always'],
       // process.env may only be read in src/config/constants.ts (mern-stack-project skill).
       'no-restricted-properties': [
         'error',
-        { object: 'process', property: 'env', message: 'Import config from src/config/constants.ts instead.' },
+        {
+          object: 'process',
+          property: 'env',
+          message: 'Import config from src/config/constants.ts instead.',
+        },
       ],
     },
   },

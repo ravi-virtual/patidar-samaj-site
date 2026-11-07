@@ -5,7 +5,8 @@ import { sendError } from '../utils/apiResponse';
 import { getSettings } from '../utils/settings';
 
 /** Whether a public tab is switched on in the organisation settings. */
-export const isTabEnabled = async (tab: PublicTab): Promise<boolean> => resolvePublicTabs((await getSettings())?.publicTabs)[tab];
+export const isTabEnabled = async (tab: PublicTab): Promise<boolean> =>
+  resolvePublicTabs((await getSettings())?.publicTabs)[tab];
 
 /**
  * Answers 404 (the normal not-found response) when an administrator has switched the given public
@@ -15,7 +16,11 @@ export const isTabEnabled = async (tab: PublicTab): Promise<boolean> => resolveP
 const requireTab = (tab: PublicTab) => async (_req: Request, res: Response, next: NextFunction) => {
   try {
     if (await isTabEnabled(tab)) return next();
-    return sendError(res, { statusCode: ResponseCodes.NOT_FOUND, message: 'Not found', code: ErrorCodes.NOT_FOUND });
+    return sendError(res, {
+      statusCode: ResponseCodes.NOT_FOUND,
+      message: 'Not found',
+      code: ErrorCodes.NOT_FOUND,
+    });
   } catch (err) {
     return next(err);
   }

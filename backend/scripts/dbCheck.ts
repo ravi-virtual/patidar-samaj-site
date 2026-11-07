@@ -23,7 +23,9 @@ const run = async (): Promise<void> => {
     const admin = mongoose.connection.db?.admin();
     const info = await admin?.serverInfo();
     const ping = await admin?.ping();
-    console.log(`OK  connected, server v${info?.version ?? 'unknown'}, ping ${JSON.stringify(ping)}`);
+    console.log(
+      `OK  connected, server v${info?.version ?? 'unknown'}, ping ${JSON.stringify(ping)}`,
+    );
     await mongoose.disconnect();
     process.exit(0);
   } catch (err) {

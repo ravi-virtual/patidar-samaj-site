@@ -14,7 +14,11 @@ const cookieOptions = () => ({
  * Creates a server-side session and sets the cookie. Always issues a fresh token, which is what
  * "session rotation" means: a pre-login cookie can never become an authenticated one.
  */
-export const startSession = async (req: Request, res: Response, userId: string): Promise<string> => {
+export const startSession = async (
+  req: Request,
+  res: Response,
+  userId: string,
+): Promise<string> => {
   const token = generateToken();
   const now = new Date();
   const ttlMs = config.session.ttlHours * 3_600_000;
@@ -42,7 +46,10 @@ export const readSessionToken = (req: Request): string | undefined => {
 };
 
 /** Ends every session for a user (role change, suspension, password change, admin revoke). */
-export const revokeUserSessions = async (userId: string, exceptSessionId?: string): Promise<number> => {
+export const revokeUserSessions = async (
+  userId: string,
+  exceptSessionId?: string,
+): Promise<number> => {
   const filter: Record<string, unknown> = { userId };
   if (exceptSessionId) filter._id = { $ne: exceptSessionId };
   const result = await Session.deleteMany(filter);

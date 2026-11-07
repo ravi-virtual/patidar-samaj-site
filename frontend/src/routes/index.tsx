@@ -45,17 +45,32 @@ import {
   AdminAuditPage,
 } from './lazyPages';
 
-
 export const routes: RouteObject[] = [
   {
     element: <PublicLayout />,
     children: [
       { index: true, element: <HomePage /> },
       // Each public tab sits behind a TabGate: Not found while an administrator has it switched off.
-      { path: 'about', element: <TabGate tab="about" />, children: [{ index: true, element: <AboutPage /> }] },
-      { path: 'committee', element: <TabGate tab="committee" />, children: [{ index: true, element: <CommitteePage /> }] },
-      { path: 'faq', element: <TabGate tab="faq" />, children: [{ index: true, element: <FaqPage /> }] },
-      { path: 'links', element: <TabGate tab="links" />, children: [{ index: true, element: <LinksPage /> }] },
+      {
+        path: 'about',
+        element: <TabGate tab="about" />,
+        children: [{ index: true, element: <AboutPage /> }],
+      },
+      {
+        path: 'committee',
+        element: <TabGate tab="committee" />,
+        children: [{ index: true, element: <CommitteePage /> }],
+      },
+      {
+        path: 'faq',
+        element: <TabGate tab="faq" />,
+        children: [{ index: true, element: <FaqPage /> }],
+      },
+      {
+        path: 'links',
+        element: <TabGate tab="links" />,
+        children: [{ index: true, element: <LinksPage /> }],
+      },
       {
         path: 'members',
         element: <TabGate tab="directory" />,
@@ -80,7 +95,11 @@ export const routes: RouteObject[] = [
           { path: ':id', element: <NewsDetailPage /> },
         ],
       },
-      { path: 'contact', element: <TabGate tab="contact" />, children: [{ index: true, element: <ContactPage /> }] },
+      {
+        path: 'contact',
+        element: <TabGate tab="contact" />,
+        children: [{ index: true, element: <ContactPage /> }],
+      },
       // Reached only from the admin sign-in page; there is no public or member sign-in.
       { path: 'forgot-password', element: <ForgotPasswordPage /> },
       // Setup and reset links work whether or not the visitor is signed in.

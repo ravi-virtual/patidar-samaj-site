@@ -11,7 +11,11 @@ import { searchFieldsFor } from '../utils/localize';
 const VISIBLE = [EventStatus.PUBLISHED, EventStatus.CANCELLED];
 
 const notFound = (res: Response) =>
-  sendError(res, { statusCode: ResponseCodes.NOT_FOUND, message: 'Event not found', code: ErrorCodes.NOT_FOUND });
+  sendError(res, {
+    statusCode: ResponseCodes.NOT_FOUND,
+    message: 'Event not found',
+    code: ErrorCodes.NOT_FOUND,
+  });
 
 /**
  * @name listEvents
@@ -41,7 +45,9 @@ export const listEvents = async (req: Request, res: Response, next: NextFunction
     if (q.category) filter.category = q.category;
     if (q.search) {
       const rx = new RegExp(escapeRegex(q.search), 'i');
-      filter.$or = searchFieldsFor(['title', 'description', 'venue'], req.lang).map((f) => ({ [f]: rx }));
+      filter.$or = searchFieldsFor(['title', 'description', 'venue'], req.lang).map((f) => ({
+        [f]: rx,
+      }));
     }
 
     const { limit, skip } = pageParams(q, 12);
@@ -73,7 +79,11 @@ export const listEvents = async (req: Request, res: Response, next: NextFunction
  */
 export const getEvent = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const event = await Event.findOne({ _id: req.params.id, isDeleted: false, status: { $in: VISIBLE } }).lean();
+    const event = await Event.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+      status: { $in: VISIBLE },
+    }).lean();
     if (!event) return notFound(res);
     return new ApiResponse(ResponseCodes.OK, 'Event fetched successfully', {
       event: toPublicEvent(event, req.lang),

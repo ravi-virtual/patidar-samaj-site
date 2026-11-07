@@ -18,7 +18,9 @@ export const toDirectoryEntry = (p: IMemberProfile) => ({
 });
 
 /** Only "public" is visible to visitors; anything else, including a legacy "members" value, counts as hidden. */
-export const effectiveVisibility = (p: Pick<IMemberProfile, 'visibility'>): MemberVisibilityValue =>
+export const effectiveVisibility = (
+  p: Pick<IMemberProfile, 'visibility'>,
+): MemberVisibilityValue =>
   p.visibility === MemberVisibility.PUBLIC ? MemberVisibility.PUBLIC : MemberVisibility.HIDDEN;
 
 interface StaffViewOptions {

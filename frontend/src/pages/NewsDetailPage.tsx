@@ -12,7 +12,9 @@ import { t } from '../i18n';
 
 export default function NewsDetailPage() {
   const { id = '' } = useParams();
-  const { data, initialLoading, error, retry } = useFetch(`news-item:${id}`, () => getAnnouncementApi(id));
+  const { data, initialLoading, error, retry } = useFetch(`news-item:${id}`, () =>
+    getAnnouncementApi(id),
+  );
   usePageTitle(data?.title);
 
   if (error?.toLowerCase().includes('not found')) {
@@ -26,7 +28,13 @@ export default function NewsDetailPage() {
   }
 
   return (
-    <Async data={data} loading={initialLoading} error={error} onRetry={retry} skeleton={<Skeleton className="h-64" />}>
+    <Async
+      data={data}
+      loading={initialLoading}
+      error={error}
+      onRetry={retry}
+      skeleton={<Skeleton className="h-64" />}
+    >
       {(a) => (
         <article className="max-w-3xl">
           <Card className="space-y-3 p-6 sm:p-8">
@@ -39,7 +47,9 @@ export default function NewsDetailPage() {
               {a.archived && <Badge tone="warning">{t('Archived')}</Badge>}
             </div>
             <h1 className="text-[28px] font-semibold leading-tight tracking-tight">{a.title}</h1>
-            <div className="whitespace-pre-line text-[16px] leading-relaxed text-text-secondary">{a.body ?? a.summary}</div>
+            <div className="whitespace-pre-line text-[16px] leading-relaxed text-text-secondary">
+              {a.body ?? a.summary}
+            </div>
           </Card>
           <p className="mt-4">
             <Link to="/news">{t('← All announcements')}</Link>

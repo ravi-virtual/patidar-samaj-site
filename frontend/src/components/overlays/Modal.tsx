@@ -25,7 +25,16 @@ const panel: Record<NonNullable<ModalProps['variant']>, string> = {
  * Accessible dialog built on the native <dialog> element: the browser provides the focus trap,
  * Escape to close, inert background and focus return. Clicking the dimmed backdrop also closes it.
  */
-export function Modal({ open, onClose, title, hideTitle, variant = 'dialog', children, footer, role }: ModalProps) {
+export function Modal({
+  open,
+  onClose,
+  title,
+  hideTitle,
+  variant = 'dialog',
+  children,
+  footer,
+  role,
+}: ModalProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -50,7 +59,9 @@ export function Modal({ open, onClose, title, hideTitle, variant = 'dialog', chi
     >
       {open && (
         <>
-          <div className={`flex items-center justify-between gap-3 px-5 py-4 ${hideTitle ? 'sr-only' : 'border-b border-border'}`}>
+          <div
+            className={`flex items-center justify-between gap-3 px-5 py-4 ${hideTitle ? 'sr-only' : 'border-b border-border'}`}
+          >
             <h2 id={titleId} className="text-[17px] font-semibold">
               {title}
             </h2>
@@ -64,7 +75,11 @@ export function Modal({ open, onClose, title, hideTitle, variant = 'dialog', chi
             </button>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
-          {footer && <div className="flex justify-end gap-2 border-t border-border px-5 py-3.5">{footer}</div>}
+          {footer && (
+            <div className="flex justify-end gap-2 border-t border-border px-5 py-3.5">
+              {footer}
+            </div>
+          )}
         </>
       )}
     </dialog>

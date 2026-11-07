@@ -2,7 +2,13 @@ import type { NextFunction, Request, Response } from 'express';
 import { matchedData } from 'express-validator';
 import ContactMessage, { type IContactMessage } from '../models/ContactMessage';
 import User from '../models/User';
-import { AccountStatus, ContactStatus, ErrorCodes, ResponseCodes, StaffRoles } from '../config/constants';
+import {
+  AccountStatus,
+  ContactStatus,
+  ErrorCodes,
+  ResponseCodes,
+  StaffRoles,
+} from '../config/constants';
 import { Permissions } from '../config/permissions';
 import { ApiResponse, sendError } from '../utils/apiResponse';
 import { escapeRegex } from '../utils/escapeRegex';
@@ -10,7 +16,11 @@ import { pageParams } from '../utils/pagination';
 import { writeAudit } from '../utils/audit';
 
 const notFound = (res: Response) =>
-  sendError(res, { statusCode: ResponseCodes.NOT_FOUND, message: 'Message not found', code: ErrorCodes.NOT_FOUND });
+  sendError(res, {
+    statusCode: ResponseCodes.NOT_FOUND,
+    message: 'Message not found',
+    code: ErrorCodes.NOT_FOUND,
+  });
 
 const forbidden = (res: Response, message: string) =>
   sendError(res, { statusCode: ResponseCodes.FORBIDDEN, message, code: ErrorCodes.FORBIDDEN });
@@ -94,8 +104,14 @@ export const getContact = async (req: Request, res: Response, next: NextFunction
   try {
     const message = await ContactMessage.findOne({ _id: req.params.id, isDeleted: false }).lean();
     if (!message) return notFound(res);
-    await writeAudit(req, { action: 'contact.viewed', targetType: 'contact', targetId: message._id });
-    return new ApiResponse(ResponseCodes.OK, 'Message fetched successfully', { message: toView(message, true) }).send(res);
+    await writeAudit(req, {
+      action: 'contact.viewed',
+      targetType: 'contact',
+      targetId: message._id,
+    });
+    return new ApiResponse(ResponseCodes.OK, 'Message fetched successfully', {
+      message: toView(message, true),
+    }).send(res);
   } catch (err) {
     return next(err);
   }
@@ -164,8 +180,15 @@ export const updateContact = async (req: Request, res: Response, next: NextFunct
     }
     await message.save();
 
-    await writeAudit(req, { action: 'contact.updated', targetType: 'contact', targetId: message._id, metadata: changes });
-    return new ApiResponse(ResponseCodes.OK, 'Message updated', { message: toView(message.toObject(), true) }).send(res);
+    await writeAudit(req, {
+      action: 'contact.updated',
+      targetType: 'contact',
+      targetId: message._id,
+      metadata: changes,
+    });
+    return new ApiResponse(ResponseCodes.OK, 'Message updated', {
+      message: toView(message.toObject(), true),
+    }).send(res);
   } catch (err) {
     return next(err);
   }
@@ -193,8 +216,14 @@ export const addContactNote = async (req: Request, res: Response, next: NextFunc
     }
     message.notes.push({ authorId: req.user!.id, text, createdAt: new Date() });
     await message.save();
-    await writeAudit(req, { action: 'contact.note_added', targetType: 'contact', targetId: message._id });
-    return new ApiResponse(ResponseCodes.CREATED, 'Note added', { message: toView(message.toObject(), true) }).send(res);
+    await writeAudit(req, {
+      action: 'contact.note_added',
+      targetType: 'contact',
+      targetId: message._id,
+    });
+    return new ApiResponse(ResponseCodes.CREATED, 'Note added', {
+      message: toView(message.toObject(), true),
+    }).send(res);
   } catch (err) {
     return next(err);
   }

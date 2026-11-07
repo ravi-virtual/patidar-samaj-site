@@ -16,7 +16,9 @@ export default function AdminLoginPage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, bootstrapped, loginStatus, loginError, loginErrorCode } = useAppSelector((s) => s.auth);
+  const { user, bootstrapped, loginStatus, loginError, loginErrorCode } = useAppSelector(
+    (s) => s.auth,
+  );
   const from = (location.state as { from?: string } | null)?.from;
   const target = from?.startsWith('/admin') && from !== '/admin/login' ? from : '/admin';
 
@@ -24,7 +26,10 @@ export default function AdminLoginPage() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginForm>({ resolver: zodResolver(loginSchema), defaultValues: { email: '', password: '' } });
+  } = useForm<LoginForm>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
+  });
 
   useEffect(() => () => void dispatch(clearLoginError()), [dispatch]);
 
@@ -67,7 +72,10 @@ export default function AdminLoginPage() {
             {...register('password')}
           />
           <div className="flex justify-end">
-            <Link to="/forgot-password" className="text-[13px] font-medium text-accent hover:underline">
+            <Link
+              to="/forgot-password"
+              className="text-[13px] font-medium text-accent hover:underline"
+            >
               {t('Forgot password?')}
             </Link>
           </div>

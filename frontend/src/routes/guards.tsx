@@ -26,7 +26,9 @@ export function RequireAuth({ children }: { children?: ReactNode }) {
   const location = useLocation();
   if (!bootstrapped) return <Pending />;
   if (!user) {
-    return <Navigate to="/admin/login" replace state={{ from: location.pathname + location.search }} />;
+    return (
+      <Navigate to="/admin/login" replace state={{ from: location.pathname + location.search }} />
+    );
   }
   return children ?? <Outlet />;
 }
@@ -43,7 +45,9 @@ export function RequirePermission({
   const location = useLocation();
   if (!bootstrapped) return <Pending />;
   if (!user) {
-    return <Navigate to="/admin/login" replace state={{ from: location.pathname + location.search }} />;
+    return (
+      <Navigate to="/admin/login" replace state={{ from: location.pathname + location.search }} />
+    );
   }
   if (!permissions.every((p) => user.permissions.includes(p))) {
     return (

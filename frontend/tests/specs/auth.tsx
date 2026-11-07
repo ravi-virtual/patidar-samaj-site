@@ -38,7 +38,12 @@ const admin: SessionUser = {
   lastLoginAt: null,
 };
 
-const apiError = (status: number, message: string, code: string, details: { field?: string; message: string }[] = []) => {
+const apiError = (
+  status: number,
+  message: string,
+  code: string,
+  details: { field?: string; message: string }[] = [],
+) => {
   const error = new AxiosError('failed', 'ERR_BAD_REQUEST', undefined, undefined, {
     status,
     statusText: '',
@@ -91,8 +96,13 @@ describe('admin sign-in page', () => {
 
   it('offers only password recovery: no registration, no member sign-in', async () => {
     await renderApp('/admin/login');
-    expect(screen.getByRole('link', { name: /forgot password/i })).toHaveAttribute('href', '/forgot-password');
-    expect(screen.queryByRole('link', { name: /register|join|create account/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /forgot password/i })).toHaveAttribute(
+      'href',
+      '/forgot-password',
+    );
+    expect(
+      screen.queryByRole('link', { name: /register|join|create account/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('signs in, stores the CSRF token in memory only, and leaves the sign-in page', async () => {
@@ -109,11 +119,15 @@ describe('admin sign-in page', () => {
     expect(getCsrfToken()).toBe('csrf-123');
     expect(window.localStorage.getItem('csrf')).toBeNull();
     expect(JSON.stringify(window.localStorage)).not.toMatch(/csrf-123|token|session/i);
-    await waitFor(() => expect(screen.queryByRole('heading', { name: /admin sign in/i })).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: /admin sign in/i })).not.toBeInTheDocument(),
+    );
   });
 
   it('shows the server’s generic error for bad credentials', async () => {
-    mocked.adminLoginApi.mockRejectedValue(apiError(401, 'Invalid email or password', 'UNAUTHORIZED'));
+    mocked.adminLoginApi.mockRejectedValue(
+      apiError(401, 'Invalid email or password', 'UNAUTHORIZED'),
+    );
     const user = userEvent.setup();
     await renderApp('/admin/login');
     await user.type(screen.getByLabelText(/email/i), 'asha@example.test');
@@ -124,7 +138,11 @@ describe('admin sign-in page', () => {
 
   it('explains a suspended account instead of calling it a wrong password', async () => {
     mocked.adminLoginApi.mockRejectedValue(
-      apiError(403, 'This account has been suspended. Please contact the Super Admin.', 'ACCOUNT_NOT_ACTIVE'),
+      apiError(
+        403,
+        'This account has been suspended. Please contact the Super Admin.',
+        'ACCOUNT_NOT_ACTIVE',
+      ),
     );
     const user = userEvent.setup();
     await renderApp('/admin/login');
@@ -141,7 +159,10 @@ describe('admin sign-in page', () => {
     expect(input).toHaveAttribute('type', 'password');
     await user.click(screen.getByRole('button', { name: /show password/i }));
     expect(input).toHaveAttribute('type', 'text');
-    expect(screen.getByRole('button', { name: /hide password/i })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /hide password/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 
   it('does not show the sign-in form to someone who is already signed in', async () => {
@@ -152,22 +173,32 @@ describe('admin sign-in page', () => {
 });
 
 describe('member sign-up and sign-in no longer exist', () => {
-  it.each(['/login', '/register', '/app', '/app/settings', '/app/registrations'])('%s is simply not found', async (path) => {
-    await renderApp(path);
-    expect(screen.getByRole('heading', { name: /page not found/i })).toBeInTheDocument();
-  });
+  it.each(['/login', '/register', '/app', '/app/settings', '/app/registrations'])(
+    '%s is simply not found',
+    async (path) => {
+      await renderApp(path);
+      expect(screen.getByRole('heading', { name: /page not found/i })).toBeInTheDocument();
+    },
+  );
 
   it('shows no sign-in, join or workspace links around the public site', async () => {
     await renderApp('/forgot-password');
-    expect(screen.queryByRole('link', { name: /^(log in|join|sign in|create account)$/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: /^(log in|join|sign in|create account)$/i }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/member workspace|my workspace/i)).not.toBeInTheDocument();
-    expect(document.querySelector('a[href="/login"], a[href="/register"], a[href^="/app"]')).toBeNull();
+    expect(
+      document.querySelector('a[href="/login"], a[href="/register"], a[href^="/app"]'),
+    ).toBeNull();
   });
 
   it('keeps password recovery reachable, leading back to the admin sign-in', async () => {
     await renderApp('/forgot-password');
     expect(screen.getByRole('heading', { name: /reset your password/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /back to sign in/i })).toHaveAttribute('href', '/admin/login');
+    expect(screen.getByRole('link', { name: /back to sign in/i })).toHaveAttribute(
+      'href',
+      '/admin/login',
+    );
   });
 
   it('sends visitors who open an admin page to the admin sign-in', async () => {
@@ -190,7 +221,13 @@ describe('route guards (convenience only — the API enforces access)', () => {
     await store.dispatch(bootstrapAuth());
     render(
       <Provider store={store}>
-        <MemoryRouter initialEntries={['/private']}>{guarded(<RequireAuth><Secret /></RequireAuth>)}</MemoryRouter>
+        <MemoryRouter initialEntries={['/private']}>
+          {guarded(
+            <RequireAuth>
+              <Secret />
+            </RequireAuth>,
+          )}
+        </MemoryRouter>
       </Provider>,
     );
     expect(screen.getByText('login screen')).toBeInTheDocument();
@@ -200,7 +237,13 @@ describe('route guards (convenience only — the API enforces access)', () => {
   it('shows a skeleton, not a redirect flash, until the session check finishes', () => {
     render(
       <Provider store={createStore()}>
-        <MemoryRouter initialEntries={['/private']}>{guarded(<RequireAuth><Secret /></RequireAuth>)}</MemoryRouter>
+        <MemoryRouter initialEntries={['/private']}>
+          {guarded(
+            <RequireAuth>
+              <Secret />
+            </RequireAuth>,
+          )}
+        </MemoryRouter>
       </Provider>,
     );
     expect(screen.queryByText('login screen')).not.toBeInTheDocument();
@@ -214,7 +257,11 @@ describe('route guards (convenience only — the API enforces access)', () => {
     const { unmount } = render(
       <Provider store={store}>
         <MemoryRouter initialEntries={['/private']}>
-          {guarded(<RequirePermission permissions={['events.read']}><Secret /></RequirePermission>)}
+          {guarded(
+            <RequirePermission permissions={['events.read']}>
+              <Secret />
+            </RequirePermission>,
+          )}
         </MemoryRouter>
       </Provider>,
     );
@@ -224,7 +271,11 @@ describe('route guards (convenience only — the API enforces access)', () => {
     render(
       <Provider store={store}>
         <MemoryRouter initialEntries={['/private']}>
-          {guarded(<RequirePermission permissions={['users.manage']}><Secret /></RequirePermission>)}
+          {guarded(
+            <RequirePermission permissions={['users.manage']}>
+              <Secret />
+            </RequirePermission>,
+          )}
         </MemoryRouter>
       </Provider>,
     );
@@ -272,7 +323,10 @@ describe('header actions per authentication state', () => {
 describe('theme and account', () => {
   it('uses the saved account preference instead of the device preference after sign-in', async () => {
     window.localStorage.setItem('samaj.theme', 'light'); // this device was on Light
-    mocked.adminLoginApi.mockResolvedValue({ user: { ...admin, themePreference: 'dark' }, csrfToken: 'c' });
+    mocked.adminLoginApi.mockResolvedValue({
+      user: { ...admin, themePreference: 'dark' },
+      csrfToken: 'c',
+    });
     const store = createStore();
     await store.dispatch(adminLogin({ email: 'asha@example.test', password: 'x' }));
     expect(store.getState().theme.preference).toBe('dark');
@@ -281,7 +335,10 @@ describe('theme and account', () => {
 
   it('falls back to following the system when the account has no explicit choice', async () => {
     window.__prefersDark = true;
-    mocked.getUserByIdApi.mockResolvedValue({ user: { ...admin, themePreference: 'system' }, csrfToken: 'c' });
+    mocked.getUserByIdApi.mockResolvedValue({
+      user: { ...admin, themePreference: 'system' },
+      csrfToken: 'c',
+    });
     const store = createStore();
     await store.dispatch(bootstrapAuth());
     expect(store.getState().theme.preference).toBe('system');
@@ -356,6 +413,9 @@ describe('password reset page', () => {
     expect(mocked.resetPasswordApi).toHaveBeenCalledWith(
       expect.objectContaining({ token: 'abcdefghijklmnopqrstuvwxyz0123456789' }),
     );
-    expect(screen.getByRole('link', { name: /go to sign in/i })).toHaveAttribute('href', '/admin/login');
+    expect(screen.getByRole('link', { name: /go to sign in/i })).toHaveAttribute(
+      'href',
+      '/admin/login',
+    );
   });
 });

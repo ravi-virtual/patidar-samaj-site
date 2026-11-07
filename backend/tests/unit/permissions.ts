@@ -82,7 +82,9 @@ describe('permission catalogue', () => {
       ].sort(),
     );
     for (const p of SUPERADMIN_ONLY_PERMISSIONS) expect(isSelectablePermission(p)).toBe(false);
-    expect(SELECTABLE_PERMISSIONS.length + SUPERADMIN_ONLY_PERMISSIONS.length).toBe(ALL_PERMISSIONS.length);
+    expect(SELECTABLE_PERMISSIONS.length + SUPERADMIN_ONLY_PERMISSIONS.length).toBe(
+      ALL_PERMISSIONS.length,
+    );
   });
 });
 
@@ -100,7 +102,9 @@ describe('isPermission', () => {
 describe('permissionsFor', () => {
   it('gives the Super Admin every permission, whatever is stored', () => {
     expect(new Set(permissionsFor({ role: Roles.SUPER_ADMIN }))).toEqual(new Set(ALL_PERMISSIONS));
-    expect(new Set(permissionsFor({ role: Roles.SUPER_ADMIN, permissions: [] }))).toEqual(new Set(ALL_PERMISSIONS));
+    expect(new Set(permissionsFor({ role: Roles.SUPER_ADMIN, permissions: [] }))).toEqual(
+      new Set(ALL_PERMISSIONS),
+    );
   });
 
   it('gives an admin no default permissions', () => {
@@ -119,13 +123,21 @@ describe('permissionsFor', () => {
   it('ignores unknown, non-string and Super-Admin-only values on an admin record', () => {
     const list = permissionsFor({
       role: Roles.ADMIN,
-      permissions: ['nope', Permissions.USERS_MANAGE, Permissions.SESSIONS_REVOKE, 5 as never, Permissions.MEMBERS_READ],
+      permissions: [
+        'nope',
+        Permissions.USERS_MANAGE,
+        Permissions.SESSIONS_REVOKE,
+        5 as never,
+        Permissions.MEMBERS_READ,
+      ],
     });
     expect(list).toEqual([Permissions.MEMBERS_READ]);
   });
 
   it('returns nothing for an unknown role', () => {
-    expect(permissionsFor({ role: 'ghost' as never, permissions: [Permissions.EVENTS_READ] })).toEqual([]);
+    expect(
+      permissionsFor({ role: 'ghost' as never, permissions: [Permissions.EVENTS_READ] }),
+    ).toEqual([]);
     expect(permissionsFor({ role: 'member' as never })).toEqual([]);
   });
 });

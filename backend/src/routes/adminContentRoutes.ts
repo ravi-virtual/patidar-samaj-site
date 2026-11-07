@@ -38,12 +38,22 @@ router.use(hasToken, isAuthenticated, isStaff);
 router.get('/blocks', hasPermission(P.CONTENT_READ), listAdminBlocks);
 router.put('/blocks/:key', hasPermission(P.CONTENT_MANAGE), blockBodyRules, saveBlock);
 router.post('/blocks/:key/publish', hasPermission(P.CONTENT_PUBLISH), blockKeyRules, publishBlock);
-router.post('/blocks/:key/unpublish', hasPermission(P.CONTENT_PUBLISH), blockKeyRules, unpublishBlock);
+router.post(
+  '/blocks/:key/unpublish',
+  hasPermission(P.CONTENT_PUBLISH),
+  blockKeyRules,
+  unpublishBlock,
+);
 
 // Lists: faqs, links, milestones, committee-terms, committee-members.
 router.get('/:resource', hasPermission(P.CONTENT_READ), adminListRules, listItems);
 router.post('/:resource', hasPermission(P.CONTENT_MANAGE), createItemRules, createItem);
-router.patch('/:resource/reorder', hasPermission(P.CONTENT_PUBLISH), reorderItemRules, reorderItems);
+router.patch(
+  '/:resource/reorder',
+  hasPermission(P.CONTENT_PUBLISH),
+  reorderItemRules,
+  reorderItems,
+);
 router.get('/:resource/:id', hasPermission(P.CONTENT_READ), itemRules, getItem);
 router.patch('/:resource/:id', hasPermission(P.CONTENT_MANAGE), updateItemRules, updateItem);
 router.delete('/:resource/:id', hasPermission(P.CONTENT_PUBLISH), itemRules, deleteItem);

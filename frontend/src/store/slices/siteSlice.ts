@@ -22,6 +22,11 @@ export const fetchSiteSettings = createAsyncThunk<PublicSettings, void, { reject
       return rejectWithValue(getErrorMessage(err, t('Could not load site details')));
     }
   },
+  // A request already in flight is enough (React StrictMode re-runs effects in development).
+  {
+    condition: (_arg, { getState }) =>
+      (getState() as { site: SiteState }).site.status !== 'loading',
+  },
 );
 
 const siteSlice = createSlice({

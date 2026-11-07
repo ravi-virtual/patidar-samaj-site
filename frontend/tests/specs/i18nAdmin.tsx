@@ -28,7 +28,13 @@ const SUPER_ADMIN = {
   id: 'sa1',
   name: 'Super Boss',
   role: 'superadmin' as const,
-  permissions: [...adminUser.permissions, 'users.read', 'users.manage', 'users.reset_password', 'sessions.revoke'],
+  permissions: [
+    ...adminUser.permissions,
+    'users.read',
+    'users.manage',
+    'users.reset_password',
+    'sessions.revoke',
+  ],
 };
 
 beforeEach(() => {
@@ -42,8 +48,26 @@ describe('Admin pages in Gujarati', () => {
   it('shows the admin list chrome in Gujarati', async () => {
     admin.listUsersApi.mockResolvedValue({
       users: [
-        { id: 'a1', name: 'Nisha Shah', email: 'nisha@example.test', role: 'admin', status: 'active', permissions: ['events.read', 'events.publish'], lastLoginAt: null, suspendedAt: null },
-        { id: 'a2', name: 'Ravi Mehta', email: 'ravi@example.test', role: 'admin', status: 'suspended', permissions: [], lastLoginAt: null, suspendedAt: null },
+        {
+          id: 'a1',
+          name: 'Nisha Shah',
+          email: 'nisha@example.test',
+          role: 'admin',
+          status: 'active',
+          permissions: ['events.read', 'events.publish'],
+          lastLoginAt: null,
+          suspendedAt: null,
+        },
+        {
+          id: 'a2',
+          name: 'Ravi Mehta',
+          email: 'ravi@example.test',
+          role: 'admin',
+          status: 'suspended',
+          permissions: [],
+          lastLoginAt: null,
+          suspendedAt: null,
+        },
       ],
       totalCount: 2,
     });
@@ -64,12 +88,29 @@ describe('Admin pages in Gujarati', () => {
     const labels = within(screen.getByRole('list', { name: 'Nisha Shah માટે ક્રિયાઓ' }))
       .getAllByRole('button')
       .map((b) => b.textContent);
-    expect(labels).toEqual(['સંપાદિત કરો', 'નિષ્ક્રિય કરો…', 'પાસવર્ડ રીસેટ કરો…', 'બધે સાઇન આઉટ કરો', 'કાઢી નાખો']);
+    expect(labels).toEqual([
+      'સંપાદિત કરો',
+      'નિષ્ક્રિય કરો…',
+      'પાસવર્ડ રીસેટ કરો…',
+      'બધે સાઇન આઉટ કરો',
+      'કાઢી નાખો',
+    ]);
   });
 
   it('translates the confirmation dialog, with the name filled in', async () => {
     admin.listUsersApi.mockResolvedValue({
-      users: [{ id: 'a1', name: 'Nisha Shah', email: 'nisha@example.test', role: 'admin', status: 'active', permissions: [], lastLoginAt: null, suspendedAt: null }],
+      users: [
+        {
+          id: 'a1',
+          name: 'Nisha Shah',
+          email: 'nisha@example.test',
+          role: 'admin',
+          status: 'active',
+          permissions: [],
+          lastLoginAt: null,
+          suspendedAt: null,
+        },
+      ],
       totalCount: 1,
     });
     renderWithApp(<AdminUsersPage />, { store: await makeStore(SUPER_ADMIN) });
@@ -79,7 +120,9 @@ describe('Admin pages in Gujarati', () => {
     await user.click(screen.getByRole('button', { name: 'બધે સાઇન આઉટ કરો' }));
     const dialog = await screen.findByRole('alertdialog');
     expect(within(dialog).getByText('આ એડમિનને બધે સાઇન આઉટ કરવા છે?')).toBeInTheDocument();
-    expect(within(dialog).getByText('Nisha Shah ને દરેક ડિવાઇસ પર ફરી સાઇન ઇન કરવું પડશે.')).toBeInTheDocument();
+    expect(
+      within(dialog).getByText('Nisha Shah ને દરેક ડિવાઇસ પર ફરી સાઇન ઇન કરવું પડશે.'),
+    ).toBeInTheDocument();
   });
 
   it('translates client-side validation messages on the Add admin form', async () => {

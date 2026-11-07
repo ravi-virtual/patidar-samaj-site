@@ -29,7 +29,9 @@ describe('public event listing', () => {
     expect(res.status).toBe(200);
     const titles = res.body.data.events.map((e: { title: string }) => e.title).sort();
     expect(titles).toEqual(['Cancelled One', 'Live One']);
-    const cancelled = res.body.data.events.find((e: { title: string }) => e.title === 'Cancelled One');
+    const cancelled = res.body.data.events.find(
+      (e: { title: string }) => e.title === 'Cancelled One',
+    );
     expect(cancelled.status).toBe('cancelled');
   });
 
@@ -45,9 +47,15 @@ describe('public event listing', () => {
 
   it('filters by category and searches title, description and venue', async () => {
     await makeEvent({ title: 'Diwali Dinner', category: 'Festival', venue: 'Main Hall' });
-    await makeEvent({ title: 'Blood Camp', category: 'Seva', description: 'With the district blood bank' });
+    await makeEvent({
+      title: 'Blood Camp',
+      category: 'Seva',
+      description: 'With the district blood bank',
+    });
     expect((await anon().get('/events?category=Seva')).body.data.totalCount).toBe(1);
-    expect((await anon().get('/events?search=diwali')).body.data.events[0].title).toBe('Diwali Dinner');
+    expect((await anon().get('/events?search=diwali')).body.data.events[0].title).toBe(
+      'Diwali Dinner',
+    );
     expect((await anon().get('/events?search=bank')).body.data.events[0].title).toBe('Blood Camp');
     expect((await anon().get('/events?search=main%20hall')).body.data.totalCount).toBe(1);
     expect((await anon().get('/events?category=Nope')).status).toBe(400);
@@ -55,7 +63,8 @@ describe('public event listing', () => {
   });
 
   it('pages and reports the total count only', async () => {
-    for (let i = 0; i < 5; i += 1) await makeEvent({ startsAt: new Date(Date.now() + (i + 1) * DAY) });
+    for (let i = 0; i < 5; i += 1)
+      await makeEvent({ startsAt: new Date(Date.now() + (i + 1) * DAY) });
     const res = await anon().get('/events?limit=2&page=3');
     expect(res.body.data.events).toHaveLength(1);
     expect(res.body.data.totalCount).toBe(5);
@@ -137,15 +146,17 @@ describe('staff event management', () => {
     const { client } = await signInAs(Roles.ADMIN, { permissions: READ_ONLY_ADMIN_PERMISSIONS });
     expect((await client.get('/admin/events')).body.data.totalCount).toBe(1);
     expect((await client.post('/admin/events').send(payload())).status).toBe(403);
-    expect((await client.patch(`/admin/events/${event._id}`).send({ title: 'Nope Nope' })).status).toBe(403);
+    expect(
+      (await client.patch(`/admin/events/${event._id}`).send({ title: 'Nope Nope' })).status,
+    ).toBe(403);
     expect((await client.post(`/admin/events/${event._id}/publish`)).status).toBe(403);
   });
 
   it('creates events as drafts and ignores status and authorship from the request', async () => {
     const { user, client } = await signInAs(Roles.ADMIN, { permissions: DRAFT_ADMIN_PERMISSIONS });
-    const res = await client.post('/admin/events').send(
-      payload({ status: 'published', createdBy: 'someone', isDeleted: true }),
-    );
+    const res = await client
+      .post('/admin/events')
+      .send(payload({ status: 'published', createdBy: 'someone', isDeleted: true }));
     expect(res.status).toBe(201);
     expect(res.body.data.event.status).toBe('draft');
     const stored = await Event.findById(res.body.data.event.id).lean();
@@ -163,7 +174,8 @@ describe('staff event management', () => {
       payload({ title: '<script>alert(1)</script>' }),
       payload({ endsAt: new Date(Date.now() + 9 * DAY).toISOString() }), // ends before it starts
     ];
-    for (const body of bad) expect((await client.post('/admin/events').send(body)).status).toBe(400);
+    for (const body of bad)
+      expect((await client.post('/admin/events').send(body)).status).toBe(400);
     expect(await Event.countDocuments()).toBe(0);
   });
 
@@ -176,7 +188,9 @@ describe('staff event management', () => {
     expect((await anon().get('/events')).body.data.events[0].title).toBe('Sharad Purnima Raas');
     expect((await client.post(`/admin/events/${id}/publish`)).status).toBe(409); // already published
 
-    const cancelled = await client.post(`/admin/events/${id}/cancel`).send({ reason: 'Rain forecast' });
+    const cancelled = await client
+      .post(`/admin/events/${id}/cancel`)
+      .send({ reason: 'Rain forecast' });
     expect(cancelled.status).toBe(200);
     const publicView = (await anon().get(`/events/${id}`)).body.data.event;
     expect(publicView).toMatchObject({ status: 'cancelled', cancellationReason: 'Rain forecast' });
@@ -185,7 +199,14 @@ describe('staff event management', () => {
     expect((await anon().get(`/events/${id}`)).status).toBe(404);
 
     const actions = (await AuditLog.find({ targetId: id }).lean()).map((e) => e.action);
-    expect(actions).toEqual(expect.arrayContaining(['event.created', 'event.published', 'event.cancelled', 'event.archived']));
+    expect(actions).toEqual(
+      expect.arrayContaining([
+        'event.created',
+        'event.published',
+        'event.cancelled',
+        'event.archived',
+      ]),
+    );
   });
 
   it('unpublishes a published event back to a draft', async () => {
@@ -205,24 +226,41 @@ describe('staff event management', () => {
 
   it('checks the merged schedule on partial updates', async () => {
     const { client } = await signInAs(Roles.ADMIN, { permissions: OPS_ADMIN_PERMISSIONS });
-    const event = await makeEvent({ startsAt: new Date(Date.now() + 5 * DAY), endsAt: new Date(Date.now() + 6 * DAY) });
+    const event = await makeEvent({
+      startsAt: new Date(Date.now() + 5 * DAY),
+      endsAt: new Date(Date.now() + 6 * DAY),
+    });
     // Moving the start after the existing end would leave the event ending before it starts.
-    const res = await client.patch(`/admin/events/${event._id}`).send({ startsAt: new Date(Date.now() + 8 * DAY).toISOString() });
+    const res = await client
+      .patch(`/admin/events/${event._id}`)
+      .send({ startsAt: new Date(Date.now() + 8 * DAY).toISOString() });
     expect(res.status).toBe(400);
   });
 
   it('applies the draft-only rule to Editors, and lets a granted publisher edit live events', async () => {
     const draft = await makeEvent({ status: 'draft' });
     const live = await makeEvent();
-    const { client: editor } = await signInAs(Roles.ADMIN, { permissions: DRAFT_ADMIN_PERMISSIONS });
-    expect((await editor.patch(`/admin/events/${draft._id}`).send({ title: 'Edited Draft' })).status).toBe(200);
-    expect((await editor.patch(`/admin/events/${live._id}`).send({ title: 'Edited Live' })).status).toBe(403);
+    const { client: editor } = await signInAs(Roles.ADMIN, {
+      permissions: DRAFT_ADMIN_PERMISSIONS,
+    });
+    expect(
+      (await editor.patch(`/admin/events/${draft._id}`).send({ title: 'Edited Draft' })).status,
+    ).toBe(200);
+    expect(
+      (await editor.patch(`/admin/events/${live._id}`).send({ title: 'Edited Live' })).status,
+    ).toBe(403);
     expect((await editor.post(`/admin/events/${draft._id}/publish`)).status).toBe(403);
-    expect((await editor.patch(`/admin/events/${draft._id}`).send({ featured: true })).status).toBe(403);
+    expect((await editor.patch(`/admin/events/${draft._id}`).send({ featured: true })).status).toBe(
+      403,
+    );
     expect((await Event.findById(live._id).lean())?.title).not.toBe('Edited Live');
 
-    const { client: granted } = await signInAs(Roles.ADMIN, { permissions: [...DRAFT_ADMIN_PERMISSIONS, ...['events.publish']] });
-    expect((await granted.patch(`/admin/events/${live._id}`).send({ title: 'Edited Live' })).status).toBe(200);
+    const { client: granted } = await signInAs(Roles.ADMIN, {
+      permissions: [...DRAFT_ADMIN_PERMISSIONS, ...['events.publish']],
+    });
+    expect(
+      (await granted.patch(`/admin/events/${live._id}`).send({ title: 'Edited Live' })).status,
+    ).toBe(200);
     expect((await granted.post(`/admin/events/${draft._id}/publish`)).status).toBe(200);
   });
 });

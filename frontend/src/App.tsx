@@ -1,5 +1,5 @@
 import { Fragment, useEffect } from 'react';
-import { useRoutes } from 'react-router-dom';
+import { useLocation, useRoutes } from 'react-router-dom';
 import { routes } from './routes';
 import { useThemeEffect } from './hooks/useThemeEffect';
 import { useLanguage } from './i18n';
@@ -12,6 +12,10 @@ export default function App() {
   const language = useLanguage();
   useThemeEffect();
 
+  // The sign-in page shows no organisation details, so it does not fetch them; they load as soon as
+  // the user moves on to any other page.
+  const onSignIn = useLocation().pathname === '/admin/login';
+
   // Once on load: restore the signed-in state (and the user's saved theme).
   useEffect(() => {
     void dispatch(bootstrapAuth());
@@ -20,8 +24,8 @@ export default function App() {
   // On load and whenever the language changes: fetch the organisation details (name, tagline,
   // address...) which the server returns in the chosen language.
   useEffect(() => {
-    void dispatch(fetchSiteSettings());
-  }, [dispatch, language]);
+    if (!onSignIn) void dispatch(fetchSiteSettings());
+  }, [dispatch, language, onSignIn]);
 
   const element = useRoutes(routes);
   // Switching language re-mounts the page tree so every string and every request is redone in

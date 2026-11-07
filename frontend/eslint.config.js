@@ -15,14 +15,17 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
+      ],
       eqeqeq: ['error', 'always'],
       // Auth tokens must never live in JS-accessible storage (only the non-sensitive theme cache may).
       'no-restricted-syntax': [
         'error',
         {
           selector:
-            "CallExpression[callee.object.property.name=/^(localStorage|sessionStorage)$/][callee.property.name=/^(setItem)$/][arguments.0.value=/token|session|auth|password/i]",
+            'CallExpression[callee.object.property.name=/^(localStorage|sessionStorage)$/][callee.property.name=/^(setItem)$/][arguments.0.value=/token|session|auth|password/i]',
           message: 'Do not store tokens, sessions or credentials in browser storage.',
         },
       ],

@@ -1,7 +1,14 @@
 import { Link } from 'react-router-dom';
 import { ExternalLink, FileText, Landmark } from 'lucide-react';
 import { mediaUrl } from '../../api/siteApi';
-import type { CommitteeMember, ContentBlock, ContentItem, Faq, ImportantLink, Milestone } from '../../api/types';
+import type {
+  CommitteeMember,
+  ContentBlock,
+  ContentItem,
+  Faq,
+  ImportantLink,
+  Milestone,
+} from '../../api/types';
 import { Avatar } from '../ui/Avatar';
 import { Badge } from '../ui/Badge';
 import { Card } from '../ui/Card';
@@ -105,10 +112,12 @@ export function AboutContent({ blocks }: { blocks: Record<string, ContentBlock> 
   const hasAnything = Object.keys(blocks).some((k) => k.startsWith('about.'));
 
   if (!hasAnything) {
-    return <EmptyState
+    return (
+      <EmptyState
         title={t('About page coming soon')}
         description={t('The Samaj office has not published this page yet.')}
-      />;
+      />
+    );
   }
 
   return (
@@ -118,7 +127,9 @@ export function AboutContent({ blocks }: { blocks: Record<string, ContentBlock> 
         <h1 className="mb-3.5 mt-1.5 text-4xl font-semibold leading-tight tracking-tight">
           {intro?.title ?? t('About the Samaj')}
         </h1>
-        {intro?.body && <p className="mb-3 text-[17px] text-text-secondary [text-wrap:pretty]">{intro.body}</p>}
+        {intro?.body && (
+          <p className="mb-3 text-[17px] text-text-secondary [text-wrap:pretty]">{intro.body}</p>
+        )}
         {volunteers?.body && <p className="text-text-muted">{volunteers.body}</p>}
       </div>
 
@@ -135,7 +146,9 @@ export function AboutContent({ blocks }: { blocks: Record<string, ContentBlock> 
           <ol className="m-0 grid list-none gap-4 p-0 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
             {values.map((v, i) => (
               <li key={i} className="border-t border-text pt-3.5">
-                <p className="font-mono text-xs text-text-muted">{String(i + 1).padStart(2, '0')}</p>
+                <p className="font-mono text-xs text-text-muted">
+                  {String(i + 1).padStart(2, '0')}
+                </p>
                 <h3 className="my-0.5 text-xl font-semibold">{v.title}</h3>
                 <p className="text-text-muted">{v.text}</p>
               </li>
@@ -173,7 +186,9 @@ export function AboutContent({ blocks }: { blocks: Record<string, ContentBlock> 
               return (
                 <li key={i}>
                   <Card padded={false} className="h-full overflow-hidden">
-                    {image && <img src={image} alt="" loading="lazy" className="h-36 w-full object-cover" />}
+                    {image && (
+                      <img src={image} alt="" loading="lazy" className="h-36 w-full object-cover" />
+                    )}
                     <div className="p-4">
                       <h3 className="font-semibold">{a.title}</h3>
                       <p className="mt-1 text-sm text-text-muted">{a.text}</p>
@@ -234,7 +249,11 @@ export function MilestoneEntry({ m }: { m: Milestone }) {
             className="h-36 w-full max-w-md rounded-lg border border-border object-cover"
           />
         )}
-        {m.sourceRef && <p className="mt-1.5 text-xs text-text-subtle">{t('Source: {source}', { source: m.sourceRef })}</p>}
+        {m.sourceRef && (
+          <p className="mt-1.5 text-xs text-text-subtle">
+            {t('Source: {source}', { source: m.sourceRef })}
+          </p>
+        )}
       </div>
     </li>
   );
@@ -247,7 +266,12 @@ export function MemberCard({ m }: { m: CommitteeMember }) {
   return (
     <Card className="flex h-full gap-3.5">
       {image ? (
-        <img src={image} alt="" loading="lazy" className="h-14 w-14 shrink-0 rounded-full object-cover" />
+        <img
+          src={image}
+          alt=""
+          loading="lazy"
+          className="h-14 w-14 shrink-0 rounded-full object-cover"
+        />
       ) : (
         <Avatar name={m.name} size="lg" />
       )}
@@ -266,8 +290,13 @@ export function MemberCard({ m }: { m: CommitteeMember }) {
 
 export function FaqItem({ f, open }: { f: Faq; open?: boolean }) {
   return (
-    <details open={open} className="group border-b border-surface-muted px-5 py-3.5 last:border-b-0">
-      <summary className="cursor-pointer font-medium text-text marker:text-text-subtle">{f.question}</summary>
+    <details
+      open={open}
+      className="group border-b border-surface-muted px-5 py-3.5 last:border-b-0"
+    >
+      <summary className="cursor-pointer font-medium text-text marker:text-text-subtle">
+        {f.question}
+      </summary>
       <p className="mt-2 whitespace-pre-line text-text-muted">{f.answer}</p>
     </details>
   );
@@ -289,7 +318,9 @@ export function LinkCard({ link }: { link: ImportantLink }) {
       </span>
       <span className="min-w-0 leading-tight">
         <span className="block text-sm font-medium">{link.label}</span>
-        {link.description && <span className="mt-0.5 block text-[13px] text-text-muted">{link.description}</span>}
+        {link.description && (
+          <span className="mt-0.5 block text-[13px] text-text-muted">{link.description}</span>
+        )}
         <span className="mt-1 block font-mono text-xs text-text-subtle">
           {file ? t('PDF download') : t('External link')}
         </span>
@@ -299,7 +330,11 @@ export function LinkCard({ link }: { link: ImportantLink }) {
   const cls = 'flex gap-3 rounded-xl border border-border bg-surface p-3.5 text-text hover:bg-bg';
   // External addresses open in a new tab without leaking the referrer or giving the target window access to ours.
   return href ? (
-    <a href={href} className={cls} {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : { download: true })}>
+    <a
+      href={href}
+      className={cls}
+      {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : { download: true })}
+    >
       {inner}
     </a>
   ) : (

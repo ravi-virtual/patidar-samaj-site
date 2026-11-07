@@ -28,7 +28,15 @@ import { readableSize } from './mediaLimits';
 
 const PAGE_SIZE = 24;
 
-function EditBody({ item, onClose, onSaved }: { item: MediaItem; onClose: () => void; onSaved: () => void }) {
+function EditBody({
+  item,
+  onClose,
+  onSaved,
+}: {
+  item: MediaItem;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const dispatch = useAppDispatch();
   const [alt, setAlt] = useState(item.altText ?? '');
   const [visibility, setVisibility] = useState(item.visibility);
@@ -64,7 +72,11 @@ function EditBody({ item, onClose, onSaved }: { item: MediaItem; onClose: () => 
             error={error}
           />
         )}
-        <SelectField label={t('Who can open this file')} value={visibility} onChange={(e) => setVisibility(e.target.value as MediaItem['visibility'])}>
+        <SelectField
+          label={t('Who can open this file')}
+          value={visibility}
+          onChange={(e) => setVisibility(e.target.value as MediaItem['visibility'])}
+        >
           <option value="public">{t('Anyone with the link')}</option>
           <option value="private">{t('Signed-in staff only')}</option>
         </SelectField>
@@ -88,7 +100,9 @@ export default function AdminMediaPage() {
   const [kind, setKind] = useState('');
   const [page, setPage] = useState(1);
   const term = useDebounced(search.trim(), 300);
-  const list = useFetch(`admin-media:${term}:${kind}:${page}`, () => listMediaApi({ search: term, kind, page, limit: PAGE_SIZE }));
+  const list = useFetch(`admin-media:${term}:${kind}:${page}`, () =>
+    listMediaApi({ search: term, kind, page, limit: PAGE_SIZE }),
+  );
   const { busy, run } = useRunner(list.retry);
 
   const [editing, setEditing] = useState<MediaItem | null>(null);
@@ -96,7 +110,12 @@ export default function AdminMediaPage() {
 
   return (
     <>
-      <PageHeader title={t('Media library')} description={t('Pictures and PDFs used on the site. JPEG, PNG, WebP (up to 3 MB) and PDF (up to 10 MB).')} />
+      <PageHeader
+        title={t('Media library')}
+        description={t(
+          'Pictures and PDFs used on the site. JPEG, PNG, WebP (up to 3 MB) and PDF (up to 10 MB).',
+        )}
+      />
       <Toolbar
         search={search}
         onSearch={(v) => (setSearch(v), setPage(1))}
@@ -110,7 +129,16 @@ export default function AdminMediaPage() {
           )
         }
       >
-        <FilterSelect label={t('Type')} value={kind} onChange={(v) => (setKind(v), setPage(1))} options={[{ value: '', label: t('All files') }, { value: 'image', label: t('Pictures') }, { value: 'document', label: t('PDFs') }]} />
+        <FilterSelect
+          label={t('Type')}
+          value={kind}
+          onChange={(v) => (setKind(v), setPage(1))}
+          options={[
+            { value: '', label: t('All files') },
+            { value: 'image', label: t('Pictures') },
+            { value: 'document', label: t('PDFs') },
+          ]}
+        />
       </Toolbar>
 
       {list.error && !list.data ? (
@@ -118,16 +146,31 @@ export default function AdminMediaPage() {
       ) : !list.data ? (
         <Skeleton className="h-72" />
       ) : list.data.media.length === 0 ? (
-        <EmptyState title={t('No files yet')} description={t('Upload a picture or PDF to use it on events, history and the committee page.')} />
+        <EmptyState
+          title={t('No files yet')}
+          description={t(
+            'Upload a picture or PDF to use it on events, history and the committee page.',
+          )}
+        />
       ) : (
-        <ul className={`m-0 grid list-none gap-3.5 p-0 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))] ${list.loading ? 'opacity-60' : ''}`}>
+        <ul
+          className={`m-0 grid list-none gap-3.5 p-0 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))] ${list.loading ? 'opacity-60' : ''}`}
+        >
           {list.data.media.map((m) => (
             <li key={m.id}>
               <Card padded={false} className="flex h-full flex-col overflow-hidden">
                 {m.kind === 'image' ? (
-                  <img src={mediaUrl(m.id) ?? undefined} alt={m.altText ?? ''} loading="lazy" className="h-32 w-full object-cover" />
+                  <img
+                    src={mediaUrl(m.id) ?? undefined}
+                    alt={m.altText ?? ''}
+                    loading="lazy"
+                    className="h-32 w-full object-cover"
+                  />
                 ) : (
-                  <div aria-hidden="true" className="flex h-32 items-center justify-center bg-surface-muted text-text-muted">
+                  <div
+                    aria-hidden="true"
+                    className="flex h-32 items-center justify-center bg-surface-muted text-text-muted"
+                  >
                     <FileText className="h-9 w-9" />
                   </div>
                 )}
@@ -138,17 +181,29 @@ export default function AdminMediaPage() {
                   <p className="flex flex-wrap items-center gap-1.5 text-xs text-text-muted">
                     {readableSize(m.size)}
                     {m.visibility === 'private' && <Badge tone="warning">{t('Staff only')}</Badge>}
-                    {m.kind === 'image' && !m.altText && <Badge tone="warning">{t('No description')}</Badge>}
+                    {m.kind === 'image' && !m.altText && (
+                      <Badge tone="warning">{t('No description')}</Badge>
+                    )}
                   </p>
                   <div className="mt-auto flex gap-1.5 pt-1.5">
                     {can('media.upload') && (
-                      <Button variant="secondary" size="sm" onClick={() => setEditing(m)} aria-label={t('Edit {name}', { name: m.name })}>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setEditing(m)}
+                        aria-label={t('Edit {name}', { name: m.name })}
+                      >
                         <Pencil aria-hidden="true" className="h-3.5 w-3.5" />
                         {t('Edit')}
                       </Button>
                     )}
                     {can('content.publish') && (
-                      <Button variant="ghost" size="sm" onClick={() => setDeleting(m)} aria-label={t('Delete {name}', { name: m.name })}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeleting(m)}
+                        aria-label={t('Delete {name}', { name: m.name })}
+                      >
                         <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
                         {t('Delete')}
                       </Button>
@@ -160,10 +215,24 @@ export default function AdminMediaPage() {
           ))}
         </ul>
       )}
-      {list.data && <Pagination page={page} pageSize={PAGE_SIZE} totalCount={list.data.totalCount} onChange={setPage} />}
+      {list.data && (
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          totalCount={list.data.totalCount}
+          onChange={setPage}
+        />
+      )}
 
       <Modal open={editing !== null} onClose={() => setEditing(null)} title={t('File details')}>
-        {editing && <EditBody key={editing.id} item={editing} onClose={() => setEditing(null)} onSaved={list.retry} />}
+        {editing && (
+          <EditBody
+            key={editing.id}
+            item={editing}
+            onClose={() => setEditing(null)}
+            onSaved={list.retry}
+          />
+        )}
       </Modal>
       <ConfirmDialog
         open={deleting !== null}
@@ -172,11 +241,19 @@ export default function AdminMediaPage() {
         tone="danger"
         busy={busy}
         onConfirm={() => {
-          if (deleting) void run(() => deleteMediaApi(deleting.id), t('File deleted.')).then((ok) => ok && setDeleting(null));
+          if (deleting)
+            void run(() => deleteMediaApi(deleting.id), t('File deleted.')).then(
+              (ok) => ok && setDeleting(null),
+            );
         }}
         onCancel={() => setDeleting(null)}
       >
-        {deleting ? t('“{name}” will be deleted. This is blocked while an event, page or setting still uses it.', { name: deleting.name }) : ''}
+        {deleting
+          ? t(
+              '“{name}” will be deleted. This is blocked while an event, page or setting still uses it.',
+              { name: deleting.name },
+            )
+          : ''}
       </ConfirmDialog>
     </>
   );

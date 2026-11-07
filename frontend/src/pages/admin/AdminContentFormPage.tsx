@@ -13,15 +13,25 @@ export default function AdminContentFormPage() {
   const { resource, id } = useParams();
   const def = resources.find((r) => r.key === resource);
   // Coming back from the preview page the row is handed over, so nothing is fetched again.
-  const cached = (useLocation().state as DraftState<unknown> | null)?.cache?.row as ContentRow | null | undefined;
+  const cached = (useLocation().state as DraftState<unknown> | null)?.cache?.row as
+    ContentRow | null | undefined;
   const query = useFetch(`admin-content:${resource}:${id ?? 'new'}`, () =>
-    cached !== undefined ? Promise.resolve(cached) : def && id ? getContentApi(def.key, id) : Promise.resolve(null),
+    cached !== undefined
+      ? Promise.resolve(cached)
+      : def && id
+        ? getContentApi(def.key, id)
+        : Promise.resolve(null),
   );
 
   if (!def || !can('content.manage')) return <Navigate to="/admin/content" replace />;
 
   return (
-    <Async data={cached !== undefined ? cached : query.data} loading={query.loading} error={query.error} onRetry={query.retry}>
+    <Async
+      data={cached !== undefined ? cached : query.data}
+      loading={query.loading}
+      error={query.error}
+      onRetry={query.retry}
+    >
       {(row) => <ContentForm key={row?.id ?? 'new'} def={def} row={row} />}
     </Async>
   );

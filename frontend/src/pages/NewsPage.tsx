@@ -24,7 +24,12 @@ export default function NewsPage() {
   const term = useDebounced(search.trim(), 300);
 
   const { data, error, loading, retry } = useFetch(`news:${category}:${term}:${page}`, () =>
-    listAnnouncementsApi({ category: category || undefined, search: term || undefined, page, limit: PAGE_SIZE }),
+    listAnnouncementsApi({
+      category: category || undefined,
+      search: term || undefined,
+      page,
+      limit: PAGE_SIZE,
+    }),
   );
 
   const choose = (c: string) => {
@@ -40,7 +45,10 @@ export default function NewsPage() {
         description={t('Notices and news from the Samaj office.')}
       />
       <div className="flex flex-wrap items-start gap-6">
-        <nav aria-label={t('Category')} className="flex w-full flex-wrap gap-1 md:w-44 md:flex-col md:gap-0.5">
+        <nav
+          aria-label={t('Category')}
+          className="flex w-full flex-wrap gap-1 md:w-44 md:flex-col md:gap-0.5"
+        >
           <p className="hidden px-2.5 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-subtle md:block">
             {t('Category')}
           </p>
@@ -51,7 +59,9 @@ export default function NewsPage() {
               aria-pressed={category === c}
               onClick={() => choose(c)}
               className={`rounded-md px-2.5 py-1.5 text-left text-sm font-medium ${
-                category === c ? 'bg-surface-muted text-text' : 'text-text-muted hover:bg-surface-muted hover:text-text'
+                category === c
+                  ? 'bg-surface-muted text-text'
+                  : 'text-text-muted hover:bg-surface-muted hover:text-text'
               }`}
             >
               {t(c || 'All')}
@@ -79,7 +89,9 @@ export default function NewsPage() {
               description={term || category ? t('Try a different search or category.') : undefined}
             />
           ) : (
-            <ul className={`m-0 flex list-none flex-col gap-2.5 p-0 ${loading ? 'opacity-60' : ''}`}>
+            <ul
+              className={`m-0 flex list-none flex-col gap-2.5 p-0 ${loading ? 'opacity-60' : ''}`}
+            >
               {data.announcements.map((a) => (
                 <li key={a.id}>
                   <Card className="px-[18px] py-4">
@@ -102,7 +114,14 @@ export default function NewsPage() {
               ))}
             </ul>
           )}
-          {data && <Pagination page={page} pageSize={PAGE_SIZE} totalCount={data.totalCount} onChange={setPage} />}
+          {data && (
+            <Pagination
+              page={page}
+              pageSize={PAGE_SIZE}
+              totalCount={data.totalCount}
+              onChange={setPage}
+            />
+          )}
         </div>
       </div>
     </>

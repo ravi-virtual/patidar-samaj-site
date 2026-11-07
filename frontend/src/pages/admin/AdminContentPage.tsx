@@ -12,7 +12,12 @@ import {
   type ContentRow,
 } from '../../api/adminApi';
 import { RowMenu } from '../../components/admin/RowActions';
-import { blocks, resources, type BlockDef, type ResourceDef } from '../../components/admin/contentConfig';
+import {
+  blocks,
+  resources,
+  type BlockDef,
+  type ResourceDef,
+} from '../../components/admin/contentConfig';
 import { DataTable, type Column } from '../../components/admin/DataTable';
 import { StatusBadge } from '../../components/admin/StatusBadge';
 import { useCan } from '../../components/admin/usePermissions';
@@ -35,7 +40,13 @@ function BlocksPanel() {
   const { run } = useRunner(list.retry);
 
   return (
-    <Async data={list.data} loading={list.initialLoading} error={list.error} onRetry={list.retry} skeleton={<Skeleton className="h-72" />}>
+    <Async
+      data={list.data}
+      loading={list.initialLoading}
+      error={list.error}
+      onRetry={list.retry}
+      skeleton={<Skeleton className="h-72" />}
+    >
       {(data) => {
         const byKey = new Map<string, AdminBlock>(data.map((b) => [b.key, b]));
         const rows = blocks.map((def) => ({ def, block: byKey.get(def.key) }));
@@ -49,8 +60,20 @@ function BlocksPanel() {
               </div>
             ),
           },
-          { header: t('Status'), cell: ({ block }) => <StatusBadge status={block && block.status !== 'empty' ? block.status : 'draft'} /> },
-          { header: t('Written'), className: 'text-text-muted', cell: ({ block }) => (block && block.status !== 'empty' ? t('Updated {date}', { date: formatDateTime(block.updatedAt ?? '') }) : t('Not written yet')) },
+          {
+            header: t('Status'),
+            cell: ({ block }) => (
+              <StatusBadge status={block && block.status !== 'empty' ? block.status : 'draft'} />
+            ),
+          },
+          {
+            header: t('Written'),
+            className: 'text-text-muted',
+            cell: ({ block }) =>
+              block && block.status !== 'empty'
+                ? t('Updated {date}', { date: formatDateTime(block.updatedAt ?? '') })
+                : t('Not written yet'),
+          },
           {
             header: t('Actions'),
             srOnlyHeader: true,
@@ -58,14 +81,35 @@ function BlocksPanel() {
             cell: ({ def, block }) => {
               const written = block && block.status !== 'empty';
               // Without publish rights a live block is read-only (the server enforces this too).
-              const editable = can('content.manage') && (!written || block.status !== 'published' || can('content.publish'));
+              const editable =
+                can('content.manage') &&
+                (!written || block.status !== 'published' || can('content.publish'));
               return (
                 <RowMenu
                   name={def.label}
                   actions={[
-                    { label: t('Edit'), kind: 'edit', show: editable, onSelect: () => navigate(`/admin/content/blocks/${def.key}/edit`) },
-                    { label: t('Publish'), show: can('content.publish') && Boolean(written) && block?.status !== 'published', onSelect: () => void run(() => blockActionApi(def.key, 'publish'), t('Published.')) },
-                    { label: t('Unpublish'), show: can('content.publish') && block?.status === 'published', onSelect: () => void run(() => blockActionApi(def.key, 'unpublish'), t('Moved back to draft.')) },
+                    {
+                      label: t('Edit'),
+                      kind: 'edit',
+                      show: editable,
+                      onSelect: () => navigate(`/admin/content/blocks/${def.key}/edit`),
+                    },
+                    {
+                      label: t('Publish'),
+                      show:
+                        can('content.publish') && Boolean(written) && block?.status !== 'published',
+                      onSelect: () =>
+                        void run(() => blockActionApi(def.key, 'publish'), t('Published.')),
+                    },
+                    {
+                      label: t('Unpublish'),
+                      show: can('content.publish') && block?.status === 'published',
+                      onSelect: () =>
+                        void run(
+                          () => blockActionApi(def.key, 'unpublish'),
+                          t('Moved back to draft.'),
+                        ),
+                    },
                   ]}
                 />
               );
@@ -73,7 +117,13 @@ function BlocksPanel() {
           },
         ];
         return (
-          <DataTable caption={t('Page text blocks')} columns={columns} rows={rows} rowKey={(r) => r.def.key} minWidth={640} />
+          <DataTable
+            caption={t('Page text blocks')}
+            columns={columns}
+            rows={rows}
+            rowKey={(r) => r.def.key}
+            minWidth={640}
+          />
         );
       }}
     </Async>
@@ -120,13 +170,50 @@ function ResourcePanel({ def }: { def: ResourceDef }) {
           <RowMenu
             name={def.title(r)}
             actions={[
-              { label: t('Edit'), kind: 'edit', show: editable(r), onSelect: () => navigate(`/admin/content/${def.key}/${r.id}/edit`) },
-              { label: t('Publish'), show: publisher && r.status !== 'published', onSelect: () => void run(() => contentActionApi(def.key, r.id, 'publish'), t('Published.')) },
-              { label: t('Unpublish'), show: publisher && r.status === 'published', onSelect: () => void run(() => contentActionApi(def.key, r.id, 'unpublish'), t('Moved back to draft.')) },
-              { label: t('Archive'), show: publisher && r.status === 'published', onSelect: () => void run(() => contentActionApi(def.key, r.id, 'archive'), t('Archived.')) },
-              { label: t('Move up'), show: publisher && index > 0, onSelect: () => move(index, -1) },
-              { label: t('Move down'), show: publisher && rows !== undefined && index < rows.length - 1, onSelect: () => move(index, 1) },
-              { label: t('Delete'), kind: 'delete', danger: true, show: publisher, onSelect: () => setDeleting(r) },
+              {
+                label: t('Edit'),
+                kind: 'edit',
+                show: editable(r),
+                onSelect: () => navigate(`/admin/content/${def.key}/${r.id}/edit`),
+              },
+              {
+                label: t('Publish'),
+                show: publisher && r.status !== 'published',
+                onSelect: () =>
+                  void run(() => contentActionApi(def.key, r.id, 'publish'), t('Published.')),
+              },
+              {
+                label: t('Unpublish'),
+                show: publisher && r.status === 'published',
+                onSelect: () =>
+                  void run(
+                    () => contentActionApi(def.key, r.id, 'unpublish'),
+                    t('Moved back to draft.'),
+                  ),
+              },
+              {
+                label: t('Archive'),
+                show: publisher && r.status === 'published',
+                onSelect: () =>
+                  void run(() => contentActionApi(def.key, r.id, 'archive'), t('Archived.')),
+              },
+              {
+                label: t('Move up'),
+                show: publisher && index > 0,
+                onSelect: () => move(index, -1),
+              },
+              {
+                label: t('Move down'),
+                show: publisher && rows !== undefined && index < rows.length - 1,
+                onSelect: () => move(index, 1),
+              },
+              {
+                label: t('Delete'),
+                kind: 'delete',
+                danger: true,
+                show: publisher,
+                onSelect: () => setDeleting(r),
+              },
             ]}
           />
         );
@@ -153,7 +240,12 @@ function ResourcePanel({ def }: { def: ResourceDef }) {
         error={list.error}
         onRetry={list.retry}
         minWidth={560}
-        empty={<EmptyState title={t('No {items} yet', { items: t(def.plural).toLowerCase() })} description={t('Create the first one. It stays a draft until you publish it.')} />}
+        empty={
+          <EmptyState
+            title={t('No {items} yet', { items: t(def.plural).toLowerCase() })}
+            description={t('Create the first one. It stays a draft until you publish it.')}
+          />
+        }
       />
       <ConfirmDialog
         open={deleting !== null}
@@ -162,11 +254,16 @@ function ResourcePanel({ def }: { def: ResourceDef }) {
         tone="danger"
         busy={busy}
         onConfirm={() => {
-          if (deleting) void run(() => deleteContentApi(def.key, deleting.id), t('Deleted.')).then((ok) => ok && setDeleting(null));
+          if (deleting)
+            void run(() => deleteContentApi(def.key, deleting.id), t('Deleted.')).then(
+              (ok) => ok && setDeleting(null),
+            );
         }}
         onCancel={() => setDeleting(null)}
       >
-        {deleting ? t('“{title}” will be removed from the site.', { title: def.title(deleting) }) : ''}
+        {deleting
+          ? t('“{title}” will be removed from the site.', { title: def.title(deleting) })
+          : ''}
       </ConfirmDialog>
     </>
   );
@@ -176,11 +273,17 @@ export default function AdminContentPage() {
   // The tab lives in the address (`?tab=faqs`) so returning from an edit page lands on the same list.
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') ?? 'blocks';
-  const setTab = (next: string) => setParams(next === 'blocks' ? {} : { tab: next }, { replace: true });
+  const setTab = (next: string) =>
+    setParams(next === 'blocks' ? {} : { tab: next }, { replace: true });
   const def = resources.find((r) => r.key === tab);
   return (
     <>
-      <PageHeader title={t('Site content')} description={t('Edit what visitors read. Nothing appears on the site until it is published.')} />
+      <PageHeader
+        title={t('Site content')}
+        description={t(
+          'Edit what visitors read. Nothing appears on the site until it is published.',
+        )}
+      />
       <div className="mb-5 flex flex-wrap gap-1.5" role="group" aria-label={t('Kind of content')}>
         <Chip active={tab === 'blocks'} onClick={() => setTab('blocks')}>
           {t('Page text')}

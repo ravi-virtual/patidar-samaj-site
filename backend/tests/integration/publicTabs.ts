@@ -8,7 +8,17 @@ import ImportantLink from '../../src/models/ImportantLink';
 import OrganizationSettings from '../../src/models/OrganizationSettings';
 import { PublicTabs, resolvePublicTabs, type PublicTab } from '../../src/config/publicTabs';
 import { Roles } from '../../src/config/constants';
-import { ORIGIN, anon, connectTestDb, disconnectTestDb, makeAnnouncement, makeEvent, makeProfile, resetDb, signInAs } from '../helpers';
+import {
+  ORIGIN,
+  anon,
+  connectTestDb,
+  disconnectTestDb,
+  makeAnnouncement,
+  makeEvent,
+  makeProfile,
+  resetDb,
+  signInAs,
+} from '../helpers';
 
 beforeAll(connectTestDb);
 afterAll(disconnectTestDb);
@@ -22,19 +32,36 @@ const turnOff = (...tabs: PublicTab[]) =>
     { upsert: true },
   );
 
-const contactBody = { name: 'Meera Patel', email: 'meera@example.test', message: 'I would like to know how to renew my membership.' };
+const contactBody = {
+  name: 'Meera Patel',
+  email: 'meera@example.test',
+  message: 'I would like to know how to renew my membership.',
+};
 
 describe('resolvePublicTabs', () => {
   it('treats missing, null and undefined keys as on, and only false as off', () => {
-    expect(resolvePublicTabs(undefined)).toEqual(Object.fromEntries(PublicTabs.map((t) => [t, true])));
-    expect(resolvePublicTabs({ events: false, news: null })).toMatchObject({ events: false, news: true, about: true });
+    expect(resolvePublicTabs(undefined)).toEqual(
+      Object.fromEntries(PublicTabs.map((t) => [t, true])),
+    );
+    expect(resolvePublicTabs({ events: false, news: null })).toMatchObject({
+      events: false,
+      news: true,
+      about: true,
+    });
     expect(resolvePublicTabs({ bogus: false })).not.toHaveProperty('bogus');
   });
 
   it('keeps working for a settings document saved before the tabs existed', async () => {
-    await OrganizationSettings.collection.insertOne({ _id: 'old' as never, key: 'main', name: 'Old', themeDefault: 'dark' });
+    await OrganizationSettings.collection.insertOne({
+      _id: 'old' as never,
+      key: 'main',
+      name: 'Old',
+      themeDefault: 'dark',
+    });
     const res = await anon().get('/public/settings');
-    expect(res.body.data.settings.publicTabs).toEqual(Object.fromEntries(PublicTabs.map((t) => [t, true])));
+    expect(res.body.data.settings.publicTabs).toEqual(
+      Object.fromEntries(PublicTabs.map((t) => [t, true])),
+    );
     expect((await anon().get('/events')).status).toBe(200);
   });
 });
@@ -45,10 +72,20 @@ describe('gated public endpoints', () => {
     const note = await makeAnnouncement();
     const member = await makeProfile();
     for (const url of [
-      '/events', `/events/${event._id}`, '/announcements', `/announcements/${note._id}`,
-      '/members', '/members/filters', `/members/${member._id}`,
-      '/content/faqs', '/content/links', '/content/milestones', '/content/committee',
-      '/content/committee-terms', '/content/committee-members', '/content/blocks',
+      '/events',
+      `/events/${event._id}`,
+      '/announcements',
+      `/announcements/${note._id}`,
+      '/members',
+      '/members/filters',
+      `/members/${member._id}`,
+      '/content/faqs',
+      '/content/links',
+      '/content/milestones',
+      '/content/committee',
+      '/content/committee-terms',
+      '/content/committee-members',
+      '/content/blocks',
     ]) {
       expect((await anon().get(url)).status, url).toBe(200);
     }
@@ -86,28 +123,58 @@ describe('gated public endpoints', () => {
   });
 
   it('answer 404 for faq, links and committee lists, each on its own tab', async () => {
-    await Faq.create({ question: 'What is the fee?', answer: 'There is no fee.', status: 'published' });
-    await ImportantLink.create({ label: 'Form', url: 'https://example.org', category: 'Forms', status: 'published' });
-    const term = await CommitteeTerm.create({ label: '2025-2027', startYear: 2025, endYear: 2027, isCurrent: true, status: 'published' });
-    await CommitteeMember.create({ termId: term._id, name: 'Ashok Patel', position: 'President', status: 'published' });
+    await Faq.create({
+      question: 'What is the fee?',
+      answer: 'There is no fee.',
+      status: 'published',
+    });
+    await ImportantLink.create({
+      label: 'Form',
+      url: 'https://example.org',
+      category: 'Forms',
+      status: 'published',
+    });
+    const term = await CommitteeTerm.create({
+      label: '2025-2027',
+      startYear: 2025,
+      endYear: 2027,
+      isCurrent: true,
+      status: 'published',
+    });
+    await CommitteeMember.create({
+      termId: term._id,
+      name: 'Ashok Patel',
+      position: 'President',
+      status: 'published',
+    });
 
     const cases: [PublicTab, string[]][] = [
       ['faq', ['/content/faqs']],
       ['links', ['/content/links']],
-      ['committee', ['/content/committee', '/content/committee-terms', '/content/committee-members']],
+      [
+        'committee',
+        ['/content/committee', '/content/committee-terms', '/content/committee-members'],
+      ],
     ];
     for (const [tab, urls] of cases) {
       await OrganizationSettings.deleteMany({});
       await turnOff(tab);
       for (const url of urls) expect((await anon().get(url)).status, `${tab}: ${url}`).toBe(404);
       for (const [other, otherUrls] of cases) {
-        if (other !== tab) for (const url of otherUrls) expect((await anon().get(url)).status, `${tab} off, ${url}`).toBe(200);
+        if (other !== tab)
+          for (const url of otherUrls)
+            expect((await anon().get(url)).status, `${tab} off, ${url}`).toBe(200);
       }
     }
   });
 
   it('keep serving text blocks (about copy is hidden by the website only)', async () => {
-    await ContentBlock.create({ key: 'about.intro', title: 'About us', body: 'Text.', status: 'published' });
+    await ContentBlock.create({
+      key: 'about.intro',
+      title: 'About us',
+      body: 'Text.',
+      status: 'published',
+    });
     await turnOff('about');
     const res = await anon().get('/content/blocks');
     expect(res.status).toBe(200);
@@ -121,18 +188,35 @@ describe('gated public endpoints', () => {
     expect(res.body.error.code).toBe('NOT_FOUND');
     expect(await ContactMessage.countDocuments()).toBe(0);
     await OrganizationSettings.deleteMany({});
-    expect((await anon().post('/contact').set('Origin', ORIGIN).send(contactBody)).status).toBe(201);
+    expect((await anon().post('/contact').set('Origin', ORIGIN).send(contactBody)).status).toBe(
+      201,
+    );
   });
 
   it('never affect admin endpoints: staff can still manage hidden tabs', async () => {
     await makeEvent();
     await makeAnnouncement();
     await makeProfile();
-    await Faq.create({ question: 'What is the fee?', answer: 'There is no fee.', status: 'published' });
-    await ContactMessage.create({ name: 'A B', email: 'a@b.co', message: 'A message long enough.' });
+    await Faq.create({
+      question: 'What is the fee?',
+      answer: 'There is no fee.',
+      status: 'published',
+    });
+    await ContactMessage.create({
+      name: 'A B',
+      email: 'a@b.co',
+      message: 'A message long enough.',
+    });
     await turnOff(...PublicTabs);
     const { client } = await signInAs(Roles.SUPER_ADMIN);
-    for (const url of ['/admin/events', '/admin/announcements', '/admin/members', '/admin/content/faqs', '/admin/contacts', '/admin/settings']) {
+    for (const url of [
+      '/admin/events',
+      '/admin/announcements',
+      '/admin/members',
+      '/admin/content/faqs',
+      '/admin/contacts',
+      '/admin/settings',
+    ]) {
       expect((await client.get(url)).status, url).toBe(200);
     }
   });
@@ -144,7 +228,12 @@ describe('home and search while tabs are off', () => {
     await makeAnnouncement({ title: 'Garba notice' });
     await makeProfile({ displayName: 'Garba Patel', highlighted: true });
     await Faq.create({ question: 'Garba entry fee?', answer: 'Free.', status: 'published' });
-    await ImportantLink.create({ label: 'Garba pass', url: 'https://example.org', category: 'Forms', status: 'published' });
+    await ImportantLink.create({
+      label: 'Garba pass',
+      url: 'https://example.org',
+      category: 'Forms',
+      status: 'published',
+    });
   };
 
   it('home carries every section while all tabs are on', async () => {
@@ -166,12 +255,28 @@ describe('home and search while tabs are off', () => {
     expect(home.announcements).toEqual([]);
     expect(home.memberHighlights).toEqual([]);
     expect(home.links).toEqual([]);
-    expect(home.settings.publicTabs).toMatchObject({ events: false, news: false, directory: false, links: false, about: true });
+    expect(home.settings.publicTabs).toMatchObject({
+      events: false,
+      news: false,
+      directory: false,
+      links: false,
+      about: true,
+    });
   });
 
   it('home leaves out the about block when about is off but keeps welcome and statistics', async () => {
-    await ContentBlock.create({ key: 'about.intro', title: 'About', body: 'x', status: 'published' });
-    await ContentBlock.create({ key: 'home.welcome', title: 'Welcome', body: 'x', status: 'published' });
+    await ContentBlock.create({
+      key: 'about.intro',
+      title: 'About',
+      body: 'x',
+      status: 'published',
+    });
+    await ContentBlock.create({
+      key: 'home.welcome',
+      title: 'Welcome',
+      body: 'x',
+      status: 'published',
+    });
     await turnOff('about');
     const blocks = (await anon().get('/public/home')).body.data.blocks;
     expect(Object.keys(blocks)).toEqual(['home.welcome']);
@@ -180,17 +285,23 @@ describe('home and search while tabs are off', () => {
   it('search leaves out results from each switched-off tab', async () => {
     await seed();
     const all = (await anon().get('/search?q=garba')).body.data.results;
-    for (const group of ['events', 'announcements', 'members', 'faqs', 'links']) expect(all[group], group).toHaveLength(1);
+    for (const group of ['events', 'announcements', 'members', 'faqs', 'links'])
+      expect(all[group], group).toHaveLength(1);
 
     const groups: [PublicTab, string][] = [
-      ['events', 'events'], ['news', 'announcements'], ['directory', 'members'], ['faq', 'faqs'], ['links', 'links'],
+      ['events', 'events'],
+      ['news', 'announcements'],
+      ['directory', 'members'],
+      ['faq', 'faqs'],
+      ['links', 'links'],
     ];
     for (const [tab, group] of groups) {
       await OrganizationSettings.deleteMany({});
       await turnOff(tab);
       const results = (await anon().get('/search?q=garba')).body.data.results;
       expect(results[group], `${tab} off`).toHaveLength(0);
-      for (const [, other] of groups) if (other !== group) expect(results[other], `${tab} off, ${other}`).toHaveLength(1);
+      for (const [, other] of groups)
+        if (other !== group) expect(results[other], `${tab} off, ${other}`).toHaveLength(1);
     }
   });
 });

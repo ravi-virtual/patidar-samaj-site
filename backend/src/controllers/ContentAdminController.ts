@@ -22,13 +22,20 @@ const resourceOf = (req: Request): { name: string; resource: ContentResource } =
 };
 
 const notFound = (res: Response, what: string) =>
-  sendError(res, { statusCode: ResponseCodes.NOT_FOUND, message: `${what} not found`, code: ErrorCodes.NOT_FOUND });
+  sendError(res, {
+    statusCode: ResponseCodes.NOT_FOUND,
+    message: `${what} not found`,
+    code: ErrorCodes.NOT_FOUND,
+  });
 
 const forbidden = (res: Response, message: string) =>
   sendError(res, { statusCode: ResponseCodes.FORBIDDEN, message, code: ErrorCodes.FORBIDDEN });
 
-const conflict = (res: Response, message: string, code: (typeof ErrorCodes)[keyof typeof ErrorCodes] = ErrorCodes.DUPLICATE) =>
-  sendError(res, { statusCode: ResponseCodes.CONFLICT, message, code });
+const conflict = (
+  res: Response,
+  message: string,
+  code: (typeof ErrorCodes)[keyof typeof ErrorCodes] = ErrorCodes.DUPLICATE,
+) => sendError(res, { statusCode: ResponseCodes.CONFLICT, message, code });
 
 const invalid = (res: Response, field: string, message: string) =>
   sendError(res, {
@@ -51,10 +58,18 @@ const adminView = (doc: Row, resource: ContentResource) => ({
 });
 
 /** Checks references that depend on other records: media ids, committee term, link target. */
-const checkReferences = async (name: string, resource: ContentResource, merged: Record<string, unknown>) => {
+const checkReferences = async (
+  name: string,
+  resource: ContentResource,
+  merged: Record<string, unknown>,
+) => {
   const imageFields = resource.mediaFields.filter((f) => f !== 'fileMediaId');
-  const missingImages = await missingMediaIds(imageFields.map((f) => merged[f] as string | undefined), 'image');
-  if (missingImages.length) return { field: imageFields[0] ?? 'image', message: 'That image does not exist' };
+  const missingImages = await missingMediaIds(
+    imageFields.map((f) => merged[f] as string | undefined),
+    'image',
+  );
+  if (missingImages.length)
+    return { field: imageFields[0] ?? 'image', message: 'That image does not exist' };
 
   if (merged.fileMediaId) {
     if ((await missingMediaIds([merged.fileMediaId as string], 'document')).length) {
@@ -85,10 +100,9 @@ const checkReferences = async (name: string, resource: ContentResource, merged: 
 export const listItems = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { resource } = resourceOf(req);
-    const q = matchedData<{ page?: number; limit?: number; status?: string; search?: string } & Record<string, string>>(
-      req,
-      { locations: ['query'] },
-    );
+    const q = matchedData<
+      { page?: number; limit?: number; status?: string; search?: string } & Record<string, string>
+    >(req, { locations: ['query'] });
     const filter: Record<string, unknown> = { isDeleted: false };
     if (q.status) filter.status = q.status;
     for (const field of resource.filterFields) if (q[field]) filter[field] = q[field];
@@ -98,7 +112,9 @@ export const listItems = async (req: Request, res: Response, next: NextFunction)
     }
     const { limit, skip } = pageParams(q, 50);
     const [items, totalCount] = await Promise.all([
-      resource.model.find(filter).sort(resource.sort).skip(skip).limit(limit).lean() as Promise<Row[]>,
+      resource.model.find(filter).sort(resource.sort).skip(skip).limit(limit).lean() as Promise<
+        Row[]
+      >,
       resource.model.countDocuments(filter),
     ]);
     return new ApiResponse(ResponseCodes.OK, `${resource.label}s fetched successfully`, {
@@ -121,7 +137,9 @@ export const listItems = async (req: Request, res: Response, next: NextFunction)
 export const getItem = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { resource } = resourceOf(req);
-    const item = (await resource.model.findOne({ _id: req.params.id, isDeleted: false }).lean()) as Row | null;
+    const item = (await resource.model
+      .findOne({ _id: req.params.id, isDeleted: false })
+      .lean()) as Row | null;
     if (!item) return notFound(res, resource.label);
     return new ApiResponse(ResponseCodes.OK, `${resource.label} fetched successfully`, {
       item: adminView(item, resource),
@@ -143,15 +161,22 @@ export const getItem = async (req: Request, res: Response, next: NextFunction) =
 export const createItem = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { name, resource } = resourceOf(req);
-    const data = matchedData<Record<string, unknown>>(req, { locations: ['body'], includeOptionals: false });
-    const fields = Object.fromEntries(Object.entries(data).filter(([k]) => resource.writableFields.includes(k)));
+    const data = matchedData<Record<string, unknown>>(req, {
+      locations: ['body'],
+      includeOptionals: false,
+    });
+    const fields = Object.fromEntries(
+      Object.entries(data).filter(([k]) => resource.writableFields.includes(k)),
+    );
 
     const problem = await checkReferences(name, resource, fields);
     if (problem) return invalid(res, problem.field, problem.message);
 
-    const last = (await resource.model.findOne({ isDeleted: false }).sort({ order: -1 }).select('order').lean()) as
-      | { order?: number }
-      | null;
+    const last = (await resource.model
+      .findOne({ isDeleted: false })
+      .sort({ order: -1 })
+      .select('order')
+      .lean()) as { order?: number } | null;
     const item = await resource.model.create({
       ...fields,
       status: PublishStatus.DRAFT,
@@ -159,7 +184,11 @@ export const createItem = async (req: Request, res: Response, next: NextFunction
       createdBy: req.user!.id,
       updatedBy: req.user!.id,
     });
-    await writeAudit(req, { action: `content.${name}.created`, targetType: name, targetId: item._id });
+    await writeAudit(req, {
+      action: `content.${name}.created`,
+      targetType: name,
+      targetId: item._id,
+    });
     return new ApiResponse(ResponseCodes.CREATED, `${resource.label} saved as a draft`, {
       item: adminView(item.toObject() as Row, resource),
     }).send(res);
@@ -179,21 +208,36 @@ export const createItem = async (req: Request, res: Response, next: NextFunction
 export const updateItem = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { name, resource } = resourceOf(req);
-    const data = matchedData<Record<string, unknown>>(req, { locations: ['body'], includeOptionals: false });
-    const fields = Object.fromEntries(Object.entries(data).filter(([k]) => resource.writableFields.includes(k)));
+    const data = matchedData<Record<string, unknown>>(req, {
+      locations: ['body'],
+      includeOptionals: false,
+    });
+    const fields = Object.fromEntries(
+      Object.entries(data).filter(([k]) => resource.writableFields.includes(k)),
+    );
 
     const item = await resource.model.findOne({ _id: req.params.id, isDeleted: false });
     if (!item) return notFound(res, resource.label);
     if (!mayEditItem(req.user, item.status, Permissions.CONTENT_PUBLISH)) {
-      return forbidden(res, 'Only staff who can publish content may change something that is already live');
+      return forbidden(
+        res,
+        'Only staff who can publish content may change something that is already live',
+      );
     }
 
     const merged = { ...(item.toObject() as Record<string, unknown>), ...fields };
     const problem = await checkReferences(name, resource, merged);
     if (problem) return invalid(res, problem.field, problem.message);
 
-    if (name === 'committee-terms' && fields.isCurrent === true && !req.user!.permissions.includes(Permissions.CONTENT_PUBLISH)) {
-      return forbidden(res, 'Only staff who can publish content may mark the current committee term');
+    if (
+      name === 'committee-terms' &&
+      fields.isCurrent === true &&
+      !req.user!.permissions.includes(Permissions.CONTENT_PUBLISH)
+    ) {
+      return forbidden(
+        res,
+        'Only staff who can publish content may mark the current committee term',
+      );
     }
 
     item.set({ ...fields, updatedBy: req.user!.id });
@@ -225,7 +269,8 @@ const setStatus = async (
     const { name, resource } = resourceOf(req);
     const item = await resource.model.findOne({ _id: req.params.id, isDeleted: false });
     if (!item) return notFound(res, resource.label);
-    if (!opts.from.includes(item.status)) return conflict(res, `An item that is ${item.status} cannot be changed this way.`);
+    if (!opts.from.includes(item.status))
+      return conflict(res, `An item that is ${item.status} cannot be changed this way.`);
 
     item.status = opts.to;
     if (opts.to === PublishStatus.PUBLISHED) item.publishedAt = new Date();
@@ -234,8 +279,14 @@ const setStatus = async (
     if (name === 'committee-terms' && opts.to === PublishStatus.PUBLISHED && item.isCurrent) {
       await CommitteeTerm.updateMany({ _id: { $ne: item._id } }, { $set: { isCurrent: false } });
     }
-    await writeAudit(req, { action: `content.${name}.${opts.action}`, targetType: name, targetId: item._id });
-    return new ApiResponse(ResponseCodes.OK, opts.message, { item: adminView(item.toObject() as Row, resource) }).send(res);
+    await writeAudit(req, {
+      action: `content.${name}.${opts.action}`,
+      targetType: name,
+      targetId: item._id,
+    });
+    return new ApiResponse(ResponseCodes.OK, opts.message, {
+      item: adminView(item.toObject() as Row, resource),
+    }).send(res);
   } catch (err) {
     return next(err);
   }
@@ -305,10 +356,14 @@ export const reorderItems = async (req: Request, res: Response, next: NextFuncti
     const { name, resource } = resourceOf(req);
     const { ids } = matchedData<{ ids: string[] }>(req, { locations: ['body'] });
     const result = await resource.model.bulkWrite(
-      ids.map((id, index) => ({ updateOne: { filter: { _id: id, isDeleted: false }, update: { $set: { order: index } } } })),
+      ids.map((id, index) => ({
+        updateOne: { filter: { _id: id, isDeleted: false }, update: { $set: { order: index } } },
+      })),
     );
     await writeAudit(req, { action: `content.${name}.reordered`, metadata: { count: ids.length } });
-    return new ApiResponse(ResponseCodes.OK, 'Order saved', { updated: result.modifiedCount }).send(res);
+    return new ApiResponse(ResponseCodes.OK, 'Order saved', { updated: result.modifiedCount }).send(
+      res,
+    );
   } catch (err) {
     return next(err);
   }
@@ -327,12 +382,23 @@ export const deleteItem = async (req: Request, res: Response, next: NextFunction
     const { name, resource } = resourceOf(req);
     const item = await resource.model.findOne({ _id: req.params.id, isDeleted: false });
     if (!item) return notFound(res, resource.label);
-    if (name === 'committee-terms' && (await CommitteeMember.exists({ termId: item._id, isDeleted: false }))) {
-      return conflict(res, 'This term still has committee members. Remove them first.', ErrorCodes.HAS_DEPENDENCIES);
+    if (
+      name === 'committee-terms' &&
+      (await CommitteeMember.exists({ termId: item._id, isDeleted: false }))
+    ) {
+      return conflict(
+        res,
+        'This term still has committee members. Remove them first.',
+        ErrorCodes.HAS_DEPENDENCIES,
+      );
     }
     item.isDeleted = true;
     await item.save();
-    await writeAudit(req, { action: `content.${name}.deleted`, targetType: name, targetId: item._id });
+    await writeAudit(req, {
+      action: `content.${name}.deleted`,
+      targetType: name,
+      targetId: item._id,
+    });
     return new ApiResponse(ResponseCodes.OK, `${resource.label} deleted`).send(res);
   } catch (err) {
     return next(err);
@@ -354,7 +420,14 @@ export const listAdminBlocks = async (_req: Request, res: Response, next: NextFu
     return new ApiResponse(ResponseCodes.OK, 'Content fetched successfully', {
       blocks: ContentKeys.map((key) => {
         const b = byKey.get(key);
-        return b ? { ...blockView(b), status: b.status, publishedAt: b.publishedAt ?? null, updatedAt: b.updatedAt } : { key, status: 'empty' };
+        return b
+          ? {
+              ...blockView(b),
+              status: b.status,
+              publishedAt: b.publishedAt ?? null,
+              updatedAt: b.updatedAt,
+            }
+          : { key, status: 'empty' };
       }),
     }).send(res);
   } catch (err) {
@@ -380,17 +453,29 @@ export const saveBlock = async (req: Request, res: Response, next: NextFunction)
       items?: Record<string, unknown>[];
     }>(req, { locations: ['body'], includeOptionals: false });
 
-    const missing = await missingMediaIds((data.items ?? []).map((i) => i.imageMediaId as string | undefined), 'image');
+    const missing = await missingMediaIds(
+      (data.items ?? []).map((i) => i.imageMediaId as string | undefined),
+      'image',
+    );
     if (missing.length) return invalid(res, 'items', 'One of the images does not exist');
 
     const existing = await ContentBlock.findOne({ key, isDeleted: false });
     if (existing && !mayEditItem(req.user, existing.status, Permissions.CONTENT_PUBLISH)) {
-      return forbidden(res, 'Only staff who can publish content may change content that is already live');
+      return forbidden(
+        res,
+        'Only staff who can publish content may change content that is already live',
+      );
     }
-    const block = existing ?? new ContentBlock({ key, status: PublishStatus.DRAFT, createdBy: req.user!.id });
+    const block =
+      existing ?? new ContentBlock({ key, status: PublishStatus.DRAFT, createdBy: req.user!.id });
     block.set({ ...data, updatedBy: req.user!.id });
     await block.save();
-    await writeAudit(req, { action: 'content.block.saved', targetType: 'content-block', targetId: block._id, metadata: { key } });
+    await writeAudit(req, {
+      action: 'content.block.saved',
+      targetType: 'content-block',
+      targetId: block._id,
+      metadata: { key },
+    });
     return new ApiResponse(ResponseCodes.OK, 'Saved', {
       block: { ...blockView(block.toObject()), status: block.status },
     }).send(res);
@@ -399,19 +484,37 @@ export const saveBlock = async (req: Request, res: Response, next: NextFunction)
   }
 };
 
-const blockStatus = async (req: Request, res: Response, next: NextFunction, to: string, action: string) => {
+const blockStatus = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  to: string,
+  action: string,
+) => {
   try {
-    const block = await ContentBlock.findOne({ key: String(req.params.key) as ContentKey, isDeleted: false });
+    const block = await ContentBlock.findOne({
+      key: String(req.params.key) as ContentKey,
+      isDeleted: false,
+    });
     if (!block) return notFound(res, 'Content block');
     if (block.status === to) return conflict(res, `This content is already ${to}.`);
     block.status = to as typeof block.status;
     if (to === PublishStatus.PUBLISHED) block.publishedAt = new Date();
     block.updatedBy = req.user!.id;
     await block.save();
-    await writeAudit(req, { action: `content.block.${action}`, targetType: 'content-block', targetId: block._id, metadata: { key: block.key } });
-    return new ApiResponse(ResponseCodes.OK, to === PublishStatus.PUBLISHED ? 'Published' : 'Unpublished', {
-      block: { ...blockView(block.toObject()), status: block.status },
-    }).send(res);
+    await writeAudit(req, {
+      action: `content.block.${action}`,
+      targetType: 'content-block',
+      targetId: block._id,
+      metadata: { key: block.key },
+    });
+    return new ApiResponse(
+      ResponseCodes.OK,
+      to === PublishStatus.PUBLISHED ? 'Published' : 'Unpublished',
+      {
+        block: { ...blockView(block.toObject()), status: block.status },
+      },
+    ).send(res);
   } catch (err) {
     return next(err);
   }

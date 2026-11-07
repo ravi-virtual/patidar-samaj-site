@@ -19,7 +19,12 @@ export function Toolbar({
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2.5">
       <div className="min-w-56 max-w-sm flex-1">
-        <SearchInput label={searchLabel} placeholder={`${searchLabel}…`} value={search} onChange={onSearch} />
+        <SearchInput
+          label={searchLabel}
+          placeholder={`${searchLabel}…`}
+          value={search}
+          onChange={onSearch}
+        />
       </div>
       {children}
       {actions && <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div>}

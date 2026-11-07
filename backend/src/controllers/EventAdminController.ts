@@ -11,10 +11,17 @@ import { mayEditItem } from '../utils/publishPolicy';
 import { writeAudit } from '../utils/audit';
 
 const notFound = (res: Response, what = 'Event') =>
-  sendError(res, { statusCode: ResponseCodes.NOT_FOUND, message: `${what} not found`, code: ErrorCodes.NOT_FOUND });
+  sendError(res, {
+    statusCode: ResponseCodes.NOT_FOUND,
+    message: `${what} not found`,
+    code: ErrorCodes.NOT_FOUND,
+  });
 
-const conflict = (res: Response, message: string, code: (typeof ErrorCodes)[keyof typeof ErrorCodes] = ErrorCodes.DUPLICATE) =>
-  sendError(res, { statusCode: ResponseCodes.CONFLICT, message, code });
+const conflict = (
+  res: Response,
+  message: string,
+  code: (typeof ErrorCodes)[keyof typeof ErrorCodes] = ErrorCodes.DUPLICATE,
+) => sendError(res, { statusCode: ResponseCodes.CONFLICT, message, code });
 
 const forbidden = (res: Response, message: string) =>
   sendError(res, { statusCode: ResponseCodes.FORBIDDEN, message, code: ErrorCodes.FORBIDDEN });
@@ -99,7 +106,9 @@ export const getAdminEvent = async (req: Request, res: Response, next: NextFunct
   try {
     const event = await Event.findOne({ _id: req.params.id, isDeleted: false }).lean();
     if (!event) return notFound(res);
-    return new ApiResponse(ResponseCodes.OK, 'Event fetched successfully', { event: toAdminEvent(event) }).send(res);
+    return new ApiResponse(ResponseCodes.OK, 'Event fetched successfully', {
+      event: toAdminEvent(event),
+    }).send(res);
   } catch (err) {
     return next(err);
   }
@@ -154,9 +163,15 @@ export const updateEvent = async (req: Request, res: Response, next: NextFunctio
     if (!event) return notFound(res);
 
     if (!mayEditItem(req.user, event.status, Permissions.EVENTS_PUBLISH)) {
-      return forbidden(res, 'Only staff who can publish events may change an event that is already published');
+      return forbidden(
+        res,
+        'Only staff who can publish events may change an event that is already published',
+      );
     }
-    if (data.featured !== undefined && !req.user!.permissions.includes(Permissions.EVENTS_PUBLISH)) {
+    if (
+      data.featured !== undefined &&
+      !req.user!.permissions.includes(Permissions.EVENTS_PUBLISH)
+    ) {
       return forbidden(res, 'Only staff who can publish events may feature them');
     }
 
@@ -175,7 +190,9 @@ export const updateEvent = async (req: Request, res: Response, next: NextFunctio
       targetId: event._id,
       metadata: { fields: Object.keys(data) },
     });
-    return new ApiResponse(ResponseCodes.OK, 'Event updated', { event: toAdminEvent(event.toObject()) }).send(res);
+    return new ApiResponse(ResponseCodes.OK, 'Event updated', {
+      event: toAdminEvent(event.toObject()),
+    }).send(res);
   } catch (err) {
     return next(err);
   }
@@ -204,7 +221,9 @@ const transition = async (
     event.set({ ...opts.extra, updatedBy: req.user!.id });
     await event.save();
     await writeAudit(req, { action: opts.action, targetType: 'event', targetId: event._id });
-    return new ApiResponse(ResponseCodes.OK, opts.message, { event: toAdminEvent(event.toObject()) }).send(res);
+    return new ApiResponse(ResponseCodes.OK, opts.message, {
+      event: toAdminEvent(event.toObject()),
+    }).send(res);
   } catch (err) {
     return next(err);
   }
@@ -256,7 +275,9 @@ export const unpublishEvent = (req: Request, res: Response, next: NextFunction) 
  * @author Ravi Patel
  */
 export const cancelEvent = async (req: Request, res: Response, next: NextFunction) => {
-  const { reason, reasonGu } = matchedData<{ reason?: string; reasonGu?: string }>(req, { locations: ['body'] });
+  const { reason, reasonGu } = matchedData<{ reason?: string; reasonGu?: string }>(req, {
+    locations: ['body'],
+  });
   return transition(req, res, next, {
     from: [EventStatus.PUBLISHED],
     to: EventStatus.CANCELLED,

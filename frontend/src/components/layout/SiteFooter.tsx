@@ -22,7 +22,10 @@ export function SiteFooter() {
             )}
             {contact.email && contact.phone && ' · '}
             {contact.phone && (
-              <a href={`tel:${contact.phone.replace(/[^+\d]/g, '')}`} className="text-text-muted hover:text-text">
+              <a
+                href={`tel:${contact.phone.replace(/[^+\d]/g, '')}`}
+                className="text-text-muted hover:text-text"
+              >
                 {contact.phone}
               </a>
             )}

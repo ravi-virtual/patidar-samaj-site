@@ -31,7 +31,8 @@ export function useFetch<T>(key: string, fetcher: () => Promise<T>) {
         if (!cancelled) setResult({ token, data });
       })
       .catch((err: unknown) => {
-        if (!cancelled) setResult((prev) => ({ token, data: prev?.data, error: getErrorMessage(err) }));
+        if (!cancelled)
+          setResult((prev) => ({ token, data: prev?.data, error: getErrorMessage(err) }));
       });
     return () => {
       cancelled = true;

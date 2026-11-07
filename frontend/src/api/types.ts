@@ -2,7 +2,8 @@
 // from an allowlist, so anything not listed here is never sent to the browser.
 
 /** The public website tabs an administrator can switch off. */
-export type PublicTabKey = 'about' | 'committee' | 'faq' | 'links' | 'directory' | 'events' | 'news' | 'contact';
+export type PublicTabKey =
+  'about' | 'committee' | 'faq' | 'links' | 'directory' | 'events' | 'news' | 'contact';
 export type PublicTabs = Record<PublicTabKey, boolean>;
 
 export interface PublicSettings {
@@ -138,8 +139,22 @@ export interface SearchResults {
   members: SearchHit[];
 }
 
-export const EVENT_CATEGORIES = ['Festival', 'Family', 'Seva', 'Education', 'Meeting', 'Sports', 'Other'] as const;
-export const ANNOUNCEMENT_CATEGORIES = ['Notice', 'Event', 'Education', 'Seva', 'Achievement'] as const;
+export const EVENT_CATEGORIES = [
+  'Festival',
+  'Family',
+  'Seva',
+  'Education',
+  'Meeting',
+  'Sports',
+  'Other',
+] as const;
+export const ANNOUNCEMENT_CATEGORIES = [
+  'Notice',
+  'Event',
+  'Education',
+  'Seva',
+  'Achievement',
+] as const;
 export const CONTACT_TOPICS = [
   'General enquiry',
   'Membership',

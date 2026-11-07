@@ -55,7 +55,10 @@ export const directoryQueryRules = [
   validateRequest,
 ];
 
-export const memberIdRules = [param('id').isUUID().withMessage('Invalid member id'), validateRequest];
+export const memberIdRules = [
+  param('id').isUUID().withMessage('Invalid member id'),
+  validateRequest,
+];
 
 export const adminListRules = [
   ...paginationRules(100),

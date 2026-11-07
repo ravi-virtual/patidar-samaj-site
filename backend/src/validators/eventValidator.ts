@@ -10,7 +10,9 @@ export const eventIdRules = [idParam, validateRequest];
 export const publicEventListRules = [
   ...paginationRules(50),
   query('when').optional().isIn(['upcoming', 'past']),
-  query('category').optional().isIn([...EventCategories]),
+  query('category')
+    .optional()
+    .isIn([...EventCategories]),
   query('search').optional().isString().trim().isLength({ max: 100 }),
   validateRequest,
 ];
@@ -19,7 +21,9 @@ export const adminEventListRules = [
   ...paginationRules(100),
   query('when').optional().isIn(['upcoming', 'past', 'all']),
   query('status').optional().isIn(Object.values(EventStatus)),
-  query('category').optional().isIn([...EventCategories]),
+  query('category')
+    .optional()
+    .isIn([...EventCategories]),
   query('search').optional().isString().trim().isLength({ max: 100 }),
   validateRequest,
 ];
@@ -39,7 +43,10 @@ const plainText = (field: string, min: number, max: number, required: boolean) =
 
 const dateField = (field: string, required: boolean) => {
   const chain = required ? body(field) : body(field).optional({ values: 'null' });
-  return chain.isISO8601({ strict: true }).withMessage(`${field} must be a valid date and time`).toDate();
+  return chain
+    .isISO8601({ strict: true })
+    .withMessage(`${field} must be a valid date and time`)
+    .toDate();
 };
 
 const eventFields = (creating: boolean) => [
@@ -51,7 +58,10 @@ const eventFields = (creating: boolean) => [
   plainText('descriptionGu', 0, 4000, false),
   plainText('venueGu', 0, 200, false),
   plainText('cancellationReasonGu', 0, 500, false),
-  body('category').optional().isIn([...EventCategories]).withMessage('Unknown category'),
+  body('category')
+    .optional()
+    .isIn([...EventCategories])
+    .withMessage('Unknown category'),
   dateField('startsAt', creating),
   dateField('endsAt', false),
   body('featured').optional().isBoolean().toBoolean(),
@@ -61,7 +71,8 @@ const eventFields = (creating: boolean) => [
     const asDate = (v: unknown) => (v instanceof Date ? v : undefined);
     const starts = asDate(value.startsAt);
     const ends = asDate(value.endsAt);
-    if (starts && ends && ends < starts) throw new Error('The end time must be after the start time');
+    if (starts && ends && ends < starts)
+      throw new Error('The end time must be after the start time');
     return true;
   }),
 ];

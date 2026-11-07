@@ -11,6 +11,7 @@ import { TextField } from '../../components/ui/TextField';
 import { useAppDispatch } from '../../store/hooks';
 import { showToast } from '../../store/slices/toastSlice';
 import { t } from '../../i18n';
+import { compressImage } from './compressImage';
 import { MAX_DOC, MAX_IMAGE, readableSize } from './mediaLimits';
 
 const ACCEPT = 'image/jpeg,image/png,image/webp,application/pdf';
@@ -28,10 +29,16 @@ export default function AdminMediaUploadPage() {
   const [busy, setBusy] = useState(false);
 
   const isPdf = file?.type === 'application/pdf';
-  const previewUrl = useMemo(() => (file && !isPdf ? URL.createObjectURL(file) : null), [file, isPdf]);
-  useEffect(() => () => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-  }, [previewUrl]);
+  const previewUrl = useMemo(
+    () => (file && !isPdf ? URL.createObjectURL(file) : null),
+    [file, isPdf],
+  );
+  useEffect(
+    () => () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    },
+    [previewUrl],
+  );
 
   if (!can('media.upload')) return <Navigate to="/admin/media" replace />;
 
@@ -58,7 +65,7 @@ export default function AdminMediaUploadPage() {
     setBusy(true);
     setError(undefined);
     try {
-      await uploadMediaApi(file, description.trim() || undefined);
+      await uploadMediaApi(await compressImage(file), description.trim() || undefined);
       dispatch(showToast(t('File uploaded.')));
       navigate('/admin/media');
     } catch (err) {
@@ -71,7 +78,9 @@ export default function AdminMediaUploadPage() {
   return (
     <FormPage
       title={t('Upload file')}
-      description={t('Pictures and PDFs used on the site. JPEG, PNG, WebP (up to 3 MB) and PDF (up to 10 MB).')}
+      description={t(
+        'Pictures and PDFs used on the site. JPEG, PNG, WebP (up to 3 MB) and PDF (up to 10 MB).',
+      )}
       backTo="/admin/media"
       backLabel={t('Back to media library')}
       onSubmit={(e) => {
@@ -108,9 +117,18 @@ export default function AdminMediaUploadPage() {
             onChange={(e) => choose(e.target.files?.[0])}
           />
           <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border-strong bg-surface-muted p-6 text-center">
-            {previewUrl && <img src={previewUrl} alt={description || file?.name || ''} className="max-h-64 max-w-full rounded-md object-contain" />}
+            {previewUrl && (
+              <img
+                src={previewUrl}
+                alt={description || file?.name || ''}
+                className="max-h-64 max-w-full rounded-md object-contain"
+              />
+            )}
             {file && isPdf && (
-              <div aria-hidden="true" className="flex h-24 w-24 items-center justify-center rounded-md bg-surface text-text-muted">
+              <div
+                aria-hidden="true"
+                className="flex h-24 w-24 items-center justify-center rounded-md bg-surface text-text-muted"
+              >
                 <FileText className="h-10 w-10" />
               </div>
             )}

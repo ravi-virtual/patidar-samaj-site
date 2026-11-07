@@ -23,7 +23,9 @@ const toInt = (value: string | undefined, fallback: number): number => {
 if (isProduction) {
   const sessionSecret = process.env.SESSION_SECRET ?? '';
   if (sessionSecret.length < 32 || /change[-_ ]?me/i.test(sessionSecret)) {
-    console.error('FATAL: SESSION_SECRET must be a random value of at least 32 characters in production.');
+    console.error(
+      'FATAL: SESSION_SECRET must be a random value of at least 32 characters in production.',
+    );
     process.exit(1);
   }
   if (process.env.ENABLE_DEV_SEED === 'true') {
@@ -63,9 +65,11 @@ export const config = {
     windowMs: toInt(process.env.RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),
     max: toInt(process.env.RATE_LIMIT_MAX, 300),
     authMax: toInt(process.env.AUTH_RATE_LIMIT_MAX, 10),
-    // Each limiter is only active when its variable is set.
-    enabled: Boolean(process.env.RATE_LIMIT_MAX),
-    authEnabled: Boolean(process.env.AUTH_RATE_LIMIT_MAX),
+    uploadMax: toInt(process.env.UPLOAD_RATE_LIMIT_MAX, 30),
+    // On by default (the limits above). Set a variable to 0 to switch that limiter off.
+    enabled: process.env.RATE_LIMIT_MAX !== '0',
+    authEnabled: process.env.AUTH_RATE_LIMIT_MAX !== '0',
+    uploadEnabled: process.env.UPLOAD_RATE_LIMIT_MAX !== '0',
   },
   auth: {
     // Argon2id. Production uses the OWASP-recommended minimum (19 MiB, t=2, p=1);
@@ -95,7 +99,9 @@ export const config = {
     apiSecret: process.env.CLOUDINARY_API_SECRET ?? '',
     folder: process.env.CLOUDINARY_FOLDER ?? 'patidar-samaj',
     enabled: Boolean(
-      process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET,
+      process.env.CLOUDINARY_CLOUD_NAME &&
+      process.env.CLOUDINARY_API_KEY &&
+      process.env.CLOUDINARY_API_SECRET,
     ),
   },
   audit: {
@@ -105,7 +111,8 @@ export const config = {
     // "outbox" writes messages to backend/.outbox for local development only.
     // "none" (the production default) sends nothing; see docs/security.md for account recovery.
     // "smtp" sends real email through the account in the SMTP_* variables (e.g. Gmail with an app password).
-    driver: (process.env.MAIL_DRIVER ?? (isProduction ? 'none' : 'outbox')) as 'outbox' | 'none' | 'smtp',
+    driver: (process.env.MAIL_DRIVER ?? (isProduction ? 'none' : 'outbox')) as
+      'outbox' | 'none' | 'smtp',
     host: process.env.SMTP_HOST ?? 'smtp.gmail.com',
     port: toInt(process.env.SMTP_PORT, 465),
     secure: (process.env.SMTP_SECURE ?? 'true') === 'true',
@@ -156,7 +163,11 @@ export const ThemePreferences = ['system', 'light', 'dark'] as const;
 export type ThemePreference = (typeof ThemePreferences)[number];
 
 // ─── Content and business enums ──────────────────────────────────────────────
-export const PublishStatus = { DRAFT: 'draft', PUBLISHED: 'published', ARCHIVED: 'archived' } as const;
+export const PublishStatus = {
+  DRAFT: 'draft',
+  PUBLISHED: 'published',
+  ARCHIVED: 'archived',
+} as const;
 export type PublishStatusValue = (typeof PublishStatus)[keyof typeof PublishStatus];
 
 export const EventStatus = {
@@ -167,7 +178,11 @@ export const EventStatus = {
 } as const;
 export type EventStatusValue = (typeof EventStatus)[keyof typeof EventStatus];
 
-export const ContactStatus = { NEW: 'new', IN_PROGRESS: 'in_progress', RESOLVED: 'resolved' } as const;
+export const ContactStatus = {
+  NEW: 'new',
+  IN_PROGRESS: 'in_progress',
+  RESOLVED: 'resolved',
+} as const;
 export type ContactStatusValue = (typeof ContactStatus)[keyof typeof ContactStatus];
 
 /** Who may see a directory entry: only the office (hidden) or everyone (public). */
@@ -177,10 +192,29 @@ export type MemberVisibilityValue = (typeof MemberVisibility)[keyof typeof Membe
 export const MembershipStatus = { ACTIVE: 'active', INACTIVE: 'inactive' } as const;
 export type MembershipStatusValue = (typeof MembershipStatus)[keyof typeof MembershipStatus];
 
-export const EventCategories = ['Festival', 'Family', 'Seva', 'Education', 'Meeting', 'Sports', 'Other'] as const;
-export const AnnouncementCategories = ['Notice', 'Event', 'Education', 'Seva', 'Achievement'] as const;
+export const EventCategories = [
+  'Festival',
+  'Family',
+  'Seva',
+  'Education',
+  'Meeting',
+  'Sports',
+  'Other',
+] as const;
+export const AnnouncementCategories = [
+  'Notice',
+  'Event',
+  'Education',
+  'Seva',
+  'Achievement',
+] as const;
 export const LinkCategories = ['Forms', 'Documents', 'Services', 'Community', 'Other'] as const;
-export const ContactTopics = ['General enquiry', 'Membership', 'Patidar Samaj Bhavan booking', 'Scholarships'] as const;
+export const ContactTopics = [
+  'General enquiry',
+  'Membership',
+  'Patidar Samaj Bhavan booking',
+  'Scholarships',
+] as const;
 
 // ─── Error codes ─────────────────────────────────────────────────────────────
 export const ErrorCodes = {

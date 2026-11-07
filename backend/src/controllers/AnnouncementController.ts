@@ -9,7 +9,11 @@ import { toPublicAnnouncement, visibleNowFilter } from '../utils/announcementVie
 import { searchFieldsFor } from '../utils/localize';
 
 const notFound = (res: Response) =>
-  sendError(res, { statusCode: ResponseCodes.NOT_FOUND, message: 'Announcement not found', code: ErrorCodes.NOT_FOUND });
+  sendError(res, {
+    statusCode: ResponseCodes.NOT_FOUND,
+    message: 'Announcement not found',
+    code: ErrorCodes.NOT_FOUND,
+  });
 
 /**
  * @name listAnnouncements
@@ -37,14 +41,20 @@ export const listAnnouncements = async (req: Request, res: Response, next: NextF
     if (q.category) filter.category = q.category;
     if (q.search) {
       const rx = new RegExp(escapeRegex(q.search), 'i');
-      and.push({ $or: searchFieldsFor(['title', 'summary', 'body'], req.lang).map((f) => ({ [f]: rx })) });
+      and.push({
+        $or: searchFieldsFor(['title', 'summary', 'body'], req.lang).map((f) => ({ [f]: rx })),
+      });
     }
     if (and.length) filter.$and = and;
 
     const { limit, skip } = pageParams(q, 12);
     const [items, totalCount] = await Promise.all([
       Announcement.find(filter)
-        .sort(q.archived ? { publishAt: -1, createdAt: -1 } : { pinned: -1, order: 1, publishAt: -1, createdAt: -1 })
+        .sort(
+          q.archived
+            ? { publishAt: -1, createdAt: -1 }
+            : { pinned: -1, order: 1, publishAt: -1, createdAt: -1 },
+        )
         .skip(skip)
         .limit(limit)
         .lean(),
@@ -74,10 +84,7 @@ export const getAnnouncement = async (req: Request, res: Response, next: NextFun
     const now = new Date();
     const item = await Announcement.findOne({
       _id: req.params.id,
-      $or: [
-        { ...visibleNowFilter(now) },
-        { isDeleted: false, status: PublishStatus.ARCHIVED },
-      ],
+      $or: [{ ...visibleNowFilter(now) }, { isDeleted: false, status: PublishStatus.ARCHIVED }],
     }).lean();
     if (!item) return notFound(res);
     return new ApiResponse(ResponseCodes.OK, 'Announcement fetched successfully', {

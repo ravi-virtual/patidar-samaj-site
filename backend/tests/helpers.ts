@@ -25,7 +25,10 @@ const P = Permissions;
 export const ALL_ADMIN_PERMISSIONS: string[] = [...SELECTABLE_PERMISSIONS];
 /** Day-to-day operations: everything selectable except private member data, export, anonymise and the audit log. */
 export const OPS_ADMIN_PERMISSIONS: string[] = SELECTABLE_PERMISSIONS.filter(
-  (p) => ![P.MEMBERS_READ_PRIVATE, P.MEMBERS_EXPORT, P.MEMBERS_ANONYMIZE, P.AUDIT_READ].includes(p as never),
+  (p) =>
+    ![P.MEMBERS_READ_PRIVATE, P.MEMBERS_EXPORT, P.MEMBERS_ANONYMIZE, P.AUDIT_READ].includes(
+      p as never,
+    ),
 );
 /** Write drafts only: no publish, delete, anonymise or export. */
 export const DRAFT_ADMIN_PERMISSIONS: string[] = [
@@ -106,7 +109,8 @@ export interface Client {
 export const signIn = async (email: string, password = PASSWORD): Promise<Client> => {
   const agent = request.agent(app);
   const res = await agent.post('/auth/admin-login').set('Origin', ORIGIN).send({ email, password });
-  if (res.status !== 200) throw new Error(`Sign-in failed for ${email}: ${res.status} ${JSON.stringify(res.body)}`);
+  if (res.status !== 200)
+    throw new Error(`Sign-in failed for ${email}: ${res.status} ${JSON.stringify(res.body)}`);
   const csrf = res.body.data.csrfToken as string;
   const cookie = (res.headers['set-cookie'] as unknown as string[])
     .find((c) => c.startsWith(`${config.session.cookieName}=`))!
@@ -226,4 +230,6 @@ export const makeAnnouncement = async (
 };
 
 /** Everything selectable except the right to reset other admins' passwords, which opens part of /users. */
-export const ADMIN_PERMISSIONS_WITHOUT_USER_RESET: string[] = SELECTABLE_PERMISSIONS.filter((p) => p !== P.USERS_RESET_PASSWORD);
+export const ADMIN_PERMISSIONS_WITHOUT_USER_RESET: string[] = SELECTABLE_PERMISSIONS.filter(
+  (p) => p !== P.USERS_RESET_PASSWORD,
+);

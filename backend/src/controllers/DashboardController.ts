@@ -31,14 +31,21 @@ export const getDashboard = async (req: Request, res: Response, next: NextFuncti
 
     if (can(Permissions.MEMBERS_READ)) {
       jobs.push(
-        MemberProfile.countDocuments({ isDeleted: false, membershipStatus: MembershipStatus.ACTIVE }).then((n) => {
+        MemberProfile.countDocuments({
+          isDeleted: false,
+          membershipStatus: MembershipStatus.ACTIVE,
+        }).then((n) => {
           out.totalMembers = n;
         }),
       );
     }
     if (can(Permissions.EVENTS_READ)) {
       jobs.push(
-        Event.countDocuments({ isDeleted: false, status: EventStatus.PUBLISHED, startsAt: { $gte: now } }).then((n) => {
+        Event.countDocuments({
+          isDeleted: false,
+          status: EventStatus.PUBLISHED,
+          startsAt: { $gte: now },
+        }).then((n) => {
           out.upcomingEvents = n;
         }),
       );
@@ -64,8 +71,14 @@ export const getDashboard = async (req: Request, res: Response, next: NextFuncti
           .limit(10)
           .lean()
           .then(async (entries) => {
-            const ids = [...new Set(entries.map((e) => e.actorId).filter((id): id is string => Boolean(id)))];
-            const actors = ids.length ? await User.find({ _id: { $in: ids } }).select('name').lean() : [];
+            const ids = [
+              ...new Set(entries.map((e) => e.actorId).filter((id): id is string => Boolean(id))),
+            ];
+            const actors = ids.length
+              ? await User.find({ _id: { $in: ids } })
+                  .select('name')
+                  .lean()
+              : [];
             const names = new Map(actors.map((a) => [a._id, a.name]));
             out.recentActivity = entries.map((e) => ({
               action: e.action,
@@ -109,7 +122,10 @@ export const listAudit = async (req: Request, res: Response, next: NextFunction)
     }>(req, { locations: ['query'] });
 
     const filter: Record<string, unknown> = {};
-    if (q.action) filter.action = q.action.includes('*') ? new RegExp(`^${q.action.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`) : q.action;
+    if (q.action)
+      filter.action = q.action.includes('*')
+        ? new RegExp(`^${q.action.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`)
+        : q.action;
     if (q.actorId) filter.actorId = q.actorId;
     if (q.outcome) filter.outcome = q.outcome;
     if (q.targetType) filter.targetType = q.targetType;
@@ -122,8 +138,14 @@ export const listAudit = async (req: Request, res: Response, next: NextFunction)
       AuditLog.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       AuditLog.countDocuments(filter),
     ]);
-    const ids = [...new Set(entries.map((e) => e.actorId).filter((id): id is string => Boolean(id)))];
-    const actors = ids.length ? await User.find({ _id: { $in: ids } }).select('name').lean() : [];
+    const ids = [
+      ...new Set(entries.map((e) => e.actorId).filter((id): id is string => Boolean(id))),
+    ];
+    const actors = ids.length
+      ? await User.find({ _id: { $in: ids } })
+          .select('name')
+          .lean()
+      : [];
     const names = new Map(actors.map((a) => [a._id, a.name]));
 
     return new ApiResponse(ResponseCodes.OK, 'Audit log fetched successfully', {
@@ -131,7 +153,13 @@ export const listAudit = async (req: Request, res: Response, next: NextFunction)
         id: e._id,
         action: e.action,
         outcome: e.outcome,
-        actor: e.actorId ? { id: e.actorId, name: names.get(e.actorId) ?? 'Former admin', role: e.actorRole ?? null } : null,
+        actor: e.actorId
+          ? {
+              id: e.actorId,
+              name: names.get(e.actorId) ?? 'Former admin',
+              role: e.actorRole ?? null,
+            }
+          : null,
         targetType: e.targetType ?? null,
         targetId: e.targetId ?? null,
         metadata: e.metadata ?? null,

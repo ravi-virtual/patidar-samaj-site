@@ -11,7 +11,11 @@ import { mayEditItem } from '../utils/publishPolicy';
 import { writeAudit } from '../utils/audit';
 
 const notFound = (res: Response) =>
-  sendError(res, { statusCode: ResponseCodes.NOT_FOUND, message: 'Announcement not found', code: ErrorCodes.NOT_FOUND });
+  sendError(res, {
+    statusCode: ResponseCodes.NOT_FOUND,
+    message: 'Announcement not found',
+    code: ErrorCodes.NOT_FOUND,
+  });
 
 const forbidden = (res: Response, message: string) =>
   sendError(res, { statusCode: ResponseCodes.FORBIDDEN, message, code: ErrorCodes.FORBIDDEN });
@@ -42,7 +46,13 @@ type AnnouncementInput = {
  */
 export const listAdminAnnouncements = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const q = matchedData<{ page?: number; limit?: number; status?: string; category?: string; search?: string }>(req, {
+    const q = matchedData<{
+      page?: number;
+      limit?: number;
+      status?: string;
+      category?: string;
+      search?: string;
+    }>(req, {
       locations: ['query'],
     });
     const filter: Record<string, unknown> = { isDeleted: false };
@@ -54,7 +64,11 @@ export const listAdminAnnouncements = async (req: Request, res: Response, next: 
     }
     const { limit, skip } = pageParams(q, 20);
     const [items, totalCount] = await Promise.all([
-      Announcement.find(filter).sort({ pinned: -1, order: 1, createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Announcement.find(filter)
+        .sort({ pinned: -1, order: 1, createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
       Announcement.countDocuments(filter),
     ]);
     return new ApiResponse(ResponseCodes.OK, 'Announcements fetched successfully', {
@@ -97,7 +111,10 @@ export const getAdminAnnouncement = async (req: Request, res: Response, next: Ne
  */
 export const createAnnouncement = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data = matchedData<AnnouncementInput>(req, { locations: ['body'], includeOptionals: false });
+    const data = matchedData<AnnouncementInput>(req, {
+      locations: ['body'],
+      includeOptionals: false,
+    });
     if (data.featured && !req.user!.permissions.includes(Permissions.ANNOUNCEMENTS_PUBLISH)) {
       return forbidden(res, 'Only staff who can publish announcements may feature them');
     }
@@ -108,7 +125,11 @@ export const createAnnouncement = async (req: Request, res: Response, next: Next
       createdBy: req.user!.id,
       updatedBy: req.user!.id,
     });
-    await writeAudit(req, { action: 'announcement.created', targetType: 'announcement', targetId: item._id });
+    await writeAudit(req, {
+      action: 'announcement.created',
+      targetType: 'announcement',
+      targetId: item._id,
+    });
     return new ApiResponse(ResponseCodes.CREATED, 'Announcement saved as a draft', {
       announcement: toAdminAnnouncement(item.toObject()),
     }).send(res);
@@ -127,13 +148,22 @@ export const createAnnouncement = async (req: Request, res: Response, next: Next
  */
 export const updateAnnouncement = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data = matchedData<AnnouncementInput>(req, { locations: ['body'], includeOptionals: false });
+    const data = matchedData<AnnouncementInput>(req, {
+      locations: ['body'],
+      includeOptionals: false,
+    });
     const item = await Announcement.findOne({ _id: req.params.id, isDeleted: false });
     if (!item) return notFound(res);
     if (!mayEditItem(req.user, item.status, Permissions.ANNOUNCEMENTS_PUBLISH)) {
-      return forbidden(res, 'Only staff who can publish announcements may change one that is already published');
+      return forbidden(
+        res,
+        'Only staff who can publish announcements may change one that is already published',
+      );
     }
-    if (data.featured !== undefined && !req.user!.permissions.includes(Permissions.ANNOUNCEMENTS_PUBLISH)) {
+    if (
+      data.featured !== undefined &&
+      !req.user!.permissions.includes(Permissions.ANNOUNCEMENTS_PUBLISH)
+    ) {
       return forbidden(res, 'Only staff who can publish announcements may feature them');
     }
     item.set({ ...data, updatedBy: req.user!.id });
@@ -164,7 +194,10 @@ const change = async (
   },
 ) => {
   try {
-    const body = matchedData<{ publishAt?: Date | null }>(req, { locations: ['body'], includeOptionals: false });
+    const body = matchedData<{ publishAt?: Date | null }>(req, {
+      locations: ['body'],
+      includeOptionals: false,
+    });
     const item = await Announcement.findOne({ _id: req.params.id, isDeleted: false });
     if (!item) return notFound(res);
     if (opts.from && !opts.from.includes(item.status)) {
@@ -174,7 +207,9 @@ const change = async (
     item.updatedBy = req.user!.id;
     await item.save();
     await writeAudit(req, { action: opts.action, targetType: 'announcement', targetId: item._id });
-    return new ApiResponse(ResponseCodes.OK, opts.message, { announcement: toAdminAnnouncement(item.toObject()) }).send(res);
+    return new ApiResponse(ResponseCodes.OK, opts.message, {
+      announcement: toAdminAnnouncement(item.toObject()),
+    }).send(res);
   } catch (err) {
     return next(err);
   }
@@ -291,13 +326,17 @@ export const reorderAnnouncements = async (req: Request, res: Response, next: Ne
   try {
     const { ids } = matchedData<{ ids: string[] }>(req, { locations: ['body'] });
     const result = await Announcement.bulkWrite(
-      ids.map((id, index) => ({ updateOne: { filter: { _id: id, isDeleted: false }, update: { $set: { order: index } } } })),
+      ids.map((id, index) => ({
+        updateOne: { filter: { _id: id, isDeleted: false }, update: { $set: { order: index } } },
+      })),
     );
     await writeAudit(req, {
       action: 'announcement.reordered',
       metadata: { count: ids.length, matched: result.matchedCount },
     });
-    return new ApiResponse(ResponseCodes.OK, 'Order saved', { updated: result.modifiedCount }).send(res);
+    return new ApiResponse(ResponseCodes.OK, 'Order saved', { updated: result.modifiedCount }).send(
+      res,
+    );
   } catch (err) {
     return next(err);
   }
@@ -318,7 +357,11 @@ export const deleteAnnouncement = async (req: Request, res: Response, next: Next
     item.isDeleted = true;
     item.pinned = false;
     await item.save();
-    await writeAudit(req, { action: 'announcement.deleted', targetType: 'announcement', targetId: item._id });
+    await writeAudit(req, {
+      action: 'announcement.deleted',
+      targetType: 'announcement',
+      targetId: item._id,
+    });
     return new ApiResponse(ResponseCodes.OK, 'Announcement deleted').send(res);
   } catch (err) {
     return next(err);

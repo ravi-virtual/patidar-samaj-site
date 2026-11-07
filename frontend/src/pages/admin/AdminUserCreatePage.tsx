@@ -17,13 +17,26 @@ import { showToast } from '../../store/slices/toastSlice';
 import { t } from '../../i18n';
 
 const schema = z.object({
-  name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100).refine((v) => !/[<>]/.test(v), 'Contains invalid characters'),
-  email: z.string().trim().min(1, 'Email is required').max(254).pipe(z.email('Enter a valid email address')),
+  name: z
+    .string()
+    .trim()
+    .min(2, 'Name must be at least 2 characters')
+    .max(100)
+    .refine((v) => !/[<>]/.test(v), 'Contains invalid characters'),
+  email: z
+    .string()
+    .trim()
+    .min(1, 'Email is required')
+    .max(254)
+    .pipe(z.email('Enter a valid email address')),
   password: z
     .string()
     .min(10, 'Password must be at least 10 characters')
     .max(128)
-    .refine((v) => /[A-Za-z]/.test(v) && /\d/.test(v), 'Password must contain a letter and a number'),
+    .refine(
+      (v) => /[A-Za-z]/.test(v) && /\d/.test(v),
+      'Password must contain a letter and a number',
+    ),
   permissions: z.array(z.string()),
 });
 type Form = z.infer<typeof schema>;
@@ -44,7 +57,10 @@ export default function AdminUserCreatePage() {
     setValue,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm<Form>({ resolver: zodResolver(schema), defaultValues: { name: '', email: '', password: '', permissions: [] } });
+  } = useForm<Form>({
+    resolver: zodResolver(schema),
+    defaultValues: { name: '', email: '', password: '', permissions: [] },
+  });
   const permissions = useWatch({ control, name: 'permissions' });
 
   if (!can('users.manage')) return <Navigate to="/admin" replace />;
@@ -54,8 +70,19 @@ export default function AdminUserCreatePage() {
       const { user, email } = await createAdminApi(v);
       dispatch(
         email.delivered
-          ? showToast(t('{name} was created and the sign-in details were emailed to {email}.', { name: user.name, email: user.email }))
-          : showToast(t('{name} was created, but the email could not be sent. Share the password with them yourself.', { name: user.name }), 'info'),
+          ? showToast(
+              t('{name} was created and the sign-in details were emailed to {email}.', {
+                name: user.name,
+                email: user.email,
+              }),
+            )
+          : showToast(
+              t(
+                '{name} was created, but the email could not be sent. Share the password with them yourself.',
+                { name: user.name },
+              ),
+              'info',
+            ),
       );
       navigate('/admin/users');
     } catch (err) {
@@ -66,7 +93,8 @@ export default function AdminUserCreatePage() {
           placed = true;
         }
       }
-      if (!placed) setError('root', { message: getErrorMessage(err, t('Could not create the admin')) });
+      if (!placed)
+        setError('root', { message: getErrorMessage(err, t('Could not create the admin')) });
     }
   };
 
@@ -88,16 +116,34 @@ export default function AdminUserCreatePage() {
       <form noValidate onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {errors.root?.message && <Alert tone="danger">{errors.root.message}</Alert>}
 
-        <section aria-labelledby="account-heading" className="space-y-4 rounded-lg border border-border bg-surface p-4 sm:p-5">
+        <section
+          aria-labelledby="account-heading"
+          className="space-y-4 rounded-lg border border-border bg-surface p-4 sm:p-5"
+        >
           <h2 id="account-heading" className="text-base font-semibold text-text">
             {t('Account')}
           </h2>
           <Alert tone="info">
-            {t('The new admin receives an email with their email address and this password, and is asked to change the password after signing in.')}
+            {t(
+              'The new admin receives an email with their email address and this password, and is asked to change the password after signing in.',
+            )}
           </Alert>
           <div className="grid gap-4 md:grid-cols-2">
-            <TextField label={t('Full name')} required autoComplete="off" error={errors.name?.message} {...register('name')} />
-            <TextField label={t('Email')} type="email" required autoComplete="off" error={errors.email?.message} {...register('email')} />
+            <TextField
+              label={t('Full name')}
+              required
+              autoComplete="off"
+              error={errors.name?.message}
+              {...register('name')}
+            />
+            <TextField
+              label={t('Email')}
+              type="email"
+              required
+              autoComplete="off"
+              error={errors.email?.message}
+              {...register('email')}
+            />
             <div className="space-y-2 md:col-span-2 md:max-w-[calc(50%-0.5rem)]">
               <PasswordField
                 label={t('Password')}
@@ -110,7 +156,12 @@ export default function AdminUserCreatePage() {
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() => setValue('password', generatePassword(), { shouldValidate: true, shouldDirty: true })}
+                onClick={() =>
+                  setValue('password', generatePassword(), {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  })
+                }
               >
                 <Wand2 aria-hidden="true" className="h-4 w-4" />
                 {t('Generate a password')}
@@ -119,15 +170,27 @@ export default function AdminUserCreatePage() {
           </div>
         </section>
 
-        <section aria-labelledby="perm-heading" className="rounded-lg border border-border bg-surface p-4 sm:p-5">
+        <section
+          aria-labelledby="perm-heading"
+          className="rounded-lg border border-border bg-surface p-4 sm:p-5"
+        >
           <h2 id="perm-heading" className="sr-only">
             {t('Permissions')}
           </h2>
-          <PermissionPicker layout="page" value={permissions} onChange={(next) => setValue('permissions', next, { shouldDirty: true })} />
+          <PermissionPicker
+            layout="page"
+            value={permissions}
+            onChange={(next) => setValue('permissions', next, { shouldDirty: true })}
+          />
         </section>
 
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button type="button" variant="secondary" onClick={() => navigate('/admin/users')} disabled={isSubmitting}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => navigate('/admin/users')}
+            disabled={isSubmitting}
+          >
             {t('Cancel')}
           </Button>
           <Button type="submit" loading={isSubmitting}>

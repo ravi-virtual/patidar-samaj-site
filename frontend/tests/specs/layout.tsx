@@ -22,7 +22,10 @@ const renderAt = (path: string) =>
 describe('public layout', () => {
   it('provides a skip link, landmarks and a labelled main navigation', () => {
     renderAt('/');
-    expect(screen.getByRole('link', { name: /skip to main content/i })).toHaveAttribute('href', '#main');
+    expect(screen.getByRole('link', { name: /skip to main content/i })).toHaveAttribute(
+      'href',
+      '#main',
+    );
     expect(screen.getByRole('main')).toBeInTheDocument();
     expect(screen.getAllByRole('navigation', { name: 'Main' }).length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument();

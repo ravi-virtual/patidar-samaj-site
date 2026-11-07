@@ -2,7 +2,12 @@ import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { createEventApi, updateEventApi, type AdminEvent, type EventInput } from '../../api/adminApi';
+import {
+  createEventApi,
+  updateEventApi,
+  type AdminEvent,
+  type EventInput,
+} from '../../api/adminApi';
 import { getErrorMessage, getFieldErrors } from '../../api/axiosInstance';
 import { EVENT_CATEGORIES } from '../../api/types';
 import { t } from '../../i18n';
@@ -19,14 +24,25 @@ import { MediaPicker } from './MediaPicker';
 
 const noAngle = (v: string) => !/[<>]/.test(v);
 
-const optionalGu = (max: number) => z.string().trim().max(max).refine(noAngle, 'Contains invalid characters');
+const optionalGu = (max: number) =>
+  z.string().trim().max(max).refine(noAngle, 'Contains invalid characters');
 
 const schema = z
   .object({
-    title: z.string().trim().min(3, 'Title must be at least 3 characters').max(150).refine(noAngle, 'Contains invalid characters'),
+    title: z
+      .string()
+      .trim()
+      .min(3, 'Title must be at least 3 characters')
+      .max(150)
+      .refine(noAngle, 'Contains invalid characters'),
     titleGu: optionalGu(150),
     category: z.enum(EVENT_CATEGORIES),
-    venue: z.string().trim().min(2, 'Venue is required').max(200).refine(noAngle, 'Contains invalid characters'),
+    venue: z
+      .string()
+      .trim()
+      .min(2, 'Venue is required')
+      .max(200)
+      .refine(noAngle, 'Contains invalid characters'),
     venueGu: optionalGu(200),
     description: z.string().trim().max(4000).refine(noAngle, 'Contains invalid characters'),
     descriptionGu: optionalGu(4000),
@@ -39,7 +55,12 @@ const schema = z
     const at = (s: string) => (s ? new Date(`${s}:00+05:30`).getTime() : null);
     const start = at(v.startsAt);
     const end = at(v.endsAt);
-    if (start && end && end < start) ctx.addIssue({ code: 'custom', path: ['endsAt'], message: 'The end must be after the start' });
+    if (start && end && end < start)
+      ctx.addIssue({
+        code: 'custom',
+        path: ['endsAt'],
+        message: 'The end must be after the start',
+      });
   });
 type Form = z.infer<typeof schema>;
 
@@ -96,7 +117,10 @@ export function EventForm({ event }: { event: AdminEvent | null }) {
     handleSubmit,
     setError,
     formState: { errors, isDirty, isSubmitting },
-  } = useForm<Form>({ resolver: zodResolver(schema), defaultValues: event ? fromEvent(event) : blank });
+  } = useForm<Form>({
+    resolver: zodResolver(schema),
+    defaultValues: event ? fromEvent(event) : blank,
+  });
 
   const onSubmit = async (v: Form) => {
     try {
@@ -112,7 +136,8 @@ export function EventForm({ event }: { event: AdminEvent | null }) {
           placed = true;
         }
       }
-      if (!placed) setError('root', { message: getErrorMessage(err, t('Could not save the event')) });
+      if (!placed)
+        setError('root', { message: getErrorMessage(err, t('Could not save the event')) });
     }
   };
 
@@ -159,9 +184,25 @@ export function EventForm({ event }: { event: AdminEvent | null }) {
           </option>
         ))}
       </SelectField>
-      <MediaPicker label={t('Cover image')} kind="image" error={errText(errors.imageMediaId)} {...register('imageMediaId')} />
-      <TextField label={t('Starts (IST)')} type="datetime-local" required error={errText(errors.startsAt)} {...register('startsAt')} />
-      <TextField label={t('Ends (IST)')} type="datetime-local" error={errText(errors.endsAt)} {...register('endsAt')} />
+      <MediaPicker
+        label={t('Cover image')}
+        kind="image"
+        error={errText(errors.imageMediaId)}
+        {...register('imageMediaId')}
+      />
+      <TextField
+        label={t('Starts (IST)')}
+        type="datetime-local"
+        required
+        error={errText(errors.startsAt)}
+        {...register('startsAt')}
+      />
+      <TextField
+        label={t('Ends (IST)')}
+        type="datetime-local"
+        error={errText(errors.endsAt)}
+        {...register('endsAt')}
+      />
       <FullWidth>
         <BilingualField
           label="Description"

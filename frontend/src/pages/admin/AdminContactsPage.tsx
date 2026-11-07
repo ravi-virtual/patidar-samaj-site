@@ -54,14 +54,23 @@ export default function AdminContactsPage() {
         </div>
       ),
     },
-    { header: t('Received'), className: 'whitespace-nowrap font-mono text-[13px]', cell: (m) => formatDateTime(m.createdAt) },
+    {
+      header: t('Received'),
+      className: 'whitespace-nowrap font-mono text-[13px]',
+      cell: (m) => formatDateTime(m.createdAt),
+    },
     { header: t('Status'), cell: (m) => <StatusBadge status={m.status} /> },
     {
       header: t('Open'),
       srOnlyHeader: true,
       className: 'text-right',
       cell: (m) => (
-        <Button variant="secondary" size="sm" onClick={() => navigate(`/admin/contacts/${m.id}`)} aria-label={t('Open message from {name}', { name: m.name })}>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => navigate(`/admin/contacts/${m.id}`)}
+          aria-label={t('Open message from {name}', { name: m.name })}
+        >
           {t('Open')}
         </Button>
       ),
@@ -72,13 +81,26 @@ export default function AdminContactsPage() {
 
   return (
     <>
-      <PageHeader title={t('Contact inbox')} description={t('Messages sent through the contact form.')} />
-      <Toolbar search={search} onSearch={(v) => (setSearch(v), setPage(1))} searchLabel={t('Search messages')}>
+      <PageHeader
+        title={t('Contact inbox')}
+        description={t('Messages sent through the contact form.')}
+      />
+      <Toolbar
+        search={search}
+        onSearch={(v) => (setSearch(v), setPage(1))}
+        searchLabel={t('Search messages')}
+      >
         <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('Status')}>
           {statuses.map((s) => (
-            <Chip key={s.value} active={status === s.value} onClick={() => (setStatus(s.value), setPage(1))}>
+            <Chip
+              key={s.value}
+              active={status === s.value}
+              onClick={() => (setStatus(s.value), setPage(1))}
+            >
               {t(s.label)}
-              {s.value && counts[s.value as keyof typeof counts] !== undefined ? ` · ${counts[s.value as keyof typeof counts]}` : ''}
+              {s.value && counts[s.value as keyof typeof counts] !== undefined
+                ? ` · ${counts[s.value as keyof typeof counts]}`
+                : ''}
             </Chip>
           ))}
           <Chip active={mine} onClick={() => (setMine((v) => !v), setPage(1))}>
@@ -94,9 +116,18 @@ export default function AdminContactsPage() {
         loading={list.loading}
         error={list.error}
         onRetry={list.retry}
-        empty={<EmptyState title={t('No messages')} description={t('Nothing matches these filters.')} />}
+        empty={
+          <EmptyState title={t('No messages')} description={t('Nothing matches these filters.')} />
+        }
       />
-      {list.data && <Pagination page={page} pageSize={PAGE_SIZE} totalCount={list.data.totalCount} onChange={setPage} />}
+      {list.data && (
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          totalCount={list.data.totalCount}
+          onChange={setPage}
+        />
+      )}
     </>
   );
 }

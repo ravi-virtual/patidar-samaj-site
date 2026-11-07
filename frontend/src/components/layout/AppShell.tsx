@@ -35,9 +35,19 @@ interface AppShellProps {
   overlays?: ReactNode;
 }
 
-type SidebarProps = Pick<AppShellProps, 'brandName' | 'brandTagline' | 'navLabel' | 'navSections' | 'sidebarFooter' | 'onSearch'>;
+type SidebarProps = Pick<
+  AppShellProps,
+  'brandName' | 'brandTagline' | 'navLabel' | 'navSections' | 'sidebarFooter' | 'onSearch'
+>;
 
-function SidebarContent({ brandName, brandTagline, navLabel, navSections, sidebarFooter, onSearch }: SidebarProps) {
+function SidebarContent({
+  brandName,
+  brandTagline,
+  navLabel,
+  navSections,
+  sidebarFooter,
+  onSearch,
+}: SidebarProps) {
   return (
     <div className="flex h-full flex-col gap-3 overflow-y-auto p-4">
       <div className="flex items-center gap-3 px-1">
@@ -61,7 +71,9 @@ function SidebarContent({ brandName, brandTagline, navLabel, navSections, sideba
         >
           <Search aria-hidden="true" className="h-4 w-4" />
           {t('Search')}
-          <kbd className="ml-auto rounded border border-border px-1.5 py-0.5 font-mono text-[11px] text-text-subtle">Ctrl K</kbd>
+          <kbd className="ml-auto rounded border border-border px-1.5 py-0.5 font-mono text-[11px] text-text-subtle">
+            Ctrl K
+          </kbd>
         </button>
       )}
 
@@ -107,7 +119,14 @@ function SidebarContent({ brandName, brandTagline, navLabel, navSections, sideba
  * panel: fixed sidebar on large screens, a drawer that slides in from the right on small ones,
  * skip link and landmarks.
  */
-export function AppShell({ headerActions, breadcrumb, footer, overlays, onSearch, ...sidebar }: AppShellProps) {
+export function AppShell({
+  headerActions,
+  breadcrumb,
+  footer,
+  overlays,
+  onSearch,
+  ...sidebar
+}: AppShellProps) {
   // The drawer remembers the path it was opened on and counts as open only while the route is
   // unchanged, so navigating anywhere closes it without an effect.
   const location = useLocation();
@@ -150,7 +169,12 @@ export function AppShell({ headerActions, breadcrumb, footer, overlays, onSearch
       </aside>
 
       {drawerOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label={t('Menu')}>
+        <div
+          className="fixed inset-0 z-40 lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('Menu')}
+        >
           <button
             type="button"
             aria-label={t('Close menu')}
@@ -204,7 +228,11 @@ export function AppShell({ headerActions, breadcrumb, footer, overlays, onSearch
           </button>
         </header>
 
-        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 outline-none sm:px-6">
+        <main
+          id="main"
+          tabIndex={-1}
+          className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 outline-none sm:px-6"
+        >
           <Outlet />
         </main>
         {footer}

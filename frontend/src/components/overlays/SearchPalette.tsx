@@ -57,11 +57,17 @@ export function SearchPalette({ open, onClose }: { open: boolean; onClose: () =>
         />
       </div>
       <div className="max-h-[50vh] overflow-y-auto p-2" aria-live="polite">
-        {term.length < 2 && <p className="px-3 py-4 text-sm text-text-muted">{t('Type at least two letters.')}</p>}
+        {term.length < 2 && (
+          <p className="px-3 py-4 text-sm text-text-muted">{t('Type at least two letters.')}</p>
+        )}
         {active && error && <p className="px-3 py-4 text-sm text-danger">{error}</p>}
-        {active && loading && !data && <p className="px-3 py-4 text-sm text-text-muted">{t('Searching…')}</p>}
+        {active && loading && !data && (
+          <p className="px-3 py-4 text-sm text-text-muted">{t('Searching…')}</p>
+        )}
         {active && data && data.totalCount === 0 && !loading && (
-          <p className="px-3 py-4 text-sm text-text-muted">{t('Nothing found for “{term}”.', { term })}</p>
+          <p className="px-3 py-4 text-sm text-text-muted">
+            {t('Nothing found for “{term}”.', { term })}
+          </p>
         )}
         {active &&
           data &&
@@ -83,7 +89,11 @@ export function SearchPalette({ open, onClose }: { open: boolean; onClose: () =>
                       >
                         <span className="min-w-0">
                           <span className="block truncate text-sm font-medium">{hit.title}</span>
-                          {hit.snippet && <span className="block truncate text-xs text-text-muted">{hit.snippet}</span>}
+                          {hit.snippet && (
+                            <span className="block truncate text-xs text-text-muted">
+                              {hit.snippet}
+                            </span>
+                          )}
                         </span>
                         {hit.date && (
                           <span className="shrink-0 font-mono text-[11px] text-text-subtle">

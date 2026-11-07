@@ -52,7 +52,12 @@ const loadAdmin = async (req: Request, res: Response) => {
  */
 export const listUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { page = 1, limit = 20, status, search } = matchedData<{
+    const {
+      page = 1,
+      limit = 20,
+      status,
+      search,
+    } = matchedData<{
       page?: number;
       limit?: number;
       status?: string;
@@ -96,7 +101,9 @@ export const getAdmin = async (req: Request, res: Response, next: NextFunction) 
   try {
     const user = await loadAdmin(req, res);
     if (!user) return;
-    return new ApiResponse(ResponseCodes.OK, 'User fetched successfully', { user: toAdminUser(user.toObject()) }).send(res);
+    return new ApiResponse(ResponseCodes.OK, 'User fetched successfully', {
+      user: toAdminUser(user.toObject()),
+    }).send(res);
   } catch (err) {
     return next(err);
   }
@@ -115,7 +122,12 @@ export const getAdmin = async (req: Request, res: Response, next: NextFunction) 
  */
 export const createAdmin = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, email, password, permissions = [] } = matchedData<{
+    const {
+      name,
+      email,
+      password,
+      permissions = [],
+    } = matchedData<{
       name: string;
       email: string;
       password: string;
@@ -123,7 +135,8 @@ export const createAdmin = async (req: Request, res: Response, next: NextFunctio
     }>(req, { locations: ['body'] });
 
     // Deleted accounts keep their email reserved (the unique index covers them too).
-    if (await User.exists({ email })) return conflict(res, 'An account with this email already exists.');
+    if (await User.exists({ email }))
+      return conflict(res, 'An account with this email already exists.');
 
     const user = await User.create({
       name,
@@ -196,7 +209,9 @@ export const updateAdmin = async (req: Request, res: Response, next: NextFunctio
       targetId: user._id,
       metadata: { before, after: { name: user.name, permissions: permissionsFor(user) } },
     });
-    return new ApiResponse(ResponseCodes.OK, 'Admin updated', { user: toAdminUser(user.toObject()) }).send(res);
+    return new ApiResponse(ResponseCodes.OK, 'Admin updated', {
+      user: toAdminUser(user.toObject()),
+    }).send(res);
   } catch (err) {
     return next(err);
   }
@@ -215,7 +230,8 @@ export const suspendUser = async (req: Request, res: Response, next: NextFunctio
     const { reason } = matchedData<{ reason?: string }>(req, { locations: ['body'] });
     const user = await loadAdmin(req, res);
     if (!user) return;
-    if (user.status === AccountStatus.SUSPENDED) return conflict(res, 'Account is already inactive');
+    if (user.status === AccountStatus.SUSPENDED)
+      return conflict(res, 'Account is already inactive');
 
     user.status = AccountStatus.SUSPENDED;
     user.suspendedAt = new Date();
@@ -230,7 +246,9 @@ export const suspendUser = async (req: Request, res: Response, next: NextFunctio
       targetId: user._id,
       metadata: { sessionsRevoked: revoked },
     });
-    return new ApiResponse(ResponseCodes.OK, 'Account marked inactive', { user: toAdminUser(user.toObject()) }).send(res);
+    return new ApiResponse(ResponseCodes.OK, 'Account marked inactive', {
+      user: toAdminUser(user.toObject()),
+    }).send(res);
   } catch (err) {
     return next(err);
   }
@@ -257,7 +275,9 @@ export const reactivateUser = async (req: Request, res: Response, next: NextFunc
     await user.save();
 
     await writeAudit(req, { action: 'user.reactivated', targetType: 'user', targetId: user._id });
-    return new ApiResponse(ResponseCodes.OK, 'Account marked active', { user: toAdminUser(user.toObject()) }).send(res);
+    return new ApiResponse(ResponseCodes.OK, 'Account marked active', {
+      user: toAdminUser(user.toObject()),
+    }).send(res);
   } catch (err) {
     return next(err);
   }
@@ -308,10 +328,14 @@ export const resetAdminPassword = async (req: Request, res: Response, next: Next
     if (req.user?.role !== Roles.SUPER_ADMIN) {
       const own = req.user?.permissions ?? [];
       if (!permissionsFor(user).every((p) => own.includes(p))) {
-        return forbidden(res, 'You cannot reset the password of an admin who has permissions you do not have');
+        return forbidden(
+          res,
+          'You cannot reset the password of an admin who has permissions you do not have',
+        );
       }
     }
-    if (user.status === AccountStatus.SUSPENDED) return conflict(res, 'Make the account active first');
+    if (user.status === AccountStatus.SUSPENDED)
+      return conflict(res, 'Make the account active first');
 
     user.passwordHash = await hashPassword(password);
     user.passwordChangedAt = new Date();
@@ -344,7 +368,9 @@ New password: ${password}
       targetId: user._id,
       metadata: { sessionsRevoked: revoked, emailDelivered: mail.delivered },
     });
-    return new ApiResponse(ResponseCodes.OK, 'Password reset', { email: { delivered: mail.delivered } }).send(res);
+    return new ApiResponse(ResponseCodes.OK, 'Password reset', {
+      email: { delivered: mail.delivered },
+    }).send(res);
   } catch (err) {
     return next(err);
   }

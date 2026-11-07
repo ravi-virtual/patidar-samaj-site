@@ -16,7 +16,8 @@ import type {
 type Envelope<T> = { data: T };
 
 /** Where a stored image or document is served from (the API checks visibility on every request). */
-export const mediaUrl = (id: string | null | undefined): string | null => (id ? `${API_BASE}/media/${id}` : null);
+export const mediaUrl = (id: string | null | undefined): string | null =>
+  id ? `${API_BASE}/media/${id}` : null;
 
 export const getSettingsApi = async (): Promise<PublicSettings> => {
   const { data } = await api.get<Envelope<{ settings: PublicSettings }>>('/public/settings');
@@ -29,7 +30,8 @@ export const getHomeApi = async (): Promise<HomeData> => {
 };
 
 export const getBlocksApi = async (): Promise<Record<string, ContentBlock>> => {
-  const { data } = await api.get<Envelope<{ blocks: Record<string, ContentBlock> }>>('/content/blocks');
+  const { data } =
+    await api.get<Envelope<{ blocks: Record<string, ContentBlock> }>>('/content/blocks');
   return data.data.blocks;
 };
 
@@ -63,7 +65,9 @@ export const listEventsApi = async (params: {
   page?: number;
   limit?: number;
 }): Promise<{ events: EventItem[]; totalCount: number }> => {
-  const { data } = await api.get<Envelope<{ events: EventItem[]; totalCount: number }>>('/events', { params });
+  const { data } = await api.get<Envelope<{ events: EventItem[]; totalCount: number }>>('/events', {
+    params,
+  });
   return data.data;
 };
 
@@ -78,15 +82,16 @@ export const listAnnouncementsApi = async (params: {
   page?: number;
   limit?: number;
 }): Promise<{ announcements: AnnouncementItem[]; totalCount: number }> => {
-  const { data } = await api.get<Envelope<{ announcements: AnnouncementItem[]; totalCount: number }>>(
-    '/announcements',
-    { params },
-  );
+  const { data } = await api.get<
+    Envelope<{ announcements: AnnouncementItem[]; totalCount: number }>
+  >('/announcements', { params });
   return data.data;
 };
 
 export const getAnnouncementApi = async (id: string): Promise<AnnouncementItem> => {
-  const { data } = await api.get<Envelope<{ announcement: AnnouncementItem }>>(`/announcements/${id}`);
+  const { data } = await api.get<Envelope<{ announcement: AnnouncementItem }>>(
+    `/announcements/${id}`,
+  );
   return data.data.announcement;
 };
 
@@ -98,12 +103,16 @@ export const listMembersApi = async (params: {
   page?: number;
   limit?: number;
 }): Promise<{ members: DirectoryEntry[]; totalCount: number }> => {
-  const { data } = await api.get<Envelope<{ members: DirectoryEntry[]; totalCount: number }>>('/members', { params });
+  const { data } = await api.get<Envelope<{ members: DirectoryEntry[]; totalCount: number }>>(
+    '/members',
+    { params },
+  );
   return data.data;
 };
 
 export const getMemberFiltersApi = async (): Promise<{ villages: string[]; cities: string[] }> => {
-  const { data } = await api.get<Envelope<{ villages: string[]; cities: string[] }>>('/members/filters');
+  const { data } =
+    await api.get<Envelope<{ villages: string[]; cities: string[] }>>('/members/filters');
   return data.data;
 };
 
@@ -112,10 +121,15 @@ export const getMemberApi = async (id: string): Promise<DirectoryEntry> => {
   return data.data.member;
 };
 
-export const searchApi = async (q: string): Promise<{ results: SearchResults; totalCount: number }> => {
-  const { data } = await api.get<Envelope<{ results: SearchResults; totalCount: number }>>('/search', {
-    params: { q },
-  });
+export const searchApi = async (
+  q: string,
+): Promise<{ results: SearchResults; totalCount: number }> => {
+  const { data } = await api.get<Envelope<{ results: SearchResults; totalCount: number }>>(
+    '/search',
+    {
+      params: { q },
+    },
+  );
   return data.data;
 };
 

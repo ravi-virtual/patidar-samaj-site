@@ -11,7 +11,11 @@ import { blockView, pick, publicBlockView } from '../../src/controllers/ContentC
 import { toPublicSettings } from '../../src/controllers/SettingsController';
 import { createAnnouncementRules } from '../../src/validators/announcementValidator';
 import { createEventRules, cancelEventRules } from '../../src/validators/eventValidator';
-import { blockBodyRules, createItemRules, updateItemRules } from '../../src/validators/contentValidator';
+import {
+  blockBodyRules,
+  createItemRules,
+  updateItemRules,
+} from '../../src/validators/contentValidator';
 import { updateSettingsRules } from '../../src/validators/settingsValidator';
 import { ApiResponse, sendError } from '../../src/utils/apiResponse';
 import { ResponseCodes } from '../../src/config/constants';
@@ -24,17 +28,29 @@ describe('localize helpers', () => {
   });
 
   it('keeps English for en and drops every *Gu key', () => {
-    const out = localizeFields({ title: 'Hello', titleGu: 'નમસ્તે', body: 'Text' }, ['title', 'body'], 'en');
+    const out = localizeFields(
+      { title: 'Hello', titleGu: 'નમસ્તે', body: 'Text' },
+      ['title', 'body'],
+      'en',
+    );
     expect(out).toEqual({ title: 'Hello', body: 'Text' });
   });
 
   it('swaps in the Gujarati text for gu and drops the twins', () => {
-    const out = localizeFields({ title: 'Hello', titleGu: 'નમસ્તે', body: 'Text', bodyGu: 'લખાણ' }, ['title', 'body'], 'gu');
+    const out = localizeFields(
+      { title: 'Hello', titleGu: 'નમસ્તે', body: 'Text', bodyGu: 'લખાણ' },
+      ['title', 'body'],
+      'gu',
+    );
     expect(out).toEqual({ title: 'નમસ્તે', body: 'લખાણ' });
   });
 
   it('falls back to English when the Gujarati text is empty, blank, null or missing', () => {
-    const out = localizeFields({ a: 'A', aGu: '', b: 'B', bGu: '   ', c: 'C', cGu: null, d: 'D' }, ['a', 'b', 'c', 'd'], 'gu');
+    const out = localizeFields(
+      { a: 'A', aGu: '', b: 'B', bGu: '   ', c: 'C', cGu: null, d: 'D' },
+      ['a', 'b', 'c', 'd'],
+      'gu',
+    );
     expect(out).toEqual({ a: 'A', b: 'B', c: 'C', d: 'D' });
   });
 
@@ -47,7 +63,12 @@ describe('localize helpers', () => {
 
   it('searches the Gujarati twins as well only for gu', () => {
     expect(searchFieldsFor(['title', 'body'], 'en')).toEqual(['title', 'body']);
-    expect(searchFieldsFor(['title', 'body'], 'gu')).toEqual(['title', 'body', 'titleGu', 'bodyGu']);
+    expect(searchFieldsFor(['title', 'body'], 'gu')).toEqual([
+      'title',
+      'body',
+      'titleGu',
+      'bodyGu',
+    ]);
   });
 });
 
@@ -64,8 +85,12 @@ describe('parseLanguage and translateMessage', () => {
   it('translates known messages and patterns for gu and leaves English alone', () => {
     expect(translateMessage('Event not found', 'gu')).toBe('કાર્યક્રમ મળ્યો નથી');
     expect(translateMessage('Event not found', 'en')).toBe('Event not found');
-    expect(translateMessage('title must be 3–150 characters', 'gu')).toBe('title 3–150 અક્ષરોનું હોવું જોઈએ');
-    expect(translateMessage('A message nobody translated', 'gu')).toBe('A message nobody translated');
+    expect(translateMessage('title must be 3–150 characters', 'gu')).toBe(
+      'title 3–150 અક્ષરોનું હોવું જોઈએ',
+    );
+    expect(translateMessage('A message nobody translated', 'gu')).toBe(
+      'A message nobody translated',
+    );
   });
 });
 
@@ -75,7 +100,9 @@ describe('language middleware', () => {
     a.use(express.json());
     a.use(language);
     a.get('/ok', (req, res) => {
-      new ApiResponse(ResponseCodes.OK, 'Events fetched successfully', { lang: req.lang }).send(res);
+      new ApiResponse(ResponseCodes.OK, 'Events fetched successfully', { lang: req.lang }).send(
+        res,
+      );
     });
     a.get('/missing', (_req, res) => {
       sendError(res, { statusCode: ResponseCodes.NOT_FOUND, message: 'Event not found' });
@@ -117,7 +144,9 @@ describe('language middleware', () => {
     }
     const res = await request(app()).post('/validate').send({});
     expect(res.body.message).toBe('Validation failed');
-    expect(res.body.error.details.find((d: { field: string }) => d.field === 'title').message).toBe('title must be text');
+    expect(res.body.error.details.find((d: { field: string }) => d.field === 'title').message).toBe(
+      'title must be text',
+    );
   });
 });
 
@@ -144,11 +173,17 @@ describe('bilingual event and announcement views', () => {
 
   it('localizes the public event and never leaks a *Gu key', () => {
     const gu = toPublicEvent(event(), 'gu');
-    expect(gu).toMatchObject({ title: 'ગરબા નાઇટ', description: 'નૃત્ય', venue: 'હોલ', category: 'Festival' });
+    expect(gu).toMatchObject({
+      title: 'ગરબા નાઇટ',
+      description: 'નૃત્ય',
+      venue: 'હોલ',
+      category: 'Festival',
+    });
     const en = toPublicEvent(event(), 'en');
     expect(en).toMatchObject({ title: 'Garba Night', description: 'Dance', venue: 'Hall' });
     expect(toPublicEvent(event())).toEqual(en);
-    for (const view of [gu, en]) expect(Object.keys(view).filter((k) => k.endsWith('Gu'))).toEqual([]);
+    for (const view of [gu, en])
+      expect(Object.keys(view).filter((k) => k.endsWith('Gu'))).toEqual([]);
   });
 
   it('falls back to English field by field', () => {
@@ -159,13 +194,24 @@ describe('bilingual event and announcement views', () => {
   it('shows the Gujarati cancellation reason only on cancelled events', () => {
     const base = { cancellationReason: 'Rain', cancellationReasonGu: 'વરસાદ' };
     expect(toPublicEvent(event(base), 'gu').cancellationReason).toBeNull();
-    expect(toPublicEvent(event({ ...base, status: 'cancelled' }), 'gu').cancellationReason).toBe('વરસાદ');
-    expect(toPublicEvent(event({ ...base, status: 'cancelled' }), 'en').cancellationReason).toBe('Rain');
+    expect(toPublicEvent(event({ ...base, status: 'cancelled' }), 'gu').cancellationReason).toBe(
+      'વરસાદ',
+    );
+    expect(toPublicEvent(event({ ...base, status: 'cancelled' }), 'en').cancellationReason).toBe(
+      'Rain',
+    );
   });
 
   it('gives staff both languages, never localized', () => {
     const admin = toAdminEvent(event());
-    expect(admin).toMatchObject({ title: 'Garba Night', titleGu: 'ગરબા નાઇટ', description: 'Dance', descriptionGu: 'નૃત્ય', venue: 'Hall', venueGu: 'હોલ' });
+    expect(admin).toMatchObject({
+      title: 'Garba Night',
+      titleGu: 'ગરબા નાઇટ',
+      description: 'Dance',
+      descriptionGu: 'નૃત્ય',
+      venue: 'Hall',
+      venueGu: 'હોલ',
+    });
     expect(admin).toHaveProperty('cancellationReasonGu', null);
   });
 
@@ -189,40 +235,82 @@ describe('bilingual event and announcement views', () => {
     }) as never;
 
   it('localizes the public announcement, with and without the body', () => {
-    expect(toPublicAnnouncement(announcement(), false, 'gu')).toMatchObject({ title: 'દિવાળી', summary: 'અમારી સાથે જોડાઓ' });
+    expect(toPublicAnnouncement(announcement(), false, 'gu')).toMatchObject({
+      title: 'દિવાળી',
+      summary: 'અમારી સાથે જોડાઓ',
+    });
     expect(toPublicAnnouncement(announcement(), false, 'gu')).not.toHaveProperty('body');
     expect(toPublicAnnouncement(announcement(), true, 'gu')).toMatchObject({ body: 'મુખ્ય લખાણ' });
     const en = toPublicAnnouncement(announcement(), true, 'en');
     expect(en).toMatchObject({ title: 'Diwali', summary: 'Join us', body: 'Body text' });
-    expect(Object.keys(toPublicAnnouncement(announcement(), true, 'gu')).filter((k) => k.endsWith('Gu'))).toEqual([]);
+    expect(
+      Object.keys(toPublicAnnouncement(announcement(), true, 'gu')).filter((k) => k.endsWith('Gu')),
+    ).toEqual([]);
   });
 
   it('builds the Gujarati summary from the Gujarati body when no summary was written', () => {
-    const view = toPublicAnnouncement(announcement({ summary: undefined, summaryGu: undefined }), false, 'gu');
+    const view = toPublicAnnouncement(
+      announcement({ summary: undefined, summaryGu: undefined }),
+      false,
+      'gu',
+    );
     expect(view.summary).toBe('મુખ્ય લખાણ');
-    expect(toPublicAnnouncement(announcement({ summary: undefined, summaryGu: undefined, bodyGu: undefined }), false, 'gu').summary).toBe('Body text');
+    expect(
+      toPublicAnnouncement(
+        announcement({ summary: undefined, summaryGu: undefined, bodyGu: undefined }),
+        false,
+        'gu',
+      ).summary,
+    ).toBe('Body text');
   });
 
   it('gives staff the Gujarati twins', () => {
-    expect(toAdminAnnouncement(announcement())).toMatchObject({ titleGu: 'દિવાળી', summaryGu: 'અમારી સાથે જોડાઓ', bodyGu: 'મુખ્ય લખાણ' });
-    expect(toAdminAnnouncement(announcement({ titleGu: undefined }))).toHaveProperty('titleGu', null);
+    expect(toAdminAnnouncement(announcement())).toMatchObject({
+      titleGu: 'દિવાળી',
+      summaryGu: 'અમારી સાથે જોડાઓ',
+      bodyGu: 'મુખ્ય લખાણ',
+    });
+    expect(toAdminAnnouncement(announcement({ titleGu: undefined }))).toHaveProperty(
+      'titleGu',
+      null,
+    );
   });
 });
 
 describe('bilingual content views', () => {
   it('lists each translated field once, with its twin, in the content registry', () => {
     expect(translatedFieldsOf(ContentResources.faqs!.publicFields)).toEqual(['question', 'answer']);
-    expect(translatedFieldsOf(ContentResources.links!.publicFields)).toEqual(['label', 'description']);
-    expect(translatedFieldsOf(ContentResources.milestones!.publicFields)).toEqual(['periodLabel', 'title', 'text', 'sourceRef']);
-    expect(translatedFieldsOf(ContentResources['committee-members']!.publicFields)).toEqual(['name', 'position', 'bio']);
+    expect(translatedFieldsOf(ContentResources.links!.publicFields)).toEqual([
+      'label',
+      'description',
+    ]);
+    expect(translatedFieldsOf(ContentResources.milestones!.publicFields)).toEqual([
+      'periodLabel',
+      'title',
+      'text',
+      'sourceRef',
+    ]);
+    expect(translatedFieldsOf(ContentResources['committee-members']!.publicFields)).toEqual([
+      'name',
+      'position',
+      'bio',
+    ]);
     expect(translatedFieldsOf(ContentResources['committee-terms']!.publicFields)).toEqual([]);
     for (const resource of Object.values(ContentResources)) {
-      for (const f of translatedFieldsOf(resource.writableFields)) expect(resource.writableFields).toContain(guField(f));
+      for (const f of translatedFieldsOf(resource.writableFields))
+        expect(resource.writableFields).toContain(guField(f));
     }
   });
 
   it('picks public fields in the visitor language and drops the twins', () => {
-    const doc = { _id: 'f1', question: 'Who?', questionGu: 'કોણ?', answer: 'Us', answerGu: '', status: 'published' };
+    const doc = {
+      _id: 'f1',
+      question: 'Who?',
+      questionGu: 'કોણ?',
+      answer: 'Us',
+      answerGu: '',
+      status: 'published',
+    };
     const fields = ContentResources.faqs!.publicFields;
     expect(pick(doc, fields, 'gu')).toEqual({ id: 'f1', question: 'કોણ?', answer: 'Us' });
     expect(pick(doc, fields, 'en')).toEqual({ id: 'f1', question: 'Who?', answer: 'Us' });
@@ -237,7 +325,15 @@ describe('bilingual content views', () => {
     body: 'Body',
     bodyGu: undefined,
     items: [
-      { title: 'Seva', titleGu: 'સેવા', text: 'Service', textGu: 'સેવા ભાવ', label: 'L', labelGu: 'લ', value: '5' },
+      {
+        title: 'Seva',
+        titleGu: 'સેવા',
+        text: 'Service',
+        textGu: 'સેવા ભાવ',
+        label: 'L',
+        labelGu: 'લ',
+        value: '5',
+      },
       { title: 'Plain', text: 'Only English' },
     ],
   };
@@ -274,15 +370,33 @@ describe('bilingual public settings', () => {
     taglineGu: 'સાથે',
     footerNote: 'Footer',
     footerNoteGu: 'ફૂટર',
-    contact: { email: 'a@example.org', phone: '1', address: 'Unjha', addressGu: 'ઊંઝા', officeHours: '9-5', officeHoursGu: '' },
+    contact: {
+      email: 'a@example.org',
+      phone: '1',
+      address: 'Unjha',
+      addressGu: 'ઊંઝા',
+      officeHours: '9-5',
+      officeHoursGu: '',
+    },
     socialLinks: [],
     publicTabs: {},
   } as never;
 
   it('localizes the organisation texts and the nested contact texts', () => {
     const gu = toPublicSettings(settings, 'gu');
-    expect(gu).toMatchObject({ name: 'સમાજ', shortName: 'S', invocation: 'જય ઉમિયા', tagline: 'સાથે', footerNote: 'ફૂટર' });
-    expect(gu.contact).toMatchObject({ address: 'ઊંઝા', officeHours: '9-5', email: 'a@example.org', phone: '1' });
+    expect(gu).toMatchObject({
+      name: 'સમાજ',
+      shortName: 'S',
+      invocation: 'જય ઉમિયા',
+      tagline: 'સાથે',
+      footerNote: 'ફૂટર',
+    });
+    expect(gu.contact).toMatchObject({
+      address: 'ઊંઝા',
+      officeHours: '9-5',
+      email: 'a@example.org',
+      phone: '1',
+    });
     const en = toPublicSettings(settings);
     expect(en).toMatchObject({ name: 'Samaj', tagline: 'Together', contact: { address: 'Unjha' } });
     for (const view of [gu, en]) expect(JSON.stringify(view)).not.toMatch(/[a-zA-Z]Gu"/);
@@ -298,13 +412,21 @@ describe('Gujarati fields in validators', () => {
     });
     return request(app);
   };
-  const failing = (res: request.Response) => (res.body.error?.details ?? []).map((d: { field?: string }) => d.field);
+  const failing = (res: request.Response) =>
+    (res.body.error?.details ?? []).map((d: { field?: string }) => d.field);
 
   it('accepts optional Gujarati event fields and trims them', async () => {
-    const res = await probe(createEventRules).post('/t').send({
-      title: 'Garba Night', venue: 'Hall', startsAt: new Date(Date.now() + 86_400_000).toISOString(),
-      titleGu: '  ગરબા નાઇટ ', descriptionGu: 'નૃત્ય', venueGu: 'હોલ', cancellationReasonGu: '',
-    });
+    const res = await probe(createEventRules)
+      .post('/t')
+      .send({
+        title: 'Garba Night',
+        venue: 'Hall',
+        startsAt: new Date(Date.now() + 86_400_000).toISOString(),
+        titleGu: '  ગરબા નાઇટ ',
+        descriptionGu: 'નૃત્ય',
+        venueGu: 'હોલ',
+        cancellationReasonGu: '',
+      });
     expect(res.status).toBe(200);
     expect(res.body.body.titleGu).toBe('ગરબા નાઇટ');
   });
@@ -317,10 +439,18 @@ describe('Gujarati fields in validators', () => {
   });
 
   it('applies the same length and markup rules to the Gujarati twin', async () => {
-    const event = { title: 'Garba Night', venue: 'Hall', startsAt: new Date(Date.now() + 86_400_000).toISOString() };
+    const event = {
+      title: 'Garba Night',
+      venue: 'Hall',
+      startsAt: new Date(Date.now() + 86_400_000).toISOString(),
+    };
     const create = probe(createEventRules);
-    expect(failing(await create.post('/t').send({ ...event, titleGu: 'ગ'.repeat(151) }))).toEqual(['titleGu']);
-    expect(failing(await create.post('/t').send({ ...event, descriptionGu: '<b>નૃત્ય</b>' }))).toEqual(['descriptionGu']);
+    expect(failing(await create.post('/t').send({ ...event, titleGu: 'ગ'.repeat(151) }))).toEqual([
+      'titleGu',
+    ]);
+    expect(
+      failing(await create.post('/t').send({ ...event, descriptionGu: '<b>નૃત્ય</b>' })),
+    ).toEqual(['descriptionGu']);
     expect(failing(await create.post('/t').send({ ...event, venueGu: 123 }))).toEqual(['venueGu']);
     expect((await create.post('/t').send({ ...event, titleGu: 'ગ'.repeat(150) })).status).toBe(200);
   });
@@ -328,15 +458,25 @@ describe('Gujarati fields in validators', () => {
   it('checks announcement Gujarati fields', async () => {
     const create = probe(createAnnouncementRules);
     const ok = { title: 'Diwali', body: 'Body' };
-    expect((await create.post('/t').send({ ...ok, titleGu: 'દિવાળી', summaryGu: 'ટૂંકમાં', bodyGu: 'લખાણ' })).status).toBe(200);
-    expect(failing(await create.post('/t').send({ ...ok, summaryGu: 'x'.repeat(301) }))).toEqual(['summaryGu']);
+    expect(
+      (
+        await create
+          .post('/t')
+          .send({ ...ok, titleGu: 'દિવાળી', summaryGu: 'ટૂંકમાં', bodyGu: 'લખાણ' })
+      ).status,
+    ).toBe(200);
+    expect(failing(await create.post('/t').send({ ...ok, summaryGu: 'x'.repeat(301) }))).toEqual([
+      'summaryGu',
+    ]);
     expect(failing(await create.post('/t').send({ ...ok, bodyGu: 'a < b' }))).toEqual(['bodyGu']);
   });
 
   it('accepts a Gujarati cancellation reason', async () => {
     const cancel = probe(cancelEventRules, '/t/:id');
     const id = '11111111-1111-4111-8111-111111111111';
-    expect((await cancel.post(`/t/${id}`).send({ reason: 'Rain', reasonGu: 'વરસાદ' })).status).toBe(200);
+    expect((await cancel.post(`/t/${id}`).send({ reason: 'Rain', reasonGu: 'વરસાદ' })).status).toBe(
+      200,
+    );
     expect((await cancel.post(`/t/${id}`).send({ reasonGu: 'x'.repeat(501) })).status).toBe(400);
   });
 
@@ -344,46 +484,136 @@ describe('Gujarati fields in validators', () => {
     const create = probe(createItemRules, '/t/:resource');
     const update = probe(updateItemRules, '/t/:resource/:id');
     const id = '11111111-1111-4111-8111-111111111111';
-    expect((await create.post('/t/faqs').send({ question: 'Who can join?', answer: 'All', questionGu: 'કોણ જોડાઈ શકે?', answerGu: 'બધા' })).status).toBe(200);
-    expect(failing(await create.post('/t/faqs').send({ question: 'Who can join?', answer: 'All', answerGu: '<i>x</i>' }))).toEqual(['answerGu']);
-    expect((await create.post('/t/links').send({ label: 'Form', url: 'https://example.org/f', labelGu: 'ફોર્મ', descriptionGu: 'વિગત' })).status).toBe(200);
-    expect(failing(await create.post('/t/links').send({ label: 'Form', url: 'https://example.org/f', descriptionGu: 'x'.repeat(201) }))).toEqual(['descriptionGu']);
-    expect((await create.post('/t/milestones').send({
-      periodLabel: '1990s', title: 'Founded', text: 'Text', periodLabelGu: '૧૯૯૦', titleGu: 'સ્થાપના', textGu: 'લખાણ', sourceRefGu: 'સંદર્ભ',
-    })).status).toBe(200);
-    expect(failing(await create.post('/t/milestones').send({ periodLabel: '1990s', title: 'Founded', text: 'Text', periodLabelGu: 'x'.repeat(41) }))).toEqual(['periodLabelGu']);
+    expect(
+      (
+        await create.post('/t/faqs').send({
+          question: 'Who can join?',
+          answer: 'All',
+          questionGu: 'કોણ જોડાઈ શકે?',
+          answerGu: 'બધા',
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      failing(
+        await create
+          .post('/t/faqs')
+          .send({ question: 'Who can join?', answer: 'All', answerGu: '<i>x</i>' }),
+      ),
+    ).toEqual(['answerGu']);
+    expect(
+      (
+        await create.post('/t/links').send({
+          label: 'Form',
+          url: 'https://example.org/f',
+          labelGu: 'ફોર્મ',
+          descriptionGu: 'વિગત',
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      failing(
+        await create
+          .post('/t/links')
+          .send({ label: 'Form', url: 'https://example.org/f', descriptionGu: 'x'.repeat(201) }),
+      ),
+    ).toEqual(['descriptionGu']);
+    expect(
+      (
+        await create.post('/t/milestones').send({
+          periodLabel: '1990s',
+          title: 'Founded',
+          text: 'Text',
+          periodLabelGu: '૧૯૯૦',
+          titleGu: 'સ્થાપના',
+          textGu: 'લખાણ',
+          sourceRefGu: 'સંદર્ભ',
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      failing(
+        await create.post('/t/milestones').send({
+          periodLabel: '1990s',
+          title: 'Founded',
+          text: 'Text',
+          periodLabelGu: 'x'.repeat(41),
+        }),
+      ),
+    ).toEqual(['periodLabelGu']);
     const member = { termId: id, name: 'Ravi Patel', position: 'President' };
-    expect((await create.post('/t/committee-members').send({ ...member, nameGu: 'રવિ પટેલ', positionGu: 'પ્રમુખ', bioGu: 'પરિચય' })).status).toBe(200);
-    expect(failing(await create.post('/t/committee-members').send({ ...member, positionGu: 'x'.repeat(81) }))).toEqual(['positionGu']);
+    expect(
+      (
+        await create
+          .post('/t/committee-members')
+          .send({ ...member, nameGu: 'રવિ પટેલ', positionGu: 'પ્રમુખ', bioGu: 'પરિચય' })
+      ).status,
+    ).toBe(200);
+    expect(
+      failing(
+        await create.post('/t/committee-members').send({ ...member, positionGu: 'x'.repeat(81) }),
+      ),
+    ).toEqual(['positionGu']);
     // Partial updates may carry just the Gujarati text.
     expect((await update.patch(`/t/faqs/${id}`).send({ questionGu: 'કોણ?' })).status).toBe(200);
-    expect(failing(await update.patch(`/t/faqs/${id}`).send({ questionGu: '<b>x</b>' }))).toEqual(['questionGu']);
+    expect(failing(await update.patch(`/t/faqs/${id}`).send({ questionGu: '<b>x</b>' }))).toEqual([
+      'questionGu',
+    ]);
   });
 
   it('checks the Gujarati fields of content blocks and their items', async () => {
     const block = probe(blockBodyRules, '/t/:key');
-    const ok = { titleGu: 'શીર્ષક', bodyGu: 'લખાણ', items: [{ title: 'One', titleGu: 'એક', textGu: 'પ્રથમ', labelGu: 'લેબલ' }] };
+    const ok = {
+      titleGu: 'શીર્ષક',
+      bodyGu: 'લખાણ',
+      items: [{ title: 'One', titleGu: 'એક', textGu: 'પ્રથમ', labelGu: 'લેબલ' }],
+    };
     const res = await block.put('/t/about.mission').send(ok);
     expect(res.status).toBe(200);
-    expect(res.body.body.items[0]).toMatchObject({ titleGu: 'એક', textGu: 'પ્રથમ', labelGu: 'લેબલ' });
-    expect(failing(await block.put('/t/about.mission').send({ bodyGu: '<b>x</b>' }))).toEqual(['bodyGu']);
-    expect((await block.put('/t/about.mission').send({ titleGu: 'x'.repeat(151) })).status).toBe(400);
-    expect((await block.put('/t/about.mission').send({ items: [{ titleGu: 'x'.repeat(121) }] })).status).toBe(400);
-    expect((await block.put('/t/about.mission').send({ items: [{ textGu: 'x'.repeat(601) }] })).status).toBe(400);
-    expect((await block.put('/t/about.mission').send({ items: [{ labelGu: '<b>' }] })).status).toBe(400);
+    expect(res.body.body.items[0]).toMatchObject({
+      titleGu: 'એક',
+      textGu: 'પ્રથમ',
+      labelGu: 'લેબલ',
+    });
+    expect(failing(await block.put('/t/about.mission').send({ bodyGu: '<b>x</b>' }))).toEqual([
+      'bodyGu',
+    ]);
+    expect((await block.put('/t/about.mission').send({ titleGu: 'x'.repeat(151) })).status).toBe(
+      400,
+    );
+    expect(
+      (await block.put('/t/about.mission').send({ items: [{ titleGu: 'x'.repeat(121) }] })).status,
+    ).toBe(400);
+    expect(
+      (await block.put('/t/about.mission').send({ items: [{ textGu: 'x'.repeat(601) }] })).status,
+    ).toBe(400);
+    expect((await block.put('/t/about.mission').send({ items: [{ labelGu: '<b>' }] })).status).toBe(
+      400,
+    );
   });
 
   it('checks the Gujarati organisation texts', async () => {
     const update = probe(updateSettingsRules);
     const res = await update.patch('/t').send({
-      nameGu: 'સમાજ', shortNameGu: 'સ', invocationGu: 'જય ઉમિયા', taglineGu: 'સાથે', footerNoteGu: 'ફૂટર',
+      nameGu: 'સમાજ',
+      shortNameGu: 'સ',
+      invocationGu: 'જય ઉમિયા',
+      taglineGu: 'સાથે',
+      footerNoteGu: 'ફૂટર',
       contact: { addressGu: 'ઊંઝા', officeHoursGu: 'સવારે ૧૦ થી સાંજે ૬' },
     });
     expect(res.status).toBe(200);
-    expect(res.body.body.contact).toEqual({ addressGu: 'ઊંઝા', officeHoursGu: 'સવારે ૧૦ થી સાંજે ૬' });
+    expect(res.body.body.contact).toEqual({
+      addressGu: 'ઊંઝા',
+      officeHoursGu: 'સવારે ૧૦ થી સાંજે ૬',
+    });
     expect((await update.patch('/t').send({ nameGu: 'x'.repeat(151) })).status).toBe(400);
     expect((await update.patch('/t').send({ taglineGu: '<b>x</b>' })).status).toBe(400);
-    expect((await update.patch('/t').send({ contact: { addressGu: 'x'.repeat(401) } })).status).toBe(400);
-    expect((await update.patch('/t').send({ contact: { officeHoursGu: 'x'.repeat(201) } })).status).toBe(400);
+    expect(
+      (await update.patch('/t').send({ contact: { addressGu: 'x'.repeat(401) } })).status,
+    ).toBe(400);
+    expect(
+      (await update.patch('/t').send({ contact: { officeHoursGu: 'x'.repeat(201) } })).status,
+    ).toBe(400);
   });
 });

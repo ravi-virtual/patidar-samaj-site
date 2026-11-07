@@ -4,7 +4,12 @@ import { toCsv, sendCsv } from '../../src/utils/csv';
 import { escapeRegex } from '../../src/utils/escapeRegex';
 import { detectFileType } from '../../src/utils/fileType';
 import { pageParams } from '../../src/utils/pagination';
-import { hashPassword, validatePasswordStrength, verifyPassword, verifyAgainstDummy } from '../../src/utils/password';
+import {
+  hashPassword,
+  validatePasswordStrength,
+  verifyPassword,
+  verifyAgainstDummy,
+} from '../../src/utils/password';
 import { mayEditItem } from '../../src/utils/publishPolicy';
 import { publishableDefinition } from '../../src/utils/schemaFields';
 import { csrfTokenFor, generateToken, hashToken, safeEqual } from '../../src/utils/tokens';
@@ -55,10 +60,13 @@ describe('csv', () => {
     expect(out).toContain('"","","42"');
   });
 
-  it.each(['=SUM(A1)', '+1', '-1', '@cmd', '\tx', '\rx'])('neutralises the spreadsheet formula %j', (value) => {
-    const out = toCsv(['a'], [[value]]);
-    expect(out).toContain(`"'${value}"`);
-  });
+  it.each(['=SUM(A1)', '+1', '-1', '@cmd', '\tx', '\rx'])(
+    'neutralises the spreadsheet formula %j',
+    (value) => {
+      const out = toCsv(['a'], [[value]]);
+      expect(out).toContain(`"'${value}"`);
+    },
+  );
 
   it('does not alter text that merely contains a formula character later on', () => {
     expect(toCsv(['a'], [['a=b']])).toContain('"a=b"');
@@ -77,7 +85,9 @@ describe('csv', () => {
     sendCsv(res as never, 'members "2026"/../x.csv', 'data');
     expect(res.statusCode).toBe(200);
     expect(res.headers['Content-Type']).toBe('text/csv; charset=utf-8');
-    expect(res.headers['Content-Disposition']).toBe('attachment; filename="members__2026__.._x.csv"');
+    expect(res.headers['Content-Disposition']).toBe(
+      'attachment; filename="members__2026__.._x.csv"',
+    );
     expect(res.headers['Cache-Control']).toBe('no-store');
     expect(res.headers['X-Content-Type-Options']).toBe('nosniff');
     expect(res.body).toBe('data');
@@ -108,15 +118,37 @@ describe('detectFileType', () => {
   const pad = (bytes: number[]) => Buffer.from([...bytes, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
   it('recognises JPEG, PNG, WebP and PDF by signature', () => {
-    expect(detectFileType(pad([0xff, 0xd8, 0xff, 0xe0]))).toEqual({ mime: 'image/jpeg', ext: 'jpg', kind: 'image' });
-    expect(detectFileType(pad([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))).toEqual({ mime: 'image/png', ext: 'png', kind: 'image' });
-    const webp = Buffer.concat([Buffer.from('RIFF'), Buffer.from([1, 2, 3, 4]), Buffer.from('WEBPVP8 ')]);
+    expect(detectFileType(pad([0xff, 0xd8, 0xff, 0xe0]))).toEqual({
+      mime: 'image/jpeg',
+      ext: 'jpg',
+      kind: 'image',
+    });
+    expect(detectFileType(pad([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))).toEqual({
+      mime: 'image/png',
+      ext: 'png',
+      kind: 'image',
+    });
+    const webp = Buffer.concat([
+      Buffer.from('RIFF'),
+      Buffer.from([1, 2, 3, 4]),
+      Buffer.from('WEBPVP8 '),
+    ]);
     expect(detectFileType(webp)).toEqual({ mime: 'image/webp', ext: 'webp', kind: 'image' });
-    expect(detectFileType(Buffer.from('%PDF-1.7\n'))).toEqual({ mime: 'application/pdf', ext: 'pdf', kind: 'document' });
+    expect(detectFileType(Buffer.from('%PDF-1.7\n'))).toEqual({
+      mime: 'application/pdf',
+      ext: 'pdf',
+      kind: 'document',
+    });
   });
 
   it('rejects SVG, HTML, scripts, executables and ZIP even when they claim to be images', () => {
-    for (const text of ['<svg xmlns="http://www.w3.org/2000/svg"/>', '<html></html>', '<?xml version="1.0"?>', '#!/bin/sh', 'GIF89a']) {
+    for (const text of [
+      '<svg xmlns="http://www.w3.org/2000/svg"/>',
+      '<html></html>',
+      '<?xml version="1.0"?>',
+      '#!/bin/sh',
+      'GIF89a',
+    ]) {
       expect(detectFileType(Buffer.from(text))).toBeNull();
     }
     expect(detectFileType(pad([0x4d, 0x5a]))).toBeNull(); // MZ (exe)
@@ -124,7 +156,11 @@ describe('detectFileType', () => {
   });
 
   it('rejects RIFF files that are not WebP (for example WAV)', () => {
-    const wav = Buffer.concat([Buffer.from('RIFF'), Buffer.from([1, 2, 3, 4]), Buffer.from('WAVEfmt ')]);
+    const wav = Buffer.concat([
+      Buffer.from('RIFF'),
+      Buffer.from([1, 2, 3, 4]),
+      Buffer.from('WAVEfmt '),
+    ]);
     expect(detectFileType(wav)).toBeNull();
   });
 
@@ -193,7 +229,9 @@ describe('password', () => {
 
     it('rejects passwords containing the email name, but only for names of 4+ characters', () => {
       expect(validatePasswordStrength('Ravi-Patel-2026', 'ravi.patel@example.com')).toBeNull();
-      expect(validatePasswordStrength('xx-Ravipatel-2026', 'ravipatel@example.com')).toMatch(/email name/);
+      expect(validatePasswordStrength('xx-Ravipatel-2026', 'ravipatel@example.com')).toMatch(
+        /email name/,
+      );
       expect(validatePasswordStrength('Bob-Is-Here-2026', 'bob@example.com')).toBeNull();
     });
 
@@ -215,11 +253,18 @@ describe('mayEditItem', () => {
     expect(mayEditItem(user([]), 'draft', Permissions.EVENTS_PUBLISH)).toBe(true);
   });
 
-  it.each(['published', 'cancelled', 'archived'])('needs the publish permission once an item is %s', (status) => {
-    expect(mayEditItem(user([]), status, Permissions.EVENTS_PUBLISH)).toBe(false);
-    expect(mayEditItem(user([Permissions.ANNOUNCEMENTS_PUBLISH]), status, Permissions.EVENTS_PUBLISH)).toBe(false);
-    expect(mayEditItem(user([Permissions.EVENTS_PUBLISH]), status, Permissions.EVENTS_PUBLISH)).toBe(true);
-  });
+  it.each(['published', 'cancelled', 'archived'])(
+    'needs the publish permission once an item is %s',
+    (status) => {
+      expect(mayEditItem(user([]), status, Permissions.EVENTS_PUBLISH)).toBe(false);
+      expect(
+        mayEditItem(user([Permissions.ANNOUNCEMENTS_PUBLISH]), status, Permissions.EVENTS_PUBLISH),
+      ).toBe(false);
+      expect(
+        mayEditItem(user([Permissions.EVENTS_PUBLISH]), status, Permissions.EVENTS_PUBLISH),
+      ).toBe(true);
+    },
+  );
 });
 
 describe('publishableDefinition', () => {
@@ -280,8 +325,15 @@ describe('sendError', () => {
 
   it('carries the given status, code and details', () => {
     const res = fakeRes();
-    sendError(res as never, { statusCode: 400, message: 'Bad', code: ErrorCodes.VALIDATION_ERROR, details: [{ field: 'x', message: 'y' }] });
+    sendError(res as never, {
+      statusCode: 400,
+      message: 'Bad',
+      code: ErrorCodes.VALIDATION_ERROR,
+      details: [{ field: 'x', message: 'y' }],
+    });
     expect(res.statusCode).toBe(400);
-    expect(res.body).toMatchObject({ error: { code: 'VALIDATION_ERROR', details: [{ field: 'x', message: 'y' }] } });
+    expect(res.body).toMatchObject({
+      error: { code: 'VALIDATION_ERROR', details: [{ field: 'x', message: 'y' }] },
+    });
   });
 });

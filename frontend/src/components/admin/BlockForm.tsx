@@ -30,7 +30,10 @@ const TRANSLATABLE_ITEM_FIELDS = ['title', 'text', 'label'];
 const hasGu = (name: string) => TRANSLATABLE_ITEM_FIELDS.includes(name);
 
 /** Every key of one item row: its own fields plus the Gujarati twins. */
-const itemKeys = (def: BlockDef) => (def.itemFields ?? []).flatMap((f) => (hasGu(f.name) && f.type !== 'image' ? [f.name, `${f.name}Gu`] : [f.name]));
+const itemKeys = (def: BlockDef) =>
+  (def.itemFields ?? []).flatMap((f) =>
+    hasGu(f.name) && f.type !== 'image' ? [f.name, `${f.name}Gu`] : [f.name],
+  );
 
 const emptyItem = (def: BlockDef) => Object.fromEntries(itemKeys(def).map((k) => [k, '']));
 
@@ -171,14 +174,24 @@ export function BlockForm({
       {def.itemFields && (
         <FullWidth>
           <fieldset className="space-y-3">
-            <legend className="mb-1 text-[13px] font-semibold">{t(def.itemPlural ?? `${def.itemLabel}s`)}</legend>
+            <legend className="mb-1 text-[13px] font-semibold">
+              {t(def.itemPlural ?? `${def.itemLabel}s`)}
+            </legend>
             {fields.map((field, index) => {
-              const rowErrors = errors.items?.[index] as Record<string, { message?: string } | undefined> | undefined;
+              const rowErrors = errors.items?.[index] as
+                Record<string, { message?: string } | undefined> | undefined;
               return (
                 <div key={field.id} className="space-y-2.5 rounded-lg border border-border p-3">
                   {def.itemFields?.map((f) => {
                     if (f.type === 'image') {
-                      return <MediaPicker key={f.name} label={t(f.label)} kind="image" {...register(`items.${index}.${f.name}` as const)} />;
+                      return (
+                        <MediaPicker
+                          key={f.name}
+                          label={t(f.label)}
+                          kind="image"
+                          {...register(`items.${index}.${f.name}` as const)}
+                        />
+                      );
                     }
                     if (hasGu(f.name)) {
                       return (
@@ -197,7 +210,13 @@ export function BlockForm({
                     }
                     const reg = register(`items.${index}.${f.name}` as const);
                     return f.type === 'textarea' ? (
-                      <TextAreaField key={f.name} label={t(f.label)} rows={2} maxLength={f.max} {...reg} />
+                      <TextAreaField
+                        key={f.name}
+                        label={t(f.label)}
+                        rows={2}
+                        maxLength={f.max}
+                        {...reg}
+                      />
                     ) : (
                       <TextField key={f.name} label={t(f.label)} maxLength={f.max} {...reg} />
                     );

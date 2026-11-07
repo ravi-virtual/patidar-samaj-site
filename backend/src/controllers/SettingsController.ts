@@ -140,13 +140,16 @@ export const updateSettings = async (req: Request, res: Response, next: NextFunc
     for (const [k, v] of Object.entries(publicTabs ?? {})) $set[`publicTabs.${k}`] = v;
     const tabsBefore = resolvePublicTabs(before?.publicTabs);
     const tabChanges = Object.fromEntries(
-      PublicTabs.filter((tab) => publicTabs?.[tab] !== undefined && publicTabs[tab] !== tabsBefore[tab]).map((tab) => [
-        tab,
-        { from: tabsBefore[tab], to: publicTabs![tab] },
-      ]),
+      PublicTabs.filter(
+        (tab) => publicTabs?.[tab] !== undefined && publicTabs[tab] !== tabsBefore[tab],
+      ).map((tab) => [tab, { from: tabsBefore[tab], to: publicTabs![tab] }]),
     );
 
-    const updated = await OrganizationSettings.findOneAndUpdate({ key: 'main' }, { $set }, { returnDocument: 'after', upsert: true }).lean();
+    const updated = await OrganizationSettings.findOneAndUpdate(
+      { key: 'main' },
+      { $set },
+      { returnDocument: 'after', upsert: true },
+    ).lean();
     await writeAudit(req, {
       action: 'settings.updated',
       targetType: 'settings',
@@ -155,7 +158,9 @@ export const updateSettings = async (req: Request, res: Response, next: NextFunc
         ...(Object.keys(tabChanges).length ? { publicTabs: tabChanges } : {}),
       },
     });
-    return new ApiResponse(ResponseCodes.OK, 'Settings saved', { settings: toAdminSettings(updated!) }).send(res);
+    return new ApiResponse(ResponseCodes.OK, 'Settings saved', {
+      settings: toAdminSettings(updated!),
+    }).send(res);
   } catch (err) {
     return next(err);
   }

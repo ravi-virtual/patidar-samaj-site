@@ -42,7 +42,10 @@ describe('public pages in Gujarati', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'કાર્યક્રમો' })).toBeInTheDocument();
     expect(screen.getByText('2 બતાવ્યા')).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'આગામી' })).toBeInTheDocument();
-    expect(screen.getByRole('searchbox', { name: 'કાર્યક્રમો શોધો' })).toHaveAttribute('placeholder', 'કાર્યક્રમો શોધો…');
+    expect(screen.getByRole('searchbox', { name: 'કાર્યક્રમો શોધો' })).toHaveAttribute(
+      'placeholder',
+      'કાર્યક્રમો શોધો…',
+    );
     const categories = screen.getByRole('group', { name: 'શ્રેણી' });
     expect(within(categories).getByRole('button', { name: 'રમતગમત' })).toBeInTheDocument();
     expect(screen.getAllByText('તહેવાર', { selector: 'span' })).toHaveLength(2);
@@ -52,9 +55,22 @@ describe('public pages in Gujarati', () => {
   });
 
   it('translates the directory description with its count and the table headers', async () => {
-    const entry = { id: 'm1', name: 'Asha Patel', village: 'Unjha', city: 'Mehsana', country: 'India', occupation: 'Teacher', bio: null, joinedYear: 2015, highlighted: false };
+    const entry = {
+      id: 'm1',
+      name: 'Asha Patel',
+      village: 'Unjha',
+      city: 'Mehsana',
+      country: 'India',
+      occupation: 'Teacher',
+      bio: null,
+      joinedYear: 2015,
+      highlighted: false,
+    };
     api.getMemberFiltersApi.mockResolvedValue({ villages: ['Unjha'], cities: [] });
-    api.listMembersApi.mockResolvedValue({ members: [entry, { ...entry, id: 'm2', name: 'Ravi Shah' }], totalCount: 2 });
+    api.listMembersApi.mockResolvedValue({
+      members: [entry, { ...entry, id: 'm2', name: 'Ravi Shah' }],
+      totalCount: 2,
+    });
     renderWithApp(<DirectoryPage />);
     expect(await screen.findByRole('link', { name: /Asha Patel/ })).toBeInTheDocument();
     expect(screen.getByText(/2 પરિવારો નોંધાયેલા છે/)).toBeInTheDocument();
@@ -64,7 +80,9 @@ describe('public pages in Gujarati', () => {
 
   it('translates the contact form labels, topics and the submit button', () => {
     renderWithApp(<ContactPage />);
-    expect(screen.getByRole('heading', { level: 1, name: 'સમાજ ઓફિસનો સંપર્ક કરો' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'સમાજ ઓફિસનો સંપર્ક કરો' }),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(/^નામ/)).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'સભ્યપદ' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'સંદેશ મોકલો' })).toBeInTheDocument();

@@ -28,7 +28,13 @@ export default function EventDetailPage() {
   }
 
   return (
-    <Async data={data} loading={initialLoading} error={error} onRetry={retry} skeleton={<Skeleton className="h-96" />}>
+    <Async
+      data={data}
+      loading={initialLoading}
+      error={error}
+      onRetry={retry}
+      skeleton={<Skeleton className="h-96" />}
+    >
       {(e) => {
         const others = more.data?.events.filter((x) => x.id !== e.id).slice(0, 3) ?? [];
         return (
@@ -41,7 +47,9 @@ export default function EventDetailPage() {
                   className="h-[clamp(200px,28vw,320px)] w-full rounded-xl border border-border"
                 />
                 <p className="mt-5 font-mono text-xs uppercase text-accent">{t(e.category)}</p>
-                <h1 className="mb-2.5 mt-1 text-[32px] font-semibold leading-tight tracking-tight">{e.title}</h1>
+                <h1 className="mb-2.5 mt-1 text-[32px] font-semibold leading-tight tracking-tight">
+                  {e.title}
+                </h1>
                 {e.status === 'cancelled' && (
                   <Alert tone="danger">
                     {e.cancellationReason
@@ -50,7 +58,9 @@ export default function EventDetailPage() {
                   </Alert>
                 )}
                 {e.description && (
-                  <p className="mt-3 whitespace-pre-line text-[17px] text-text-secondary">{e.description}</p>
+                  <p className="mt-3 whitespace-pre-line text-[17px] text-text-secondary">
+                    {e.description}
+                  </p>
                 )}
               </div>
 
@@ -80,8 +90,13 @@ export default function EventDetailPage() {
                 <ul className="m-0 grid list-none gap-2.5 p-0 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
                   {others.map((o) => (
                     <li key={o.id}>
-                      <Link to={`/events/${o.id}`} className="block rounded-xl border border-border bg-surface p-3.5 text-text hover:border-border-strong">
-                        <span className="font-mono text-xs text-text-muted">{formatShortDate(o.startsAt)}</span>
+                      <Link
+                        to={`/events/${o.id}`}
+                        className="block rounded-xl border border-border bg-surface p-3.5 text-text hover:border-border-strong"
+                      >
+                        <span className="font-mono text-xs text-text-muted">
+                          {formatShortDate(o.startsAt)}
+                        </span>
                         <span className="mt-0.5 block font-medium">{o.title}</span>
                       </Link>
                     </li>

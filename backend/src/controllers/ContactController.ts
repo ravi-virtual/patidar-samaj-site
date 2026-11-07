@@ -40,7 +40,12 @@ export const submitContact = async (req: Request, res: Response, next: NextFunct
 
     // A filled honeypot means a bot. Look successful, store nothing, give it nothing to learn from.
     if (data.website && data.website.trim() !== '') {
-      await writeAudit(req, { action: 'contact.spam_blocked', outcome: 'failure', actorId: null, metadata: { reason: 'honeypot' } });
+      await writeAudit(req, {
+        action: 'contact.spam_blocked',
+        outcome: 'failure',
+        actorId: null,
+        metadata: { reason: 'honeypot' },
+      });
       return thanks();
     }
 
@@ -54,7 +59,8 @@ export const submitContact = async (req: Request, res: Response, next: NextFunct
       await writeAudit(req, { action: 'contact.throttled', outcome: 'failure', actorId: null });
       return sendError(res, {
         statusCode: ResponseCodes.TOO_MANY_REQUESTS,
-        message: 'You have sent several messages recently. Please wait a while before sending another.',
+        message:
+          'You have sent several messages recently. Please wait a while before sending another.',
         code: ErrorCodes.RATE_LIMITED,
       });
     }

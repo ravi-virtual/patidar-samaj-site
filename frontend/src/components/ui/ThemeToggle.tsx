@@ -16,7 +16,13 @@ export function ThemeToggle() {
   const Icon = next === 'dark' ? Moon : Sun;
 
   return (
-    <button type="button" onClick={() => void dispatch(changeTheme(next))} aria-label={label} title={label} className={HEADER_ICON_BUTTON}>
+    <button
+      type="button"
+      onClick={() => void dispatch(changeTheme(next))}
+      aria-label={label}
+      title={label}
+      className={HEADER_ICON_BUTTON}
+    >
       <Icon aria-hidden="true" className="h-4 w-4" />
     </button>
   );

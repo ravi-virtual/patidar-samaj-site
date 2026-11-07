@@ -21,9 +21,12 @@ const toastSlice = createSlice({
         // Keep the screen calm: at most three messages at once.
         if (state.length > 3) state.shift();
       },
-      prepare: (message: string, tone: ToastTone = 'success') => ({ payload: { id: nextId++, tone, message: t(message) } }),
+      prepare: (message: string, tone: ToastTone = 'success') => ({
+        payload: { id: nextId++, tone, message: t(message) },
+      }),
     },
-    dismissToast: (state, action: PayloadAction<number>) => state.filter((t) => t.id !== action.payload),
+    dismissToast: (state, action: PayloadAction<number>) =>
+      state.filter((t) => t.id !== action.payload),
   },
 });
 

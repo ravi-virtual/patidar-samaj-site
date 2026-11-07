@@ -31,18 +31,68 @@ const P = Permissions;
 
 router.use(hasToken, isAuthenticated, isStaff);
 
-router.get('/', hasPermission(P.ANNOUNCEMENTS_READ), adminAnnouncementListRules, listAdminAnnouncements);
-router.post('/', hasPermission(P.ANNOUNCEMENTS_CREATE), createAnnouncementRules, createAnnouncement);
+router.get(
+  '/',
+  hasPermission(P.ANNOUNCEMENTS_READ),
+  adminAnnouncementListRules,
+  listAdminAnnouncements,
+);
+router.post(
+  '/',
+  hasPermission(P.ANNOUNCEMENTS_CREATE),
+  createAnnouncementRules,
+  createAnnouncement,
+);
 // Declared before '/:id' so "reorder" is not read as an id.
-router.patch('/reorder', hasPermission(P.ANNOUNCEMENTS_PUBLISH), reorderRules, reorderAnnouncements);
+router.patch(
+  '/reorder',
+  hasPermission(P.ANNOUNCEMENTS_PUBLISH),
+  reorderRules,
+  reorderAnnouncements,
+);
 router.get('/:id', hasPermission(P.ANNOUNCEMENTS_READ), announcementIdRules, getAdminAnnouncement);
-router.patch('/:id', hasPermission(P.ANNOUNCEMENTS_UPDATE), updateAnnouncementRules, updateAnnouncement);
-router.delete('/:id', hasPermission(P.ANNOUNCEMENTS_DELETE), announcementIdRules, deleteAnnouncement);
+router.patch(
+  '/:id',
+  hasPermission(P.ANNOUNCEMENTS_UPDATE),
+  updateAnnouncementRules,
+  updateAnnouncement,
+);
+router.delete(
+  '/:id',
+  hasPermission(P.ANNOUNCEMENTS_DELETE),
+  announcementIdRules,
+  deleteAnnouncement,
+);
 
-router.post('/:id/publish', hasPermission(P.ANNOUNCEMENTS_PUBLISH), publishAnnouncementRules, publishAnnouncement);
-router.post('/:id/unpublish', hasPermission(P.ANNOUNCEMENTS_PUBLISH), announcementIdRules, unpublishAnnouncement);
-router.post('/:id/archive', hasPermission(P.ANNOUNCEMENTS_PUBLISH), announcementIdRules, archiveAnnouncement);
-router.post('/:id/pin', hasPermission(P.ANNOUNCEMENTS_PUBLISH), announcementIdRules, pinAnnouncement);
-router.post('/:id/unpin', hasPermission(P.ANNOUNCEMENTS_PUBLISH), announcementIdRules, unpinAnnouncement);
+router.post(
+  '/:id/publish',
+  hasPermission(P.ANNOUNCEMENTS_PUBLISH),
+  publishAnnouncementRules,
+  publishAnnouncement,
+);
+router.post(
+  '/:id/unpublish',
+  hasPermission(P.ANNOUNCEMENTS_PUBLISH),
+  announcementIdRules,
+  unpublishAnnouncement,
+);
+router.post(
+  '/:id/archive',
+  hasPermission(P.ANNOUNCEMENTS_PUBLISH),
+  announcementIdRules,
+  archiveAnnouncement,
+);
+router.post(
+  '/:id/pin',
+  hasPermission(P.ANNOUNCEMENTS_PUBLISH),
+  announcementIdRules,
+  pinAnnouncement,
+);
+router.post(
+  '/:id/unpin',
+  hasPermission(P.ANNOUNCEMENTS_PUBLISH),
+  announcementIdRules,
+  unpinAnnouncement,
+);
 
 export default router;

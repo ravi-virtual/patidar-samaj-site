@@ -23,7 +23,12 @@ const makeSchema = () =>
       .min(2, t('Name must be at least 2 characters'))
       .max(100)
       .refine((v) => !/[<>]/.test(v), t('Name contains invalid characters')),
-    email: z.string().trim().min(1, t('Email is required')).max(254).pipe(z.email(t('Enter a valid email address'))),
+    email: z
+      .string()
+      .trim()
+      .min(1, t('Email is required'))
+      .max(254)
+      .pipe(z.email(t('Enter a valid email address'))),
     topic: z.enum(CONTACT_TOPICS),
     message: z
       .string()
@@ -72,7 +77,8 @@ export default function ContactPage() {
           placed = true;
         }
       }
-      if (!placed) setFormError(getErrorMessage(err, t('Your message could not be sent. Please try again.')));
+      if (!placed)
+        setFormError(getErrorMessage(err, t('Your message could not be sent. Please try again.')));
     }
   };
 
@@ -95,20 +101,36 @@ export default function ContactPage() {
                 variant="secondary"
                 onClick={() => {
                   setSent(null);
-                  reset({ name: '', email: '', topic: CONTACT_TOPICS[0], message: '', website: '' });
+                  reset({
+                    name: '',
+                    email: '',
+                    topic: CONTACT_TOPICS[0],
+                    message: '',
+                    website: '',
+                  });
                 }}
               >
                 {t('Send another message')}
               </Button>
             </div>
           ) : (
-            <form noValidate onSubmit={handleSubmit(onSubmit)} className="grid gap-4 sm:grid-cols-2">
+            <form
+              noValidate
+              onSubmit={handleSubmit(onSubmit)}
+              className="grid gap-4 sm:grid-cols-2"
+            >
               {formError && (
                 <div className="sm:col-span-2">
                   <Alert tone="danger">{formError}</Alert>
                 </div>
               )}
-              <TextField label={t('Name')} autoComplete="name" required error={errors.name?.message} {...register('name')} />
+              <TextField
+                label={t('Name')}
+                autoComplete="name"
+                required
+                error={errors.name?.message}
+                {...register('name')}
+              />
               <TextField
                 label={t('Email')}
                 type="email"
@@ -120,7 +142,11 @@ export default function ContactPage() {
                 {...register('email')}
               />
               <div className="sm:col-span-2">
-                <SelectField label={t('Topic')} error={errors.topic?.message} {...register('topic')}>
+                <SelectField
+                  label={t('Topic')}
+                  error={errors.topic?.message}
+                  {...register('topic')}
+                >
                   {CONTACT_TOPICS.map((topic) => (
                     <option key={topic} value={topic}>
                       {t(topic)}
@@ -129,7 +155,13 @@ export default function ContactPage() {
                 </SelectField>
               </div>
               <div className="sm:col-span-2">
-                <TextAreaField label={t('Message')} rows={6} required error={errors.message?.message} {...register('message')} />
+                <TextAreaField
+                  label={t('Message')}
+                  rows={6}
+                  required
+                  error={errors.message?.message}
+                  {...register('message')}
+                />
               </div>
               {/* Honeypot for bots. Hidden from sight and from assistive technology; humans never fill it. */}
               <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
@@ -151,7 +183,10 @@ export default function ContactPage() {
           {contact?.address && <Fact label="Address">{contact.address}</Fact>}
           {contact?.phone && (
             <Fact label="Phone">
-              <a href={`tel:${contact.phone.replace(/[^+\d]/g, '')}`} className="font-mono text-text">
+              <a
+                href={`tel:${contact.phone.replace(/[^+\d]/g, '')}`}
+                className="font-mono text-text"
+              >
                 {contact.phone}
               </a>
             </Fact>

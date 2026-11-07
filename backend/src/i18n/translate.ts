@@ -17,7 +17,9 @@ export const translateMessage = (message: string, lang: Language): string => {
   for (const [pattern, translation] of guPatterns) {
     const match = message.match(pattern);
     if (!match) continue;
-    return typeof translation === 'function' ? translation(match) : message.replace(pattern, translation);
+    return typeof translation === 'function'
+      ? translation(match)
+      : message.replace(pattern, translation);
   }
   return message;
 };

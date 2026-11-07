@@ -23,14 +23,21 @@ function EditForm({ user }: { user: AdminUser }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const nameProblem = name.trim().length < 2 ? t('Name must be at least 2 characters') : /[<>]/.test(name) ? t('Contains invalid characters') : undefined;
+  const nameProblem =
+    name.trim().length < 2
+      ? t('Name must be at least 2 characters')
+      : /[<>]/.test(name)
+        ? t('Contains invalid characters')
+        : undefined;
 
   const save = async () => {
     setBusy(true);
     setError(null);
     try {
       await updateAdminApi(user.id, { name: name.trim(), permissions });
-      dispatch(showToast(t('{name} updated. Changes apply on their next request.', { name: name.trim() })));
+      dispatch(
+        showToast(t('{name} updated. Changes apply on their next request.', { name: name.trim() })),
+      );
       navigate('/admin/users');
     } catch (err) {
       setError(getErrorMessage(err, t('Could not save the changes')));
@@ -49,23 +56,46 @@ function EditForm({ user }: { user: AdminUser }) {
       className="space-y-6"
     >
       {error && <Alert tone="danger">{error}</Alert>}
-      <section aria-labelledby="account-heading" className="space-y-4 rounded-lg border border-border bg-surface p-4 sm:p-5">
+      <section
+        aria-labelledby="account-heading"
+        className="space-y-4 rounded-lg border border-border bg-surface p-4 sm:p-5"
+      >
         <h2 id="account-heading" className="text-base font-semibold text-text">
           {t('Account')}
         </h2>
         <div className="grid gap-4 md:grid-cols-2">
-          <TextField label={t('Full name')} required value={name} onChange={(e) => setName(e.target.value)} error={nameProblem} />
-          <TextField label={t('Email')} value={user.email} readOnly disabled hint={t('The email address cannot be changed.')} />
+          <TextField
+            label={t('Full name')}
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            error={nameProblem}
+          />
+          <TextField
+            label={t('Email')}
+            value={user.email}
+            readOnly
+            disabled
+            hint={t('The email address cannot be changed.')}
+          />
         </div>
       </section>
-      <section aria-labelledby="perm-heading" className="rounded-lg border border-border bg-surface p-4 sm:p-5">
+      <section
+        aria-labelledby="perm-heading"
+        className="rounded-lg border border-border bg-surface p-4 sm:p-5"
+      >
         <h2 id="perm-heading" className="sr-only">
           {t('Permissions')}
         </h2>
         <PermissionPicker layout="page" value={permissions} onChange={setPermissions} />
       </section>
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button type="button" variant="secondary" onClick={() => navigate('/admin/users')} disabled={busy}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => navigate('/admin/users')}
+          disabled={busy}
+        >
           {t('Cancel')}
         </Button>
         <Button type="submit" loading={busy} disabled={Boolean(nameProblem)}>

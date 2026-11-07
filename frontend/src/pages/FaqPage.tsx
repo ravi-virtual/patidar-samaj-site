@@ -20,10 +20,19 @@ export default function FaqPage() {
         title={t('Frequently asked questions')}
         description={t('Quick answers about membership, events and the directory.')}
       />
-      <Async data={data} loading={initialLoading} error={error} onRetry={retry} skeleton={<Skeleton className="h-64" />}>
+      <Async
+        data={data}
+        loading={initialLoading}
+        error={error}
+        onRetry={retry}
+        skeleton={<Skeleton className="h-64" />}
+      >
         {(faqs) =>
           faqs.length === 0 ? (
-            <EmptyState title={t('No questions yet')} description={t('Ask us anything on the contact page.')} />
+            <EmptyState
+              title={t('No questions yet')}
+              description={t('Ask us anything on the contact page.')}
+            />
           ) : (
             <Card padded={false}>
               {faqs.map((f) => (

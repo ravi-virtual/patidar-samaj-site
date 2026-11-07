@@ -10,7 +10,12 @@ const styles: Record<Tone, string> = {
   danger: 'border-danger-border bg-danger-soft text-danger',
 };
 
-const icons = { info: Info, success: CircleCheck, warning: CircleAlert, danger: CircleAlert } as const;
+const icons = {
+  info: Info,
+  success: CircleCheck,
+  warning: CircleAlert,
+  danger: CircleAlert,
+} as const;
 
 /** Inline feedback. Danger and warning interrupt screen readers (alert); the rest are polite (status). */
 export function Alert({ tone = 'info', children }: { tone?: Tone; children: ReactNode }) {

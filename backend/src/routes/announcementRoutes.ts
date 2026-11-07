@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import requireTab from '../middlewares/requireTab';
-import { announcementIdRules, publicAnnouncementListRules } from '../validators/announcementValidator';
+import {
+  announcementIdRules,
+  publicAnnouncementListRules,
+} from '../validators/announcementValidator';
 import { getAnnouncement, listAnnouncements } from '../controllers/AnnouncementController';
 
 const router = Router();

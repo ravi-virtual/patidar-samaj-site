@@ -13,7 +13,8 @@ export const visibleNowFilter = (now = new Date()) => ({
   $or: [{ publishAt: { $exists: false } }, { publishAt: null }, { publishAt: { $lte: now } }],
 });
 
-const excerpt = (text: string, max = 200) => (text.length > max ? `${text.slice(0, max).trimEnd()}…` : text);
+const excerpt = (text: string, max = 200) =>
+  text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
 
 /** The public view in both languages (the `*Gu` twins included). Without a written summary, the body excerpt stands in. */
 const bilingualAnnouncement = (a: IAnnouncement, withBody: boolean) => ({
@@ -49,7 +50,9 @@ export const toAdminAnnouncement = (a: IAnnouncement) => ({
   featured: a.featured,
   publishAt: a.publishAt ?? null,
   publishedAt: a.publishedAt ?? null,
-  scheduled: a.status === PublishStatus.PUBLISHED && Boolean(a.publishAt && a.publishAt.getTime() > Date.now()),
+  scheduled:
+    a.status === PublishStatus.PUBLISHED &&
+    Boolean(a.publishAt && a.publishAt.getTime() > Date.now()),
   createdBy: a.createdBy ?? null,
   updatedBy: a.updatedBy ?? null,
   createdAt: a.createdAt,

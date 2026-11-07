@@ -16,7 +16,9 @@ interface MediaPickerProps extends SelectHTMLAttributes<HTMLSelectElement> {
  * so a picture is always checked (type, size) before it can be attached to anything.
  */
 export function MediaPicker({ label, kind, error, ref, ...rest }: MediaPickerProps) {
-  const { data, error: loadError } = useFetch(`media-picker:${kind}`, () => listMediaApi({ kind, limit: 100 }));
+  const { data, error: loadError } = useFetch(`media-picker:${kind}`, () =>
+    listMediaApi({ kind, limit: 100 }),
+  );
   return (
     <SelectField
       label={label}
